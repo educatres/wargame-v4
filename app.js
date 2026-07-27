@@ -12,7 +12,9 @@
       ["分散部署", { readiness: 1, sustainment: -1, civilian: 0 }],
       ["備援通訊", { command: 4, intel: 1, civilian: 0 }],
       ["後勤修復", { readiness: 1, sustainment: 5, civilian: 0 }],
-      ["情報融合", { intel: 5, command: 1, civilian: 0 }]
+      ["情報融合", { intel: 5, command: 1, civilian: 0 }],
+      ["能源配給與電網調度", { readiness: -1, sustainment: 4, command: 2, civilian: -3 }],
+      ["經濟持續運作協調", { readiness: 0, sustainment: 3, command: 2, civilian: -4 }]
     ],
     RED: [
       ["增加空中施壓", { readiness: -1, command: 1, intel: 0, civilian: 3 }],
@@ -20,7 +22,8 @@
       ["電磁壓制", { readiness: 0, command: 2, intel: 2, civilian: 2 }],
       ["遠程火力展示", { readiness: -2, command: 0, intel: 0, civilian: 6 }],
       ["調整封控區", { sustainment: 1, command: 1, intel: 0, civilian: 3 }],
-      ["外交訊息操作", { readiness: 0, command: 1, intel: 2, civilian: -1 }]
+      ["外交訊息操作", { readiness: 0, command: 1, intel: 2, civilian: -1 }],
+      ["海警與海上民兵執法封控", { readiness: 0, sustainment: 1, command: 1, intel: 2, civilian: 5 }]
     ],
     AMBER: [
       ["提供ISR支援", { readiness: 0, command: 1, intel: 6, civilian: 0 }],
@@ -28,7 +31,9 @@
       ["網路防護支援", { readiness: 1, command: 5, intel: 1, civilian: 0 }],
       ["外交協調", { readiness: 0, command: 2, intel: 1, civilian: -3 }],
       ["遠距海上存在", { readiness: 1, command: 1, intel: 2, civilian: 2 }],
-      ["人道支援準備", { readiness: 0, sustainment: 2, intel: 0, civilian: -5 }]
+      ["人道支援準備", { readiness: 0, sustainment: 2, intel: 0, civilian: -5 }],
+      ["多國商船護航協調", { readiness: 1, sustainment: 2, command: 3, intel: 1, civilian: -2 }],
+      ["工業補充與供應鏈動員", { readiness: 0, sustainment: 5, command: 1, intel: 0, civilian: -1 }]
     ]
   };
 
@@ -77,7 +82,62 @@
     logistics: { name: "港口延誤與後勤韌性：96小時持續性演練", focus: "logistics", difficulty: "standard", turns: 16, amberSupport: "limited", weatherPreset: "adverse", overview: "港口作業、運輸節點與維修批次陸續受阻；推演重點是優先順序、替代路線與資源保存。" },
     grayzone: { name: "灰色地帶與資訊迷霧：跨域判讀演練", focus: "intelligence", difficulty: "advanced", turns: 10, amberSupport: "indirect", weatherPreset: "stable", overview: "不明海空活動、訊息操作與模糊歸因事件交錯，需區分事實、推測與未知。" },
     humanitarian: { name: "人道疏散與民事協調：危機韌性演練", focus: "civil", difficulty: "standard", turns: 10, amberSupport: "limited", weatherPreset: "variable", overview: "人道需求、商運延誤與公共訊息壓力升高；資源配置需兼顧防護、疏散與基本服務。" },
-    deescalation: { name: "危機降溫與外交窗口：升級控制演練", focus: "diplomacy", difficulty: "advanced", turns: 8, amberSupport: "indirect", weatherPreset: "stable", overview: "高風險互動後出現有限降溫窗口，需將資源使用、公開訊息與外交協調連成一致策略。" }
+    deescalation: { name: "危機降溫與外交窗口：升級控制演練", focus: "diplomacy", difficulty: "advanced", turns: 8, amberSupport: "indirect", weatherPreset: "stable", overview: "高風險互動後出現有限降溫窗口，需將資源使用、公開訊息與外交協調連成一致策略。" },
+    csis_blackout_2025: {
+      name: "CSIS《燈火管制》（2025）：封鎖、護航與能源韌性",
+      sourceLabel: "CSIS《燈火管制：中國封鎖台灣兵推》（2025）案例假設",
+      focus: "logistics", difficulty: "advanced", turns: 20, hoursPerTurn: 12,
+      uncertainty: 4, civilPressure: 5, amberSupport: "limited", weatherPreset: "variable",
+      overview: "共軍以海警與海上民兵執法為由切斷航運，美日協調護航破封；推演核心是商運持續、能源配給與避免灰色地帶危機失控。",
+      objectives: ["維持最低限度商運與能源輸入", "協調多國護航、港口與保險機制", "在執法封控敘事下控制升級風險"],
+      success: ["第10日仍維持關鍵民生與指揮用電", "建立可持續且可解釋的商船護航機制", "能源配給未使民事風險持續失控"],
+      extraConstraints: ["案例假設：LNG安全存量於封鎖後10天耗盡。", "案例假設：能源耗盡後電力降至平時35%。"],
+      parameters: { coercionMode: "law_enforcement_blockade", energyReserveDays: 10, residualPowerPct: 35, precisionStockpileDays: 30, nuclearStrikeCount: 0, globalEconomicShock: 4 },
+      events: [
+        { trigger_turn: 2, event_name: "海警宣布擴大臨檢", category: "封控", zone_id: "Z-CW", affected_actor: "ALL", description: "以執法名義提高商船進出與保險壓力。", sustainment_delta: -3, civilian_risk_delta: 5 },
+        { trigger_turn: 10, event_name: "護航破封協調窗口", category: "外交", zone_id: "Z-REAR", affected_actor: "AMBER", description: "美日與商運單位研議多國護航及航運風險分攤。", command_delta: 4, sustainment_delta: 3 },
+        { trigger_turn: 20, event_name: "能源安全存量耗盡", category: "能源", zone_id: "Z-ISL", affected_actor: "BLUE", description: "案例假設下LNG安全存量耗盡，電力供應面臨快速下降。", readiness_delta: -12, sustainment_delta: -18, command_delta: -4, civilian_risk_delta: 18 }
+      ]
+    },
+    csis_mit_nuclear_2024: {
+      name: "CSIS & MIT（2024）：傳統戰局與核升級風險",
+      sourceLabel: "CSIS & MIT《台海衝突納入核武推演》（2024）案例假設",
+      focus: "diplomacy", difficulty: "advanced", turns: 12, hoursPerTurn: 6,
+      uncertainty: 5, civilPressure: 5, amberSupport: "limited", weatherPreset: "stable",
+      overview: "傳統戰局對中方不利後，危機跨越核門檻；推演聚焦預警判讀、政治溝通、分散韌性與終止衝突，不處理核武目標或運用細節。",
+      objectives: ["辨識核升級警訊並保留溝通管道", "維持最低限度指揮與民事應變功能", "建立衝突終止與避免後續升級的政策選項"],
+      success: ["在核門檻前提出可信的降溫方案", "核事件後維持跨部門指揮與公共訊息", "決策未以報復交換取代政治目標"],
+      extraConstraints: ["只採抽象核風險裁決，不呈現目標、武器、當量或運用方式。", "案例假設：傳統戰局不利時發生7次戰術核武攻擊。"],
+      parameters: { coercionMode: "nuclear_escalation", energyReserveDays: 20, residualPowerPct: 50, precisionStockpileDays: 14, nuclearStrikeCount: 7, globalEconomicShock: 5 },
+      events: [
+        { trigger_turn: 6, event_name: "核升級警訊增強", category: "戰略預警", zone_id: "Z-REAR", affected_actor: "ALL", description: "情報顯示核門檻風險顯著升高，外交與危機溝通窗口縮小。", command_delta: -5, civilian_risk_delta: 12 },
+        { trigger_turn: 8, event_name: "七次戰術核武攻擊（抽象裁決）", category: "核升級", zone_id: "Z-ISL", affected_actor: "ALL", description: "依案例假設進行整體性衝擊裁決；不包含目標、武器或運用細節。", readiness_delta: -25, sustainment_delta: -25, command_delta: -20, civilian_risk_delta: 40 }
+      ]
+    },
+    cnas_policy_war: {
+      name: "美國國會 × CNAS：一週彈藥耗盡與全球經濟衝擊",
+      sourceLabel: "美國國會與新美國安全中心（CNAS）政策級兵推案例假設",
+      focus: "joint", difficulty: "advanced", turns: 14, hoursPerTurn: 12,
+      uncertainty: 4, civilPressure: 5, amberSupport: "limited", weatherPreset: "variable",
+      overview: "政策級推演聚焦開戰後一週內遠程精準導引彈藥耗盡，以及航運、金融、能源與科技供應鏈引發的全球連鎖經濟衝擊。",
+      objectives: ["在一週彈藥限制下設定可持續的政治與軍事優先序", "協調工業補充、盟友分工與供應鏈替代", "管理全球金融、航運與民生連鎖風險"],
+      success: ["第7日仍保有關鍵任務所需資源", "建立工業補充與盟友分攤方案", "全球經濟衝擊未使政策目標失去可持續性"],
+      extraConstraints: ["案例假設：開戰後一週內耗盡遠程精準導引彈藥。", "每回合必須同時評估全球經濟與民事後果。"],
+      parameters: { coercionMode: "conventional_conflict", energyReserveDays: 14, residualPowerPct: 45, precisionStockpileDays: 7, nuclearStrikeCount: 0, globalEconomicShock: 5 },
+      events: [
+        { trigger_turn: 6, event_name: "全球金融與航運震盪", category: "經濟", zone_id: "Z-REAR", affected_actor: "ALL", description: "保險、金融、能源與科技供應鏈出現跨區域連鎖壓力。", sustainment_delta: -8, command_delta: -3, civilian_risk_delta: 15 },
+        { trigger_turn: 14, event_name: "遠程精準彈藥耗盡", category: "後勤", zone_id: "Z-REAR", affected_actor: "AMBER", description: "案例假設下，一週後遠程精準導引彈藥存量耗盡。", readiness_delta: -18, sustainment_delta: -20, command_delta: -5 }
+      ]
+    }
+  };
+
+  const STRATEGIC_DEFAULTS = {
+    coercionMode: "limited_blockade",
+    energyReserveDays: 30,
+    residualPowerPct: 80,
+    precisionStockpileDays: 30,
+    nuclearStrikeCount: 0,
+    globalEconomicShock: 1
   };
 
   const STORM_STAGES = {
@@ -260,7 +320,8 @@
         command: round1(averageForActor("BLUE", "command_quality")),
         intel: 64 - scenario.uncertainty * 3,
         resources: 100,
-        civilianRisk: 25 + scenario.civilPressure * 5
+        civilianRisk: 25 + scenario.civilPressure * 5,
+        powerAvailability: 100
       },
       RED: {
         readiness: round1(clamp(averageForActor("RED", "readiness") + resourceBalance.red * 0.12)),
@@ -276,7 +337,8 @@
         command: amberEnabled ? round1(averageForActor("AMBER", "command_quality")) : 0,
         intel: amberEnabled ? 82 : 0,
         resources: scenario.amberSupport === "limited" ? 80 : scenario.amberSupport === "indirect" ? 60 : 0,
-        civilianRisk: 0
+        civilianRisk: 0,
+        precisionStockpile: 100
       }
     };
   }
@@ -300,7 +362,19 @@
   function ensureScenarioResources(scenario) {
     if (!scenario.resources) scenario.resources = readResourceInventory();
     scenario.resourceBalance ||= calculateResourceBalance(scenario.resources);
+    scenario.strategicParameters = { ...STRATEGIC_DEFAULTS, ...(scenario.strategicParameters || {}) };
     return scenario;
+  }
+
+  function readStrategicParameters() {
+    return {
+      coercionMode: $("coercionMode").value,
+      energyReserveDays: clamp(Number($("energyReserveDays").value) || 0, 0, 60),
+      residualPowerPct: clamp(Number($("residualPowerPct").value) || 0, 0, 100),
+      precisionStockpileDays: clamp(Number($("precisionStockpileDays").value) || 0, 0, 60),
+      nuclearStrikeCount: clamp(Number($("nuclearStrikeCount").value) || 0, 0, 20),
+      globalEconomicShock: clamp(Number($("globalEconomicShock").value) || 1, 1, 5)
+    };
   }
 
   function generateScenario(formValues) {
@@ -312,6 +386,13 @@
       ...event,
       trigger_turn: Math.max(2, Math.min(formValues.turns, Math.round(2 + index * ((formValues.turns - 2) / Math.max(1, eventCount - 1))))),
       event_id: `${event.event_id}-${formValues.seed}`
+    }));
+    const template = SCENARIO_TEMPLATES[formValues.template];
+    (template?.events || []).forEach((event, index) => selectedEvents.push({
+      ...event,
+      trigger_turn: Math.min(formValues.turns, Number(event.trigger_turn)),
+      event_id: `CASE-${formValues.template}-${index + 1}-${formValues.seed}`,
+      caseEvent: true
     }));
 
     const initialIntel = sample(DATA.intelligenceReports, Math.min(6, 2 + formValues.uncertainty), rng).map((r, idx) => ({
@@ -334,7 +415,7 @@
     ].filter(Boolean);
 
     const overviewTemplates = [
-      SCENARIO_TEMPLATES[formValues.template]?.overview,
+      template?.overview,
       "紅方宣布在臺海周邊進行高強度聯合活動，商船改道、空運受限，雙方在資訊不完整下尋求維持自身目標。",
       "一系列海空活動與資訊操作使區域風險升高，藍方需要在有限資源下維持指揮、交通與民事韌性。",
       "區域出現有限封控、電磁干擾及外交施壓。各方必須判斷對手意圖，並避免局部事件失控。"
@@ -354,12 +435,15 @@
       civilPressure: formValues.civilPressure,
       amberSupport: formValues.amberSupport,
       weatherPreset: formValues.weatherPreset,
+      templateKey: formValues.template,
+      sourceLabel: template?.sourceLabel || "自訂合成想定",
+      strategicParameters: formValues.strategicParameters,
       resources: formValues.resources,
       resourceBalance: calculateResourceBalance(formValues.resources),
-      overview: pick(overviewTemplates, rng),
-      objectives: focus.objectives,
-      successCriteria: focus.success,
-      constraints,
+      overview: template?.overview || pick(overviewTemplates.filter(Boolean), rng),
+      objectives: template?.objectives || focus.objectives,
+      successCriteria: template?.success || focus.success,
+      constraints: [...constraints, ...(template?.extraConstraints || [])],
       events: selectedEvents,
       intel: initialIntel,
       createdAt: new Date().toISOString(),
@@ -380,6 +464,7 @@
       civilPressure: Number($("civilPressure").value),
       amberSupport: $("amberSupport").value,
       weatherPreset: $("weatherPreset").value,
+      strategicParameters: readStrategicParameters(),
       resources: readResourceInventory(),
       teacherConstraints: $("teacherConstraints").value.trim()
     };
@@ -414,6 +499,7 @@
       return;
     }
     const s = state.scenario;
+    const strategic = { ...STRATEGIC_DEFAULTS, ...(s.strategicParameters || {}) };
     container.className = "preview";
     container.innerHTML = `
       <div class="preview-summary">
@@ -425,6 +511,7 @@
           <span class="badge">${s.turns}回合 × ${s.hoursPerTurn}小時</span>
         </div>
         <p>${escapeHtml(s.overview)}</p>
+        <p class="muted">參考架構：${escapeHtml(s.sourceLabel || "自訂合成想定")}；所有數值均為教育推演假設。</p>
         <div class="tag-list">
           <span class="tag">${escapeHtml(s.focusTitle)}</span>
           <span class="tag">情報不確定度 ${s.uncertainty}/5</span>
@@ -447,6 +534,14 @@
           <ul class="compact-list">${s.constraints.map(v => `<li>${escapeHtml(v)}</li>`).join("")}</ul>
         </article>
       </div>
+      <article class="card" style="margin-top:1rem">
+        <div class="subheading"><h3>戰略壓力假設</h3><span class="muted">可在生成器中調整</span></div>
+        <div class="preview-grid">
+          <div><strong>衝突型態</strong><p class="muted">${escapeHtml(coercionModeLabel(strategic.coercionMode))}</p></div>
+          <div><strong>能源與電力</strong><p class="muted">安全存量 ${strategic.energyReserveDays} 天<br>耗盡後電力 ${strategic.residualPowerPct}%</p></div>
+          <div><strong>彈藥、核與經濟</strong><p class="muted">精準彈藥 ${strategic.precisionStockpileDays} 天 · 核攻擊 ${strategic.nuclearStrikeCount} 次（抽象）<br>全球經濟衝擊 ${strategic.globalEconomicShock}/5</p></div>
+        </div>
+      </article>
       <article class="card" style="margin-top:1rem">
         <div class="subheading"><h3>本想定合成資源基線</h3><span class="muted">只用於方案比較與隨機模擬</span></div>
         <div class="preview-grid">
@@ -473,6 +568,15 @@
 
   function weatherLabel(value) {
     return ({ stable: "穩定天候", variable: "多變天候", adverse: "不利天候" }[value] || value);
+  }
+
+  function coercionModeLabel(value) {
+    return ({
+      limited_blockade: "有限封控",
+      law_enforcement_blockade: "海警與海上民兵執法封控",
+      conventional_conflict: "傳統軍事衝突",
+      nuclear_escalation: "核升級風險情境"
+    }[value] || value);
   }
 
   function renderSimulation() {
@@ -507,10 +611,15 @@
         return `<article class="metric neutral"><small>${label}</small><strong>${round1(state.status.BLUE.civilianRisk)}</strong><small>0低風險／100高風險</small></article>`;
       }
       const actor = state.status[id];
+      const strategicNote = id === "BLUE" && Number.isFinite(actor.powerAvailability)
+        ? ` · 電力 ${round1(actor.powerAvailability)}%`
+        : id === "AMBER" && Number.isFinite(actor.precisionStockpile)
+          ? ` · 精準彈藥 ${round1(actor.precisionStockpile)}%`
+          : "";
       return `<article class="metric ${id.toLowerCase()}">
         <small>${label}</small>
         <strong>${round1(actor.readiness)}</strong>
-        <small>後勤 ${round1(actor.sustainment)} · 指管 ${round1(actor.command)} · 資源 ${round1(actor.resources)}</small>
+        <small>後勤 ${round1(actor.sustainment)} · 指管 ${round1(actor.command)} · 資源 ${round1(actor.resources)}${strategicNote}</small>
       </article>`;
     }).join("");
   }
@@ -699,7 +808,7 @@
     const zones = DATA.zones.filter(z => z.zone_id !== "Z-REAR" || missingActors.includes("AMBER")).map(z => ({ id: z.zone_id, name: z.zone_name, domain: z.domain }));
     const events = currentEvents();
     const weather = currentWeather().map(w => ({ zone: w.zone_id, sea: w.sea_state_1_5, visibility: w.visibility_1_5 }));
-    return `你是兵推回合助理。只能使用下列完全合成、虛構的模擬資料；不得補入真實部隊、武器型號、座標、部署、射程、目標或可執行的現實作戰建議。\n\n請只回傳嚴格 JSON：{"orders":[{"actor":"BLUE|RED|AMBER","action":"必須從允許動作選一項","zone":"必須從允許區域選一項","resource":5到35的整數,"rationale":"繁體中文、80字內，明確說明如何根據資源、準備度、情報、事件或天候作取捨"}]}\n\n必須補齊的角色：${JSON.stringify(missingActors)}\n允許動作：${JSON.stringify(availableActions)}\n允許區域：${JSON.stringify(zones)}\n當前狀態：${JSON.stringify({ turn: state.currentTurn, status: state.status, resources: state.scenario.resources, currentOrders: state.orders[state.currentTurn], events: events.map(event => ({ name: event.event_name, category: event.category, zone: event.zone_id, description: event.description })), weather })}\n\n每個缺少角色剛好一項命令；理由必須清楚呈現。`;
+    return `你是兵推回合助理。只能使用下列完全合成、虛構的模擬資料；不得補入真實部隊、武器型號、座標、部署、射程、目標或可執行的現實作戰建議。\n\n請只回傳嚴格 JSON：{"orders":[{"actor":"BLUE|RED|AMBER","action":"必須從允許動作選一項","zone":"必須從允許區域選一項","resource":5到35的整數,"rationale":"繁體中文、80字內，明確說明如何根據資源、準備度、情報、事件、戰略壓力或天候作取捨"}]}\n\n必須補齊的角色：${JSON.stringify(missingActors)}\n允許動作：${JSON.stringify(availableActions)}\n允許區域：${JSON.stringify(zones)}\n當前狀態：${JSON.stringify({ turn: state.currentTurn, status: state.status, resources: state.scenario.resources, strategicParameters: state.scenario.strategicParameters, currentOrders: state.orders[state.currentTurn], events: events.map(event => ({ name: event.event_name, category: event.category, zone: event.zone_id, description: event.description })), weather })}\n\n每個缺少角色剛好一項命令；理由必須清楚呈現。`;
   }
 
   function applyAiOrders(result, missingActors) {
@@ -791,6 +900,38 @@
     state.status.BLUE.civilianRisk = clamp(state.status.BLUE.civilianRisk + Number(event.civilian_risk_delta || 0));
   }
 
+  function applyStrategicPressure() {
+    const parameters = { ...STRATEGIC_DEFAULTS, ...(state.scenario.strategicParameters || {}) };
+    const elapsedDays = state.currentTurn * state.scenario.hoursPerTurn / 24;
+    const energyDays = Number(parameters.energyReserveDays);
+    const powerFloor = Number(parameters.residualPowerPct);
+    if (energyDays > 0 && elapsedDays > energyDays * 0.6) {
+      const decline = clamp((elapsedDays - energyDays * 0.6) / Math.max(0.1, energyDays * 0.4), 0, 1);
+      state.status.BLUE.powerAvailability = round1(100 - (100 - powerFloor) * decline);
+      const powerPenalty = (100 - state.status.BLUE.powerAvailability) / 100;
+      state.status.BLUE.sustainment = clamp(state.status.BLUE.sustainment - powerPenalty * 3.5);
+      state.status.BLUE.readiness = clamp(state.status.BLUE.readiness - powerPenalty * 2);
+    }
+
+    const precisionDays = Number(parameters.precisionStockpileDays);
+    if (precisionDays > 0 && state.scenario.amberSupport !== "none") {
+      state.status.AMBER.precisionStockpile = round1(clamp(100 * (1 - elapsedDays / precisionDays), 0, 100));
+      if (state.status.AMBER.precisionStockpile <= 25) {
+        state.status.AMBER.readiness = clamp(state.status.AMBER.readiness - 1.2);
+        state.status.AMBER.sustainment = clamp(state.status.AMBER.sustainment - 1);
+      }
+    }
+
+    const economicShock = Number(parameters.globalEconomicShock) - 1;
+    if (economicShock > 0) {
+      state.status.BLUE.civilianRisk = clamp(state.status.BLUE.civilianRisk + economicShock * 0.55);
+      state.status.BLUE.sustainment = clamp(state.status.BLUE.sustainment - economicShock * 0.35);
+      if (state.scenario.amberSupport !== "none") {
+        state.status.AMBER.sustainment = clamp(state.status.AMBER.sustainment - economicShock * 0.18);
+      }
+    }
+  }
+
   async function resolveTurn() {
     if (!state.scenario || state.currentTurn > state.scenario.turns) return;
     await autoFillOrders();
@@ -804,6 +945,7 @@
 
     Object.values(orders).forEach(order => applyOwnAction(order.actor, order));
     events.forEach(applyEvent);
+    applyStrategicPressure();
 
     const blueScore = orderScore(orders.BLUE, state.status.BLUE, rng) + state.status.BLUE.intel * 0.13;
     const redScore = orderScore(orders.RED, state.status.RED, rng) + state.status.RED.intel * 0.13;
@@ -1619,7 +1761,7 @@
 
   function llmPrompt(formValues) {
     const baseline = generateScenario(formValues);
-    return `你是想定編輯器。只可使用下列「完全合成、虛構」資料，不能補入真實世界的部隊、武器型號、地點、座標、射程、性能、部署或目標資訊。請以繁體中文回傳嚴格 JSON，且不要使用 Markdown。\n\nJSON schema:\n{"overview":"120字內情境摘要","objectives":["3項"],"successCriteria":["3項"],"constraints":["3至5項"],"eventIdeas":["3項不涉及真實武器或地點的事件名稱"]}\n\n想定設定：${JSON.stringify({ name: baseline.name, focus: baseline.focusTitle, difficulty: baseline.difficultyLabel, turns: baseline.turns, hoursPerTurn: baseline.hoursPerTurn, uncertainty: baseline.uncertainty, civilPressure: baseline.civilPressure, amberSupport: baseline.amberSupport, weather: baseline.weatherPreset, resources: baseline.resources, teacherConstraints: formValues.teacherConstraints })}\n\n額外指示：${$("llmInstruction").value.trim() || "無"}\n\n敘事要強調資源保存、資訊不確定性、民事影響與升級控制；不得提出可執行的現實作戰建議。`;
+    return `你是想定編輯器。只可使用下列「完全合成、虛構」資料，不能補入真實世界的部隊、武器型號、地點、座標、射程、性能、部署或目標資訊。請以繁體中文回傳嚴格 JSON，且不要使用 Markdown。\n\nJSON schema:\n{"overview":"120字內情境摘要","objectives":["3項"],"successCriteria":["3項"],"constraints":["3至5項"],"eventIdeas":["3項不涉及真實武器或地點的事件名稱"]}\n\n想定設定：${JSON.stringify({ name: baseline.name, focus: baseline.focusTitle, difficulty: baseline.difficultyLabel, turns: baseline.turns, hoursPerTurn: baseline.hoursPerTurn, uncertainty: baseline.uncertainty, civilPressure: baseline.civilPressure, amberSupport: baseline.amberSupport, weather: baseline.weatherPreset, resources: baseline.resources, strategicParameters: baseline.strategicParameters, teacherConstraints: formValues.teacherConstraints })}\n\n額外指示：${$("llmInstruction").value.trim() || "無"}\n\n敘事要強調資源保存、資訊不確定性、民事影響與升級控制；不得提出可執行的現實作戰建議。`;
   }
 
   function extractJson(text) {
@@ -1796,8 +1938,14 @@
     $("focus").value = template.focus;
     $("difficulty").value = template.difficulty;
     $("turns").value = template.turns;
+    $("hoursPerTurn").value = template.hoursPerTurn || 6;
+    $("uncertainty").value = template.uncertainty || 3;
+    $("civilPressure").value = template.civilPressure || 3;
     $("amberSupport").value = template.amberSupport;
     $("weatherPreset").value = template.weatherPreset;
+    const parameters = { ...STRATEGIC_DEFAULTS, ...(template.parameters || {}) };
+    Object.entries(parameters).forEach(([key, value]) => { if ($(key)) $(key).value = value; });
+    updateRangeLabels();
     toast(`已套用「${$("scenarioTemplate").selectedOptions[0].textContent}」範本。`);
   }
 

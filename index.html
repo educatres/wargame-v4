@@ -62,6 +62,9 @@
               <option value="grayzone">灰色地帶與資訊迷霧</option>
               <option value="humanitarian">人道疏散與民事協調</option>
               <option value="deescalation">危機降溫與外交窗口</option>
+              <option value="csis_blackout_2025">CSIS《燈火管制》（2025）：封鎖與能源韌性</option>
+              <option value="csis_mit_nuclear_2024">CSIS &amp; MIT（2024）：核升級風險</option>
+              <option value="cnas_policy_war">美國國會 × CNAS：彈藥與全球經濟衝擊</option>
             </select>
           </label>
           <label>
@@ -129,6 +132,30 @@
               <option value="adverse">不利</option>
             </select>
           </label>
+          <div class="full resource-builder strategic-builder">
+            <div class="subheading">
+              <div>
+                <h3>戰略壓力參數</h3>
+                <p class="muted">用於教育推演的案例假設，可依課程需要調整；不代表現實預測。</p>
+              </div>
+              <span class="badge">影響回合推演</span>
+            </div>
+            <div class="resource-grid strategic-grid">
+              <label>封控／衝突型態
+                <select id="coercionMode">
+                  <option value="limited_blockade">有限封控</option>
+                  <option value="law_enforcement_blockade">海警與海上民兵執法封控</option>
+                  <option value="conventional_conflict">傳統軍事衝突</option>
+                  <option value="nuclear_escalation">核升級風險情境</option>
+                </select>
+              </label>
+              <label>能源安全存量（天）<input id="energyReserveDays" type="number" min="0" max="60" value="30"></label>
+              <label>能源耗盡後電力（%）<input id="residualPowerPct" type="number" min="0" max="100" value="80"></label>
+              <label>遠程精準彈藥存量（天）<input id="precisionStockpileDays" type="number" min="0" max="60" value="30"></label>
+              <label>戰術核攻擊次數（抽象）<input id="nuclearStrikeCount" type="number" min="0" max="20" value="0"></label>
+              <label>全球經濟衝擊（1–5）<input id="globalEconomicShock" type="number" min="1" max="5" value="1"></label>
+            </div>
+          </div>
           <div class="full resource-builder">
             <div class="subheading">
               <div>
