@@ -134,6 +134,21 @@
               <option value="adverse">不利</option>
             </select>
           </label>
+          <label>
+            回合行動順序
+            <select id="turnOrderMode">
+              <option value="simultaneous" selected>同時密封提交（預設）</option>
+              <option value="red_first">紅方先行</option>
+              <option value="alternating">輪替先行</option>
+            </select>
+          </label>
+          <label>
+            先行命令是否公開
+            <select id="firstOrderVisibility" disabled>
+              <option value="sealed" selected>不公開：只決定裁決順序</option>
+              <option value="public">公開：後手可見先手行動</option>
+            </select>
+          </label>
           <div class="full resource-builder strategic-builder">
             <div class="subheading">
               <div>
@@ -297,6 +312,7 @@
               <button type="submit" class="primary">提交／更新命令</button>
               <button type="button" id="autoOrdersBtn" class="secondary">自動補齊其他角色（有 Key 時 AI）</button>
             </div>
+            <p id="orderSequenceHint" class="full order-sequence-hint muted"></p>
             <div id="currentOrders" class="full order-list"></div>
           </form>
         </div>

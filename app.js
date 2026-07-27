@@ -88,6 +88,7 @@
       sourceLabel: "CSIS《燈火管制：中國封鎖台灣兵推》（2025）案例假設",
       references: [{ title: "CSIS — Lights Out? Wargaming a Chinese Blockade of Taiwan", url: "https://www.csis.org/analysis/lights-out-wargaming-chinese-blockade-taiwan" }],
       focus: "logistics", difficulty: "advanced", turns: 20, hoursPerTurn: 12,
+      turnOrderMode: "red_first", firstOrderVisibility: "public",
       uncertainty: 4, civilPressure: 5, amberSupport: "limited", weatherPreset: "variable",
       overview: "共軍以海警與海上民兵執法為由切斷航運，美日協調護航破封；推演核心是商運持續、能源配給與避免灰色地帶危機失控。",
       objectives: ["維持最低限度商運與能源輸入", "協調多國護航、港口與保險機制", "在執法封控敘事下控制升級風險"],
@@ -108,6 +109,7 @@
         { title: "MIT Security Studies Program — Flagship Games", url: "https://ssp.mit.edu/wargaming-lab/flagship-games" }
       ],
       focus: "diplomacy", difficulty: "advanced", turns: 12, hoursPerTurn: 6,
+      turnOrderMode: "simultaneous", firstOrderVisibility: "sealed",
       uncertainty: 5, civilPressure: 5, amberSupport: "limited", weatherPreset: "stable",
       overview: "傳統戰局對中方不利後，危機跨越核門檻；推演聚焦預警判讀、政治溝通、分散韌性與終止衝突，不處理核武目標或運用細節。",
       objectives: ["辨識核升級警訊並保留溝通管道", "維持最低限度指揮與民事應變功能", "建立衝突終止與避免後續升級的政策選項"],
@@ -124,6 +126,7 @@
       sourceLabel: "美國國會與新美國安全中心（CNAS）政策級兵推案例假設",
       references: [{ title: "CNAS — Bad Blood: The TTX for the House Select Committee on the CCP", url: "https://www.cnas.org/publications/congressional-testimony/bad-blood-ttx" }],
       focus: "joint", difficulty: "advanced", turns: 14, hoursPerTurn: 12,
+      turnOrderMode: "red_first", firstOrderVisibility: "sealed",
       uncertainty: 4, civilPressure: 5, amberSupport: "limited", weatherPreset: "variable",
       overview: "政策級推演聚焦開戰後一週內遠程精準導引彈藥耗盡，以及航運、金融、能源與科技供應鏈引發的全球連鎖經濟衝擊。",
       objectives: ["在一週彈藥限制下設定可持續的政治與軍事優先序", "協調工業補充、盟友分工與供應鏈替代", "管理全球金融、航運與民生連鎖風險"],
@@ -369,6 +372,8 @@
     if (!scenario.resources) scenario.resources = readResourceInventory();
     scenario.resourceBalance ||= calculateResourceBalance(scenario.resources);
     scenario.strategicParameters = { ...STRATEGIC_DEFAULTS, ...(scenario.strategicParameters || {}) };
+    scenario.turnOrderMode ||= "simultaneous";
+    scenario.firstOrderVisibility ||= "sealed";
     return scenario;
   }
 
@@ -441,6 +446,8 @@
       civilPressure: formValues.civilPressure,
       amberSupport: formValues.amberSupport,
       weatherPreset: formValues.weatherPreset,
+      turnOrderMode: formValues.turnOrderMode,
+      firstOrderVisibility: formValues.firstOrderVisibility,
       templateKey: formValues.template,
       sourceLabel: template?.sourceLabel || "自訂合成想定",
       strategicParameters: formValues.strategicParameters,
@@ -470,6 +477,8 @@
       civilPressure: Number($("civilPressure").value),
       amberSupport: $("amberSupport").value,
       weatherPreset: $("weatherPreset").value,
+      turnOrderMode: $("turnOrderMode").value,
+      firstOrderVisibility: $("firstOrderVisibility").value,
       strategicParameters: readStrategicParameters(),
       resources: readResourceInventory(),
       teacherConstraints: $("teacherConstraints").value.trim()
@@ -524,6 +533,8 @@
           <span class="tag">民事壓力 ${s.civilPressure}/5</span>
           <span class="tag">${amberLabel(s.amberSupport)}</span>
           <span class="tag">${weatherLabel(s.weatherPreset)}</span>
+          <span class="tag">${escapeHtml(turnOrderModeLabel(s.turnOrderMode))}</span>
+          <span class="tag">${s.turnOrderMode === "simultaneous" ? "命令密封" : s.firstOrderVisibility === "public" ? "先手命令公開" : "先手命令不公開"}</span>
         </div>
       </div>
       <div class="preview-grid">
@@ -587,6 +598,14 @@
     }[value] || value);
   }
 
+  function turnOrderModeLabel(value) {
+    return ({
+      simultaneous: "同時密封提交",
+      red_first: "紅方先行",
+      alternating: "輪替先行"
+    }[value] || value);
+  }
+
   function renderSimulation() {
     const hasScenario = !!state.scenario;
     $("simulationEmpty").hidden = hasScenario;
@@ -639,7 +658,7 @@
     $("zoneMap").innerHTML = zones.map(zone => {
       const signals = [];
       Object.values(currentOrders).forEach(order => {
-        if (order.zone === zone.zone_id) signals.push(order.actor.toLowerCase());
+        if (orderVisibleBeforeResolution(order.actor) && order.zone === zone.zone_id) signals.push(order.actor.toLowerCase());
       });
       events.filter(event => event.zone_id === zone.zone_id).forEach(() => signals.push("neutral"));
       return `<div class="zone" data-zone="${zone.zone_id}" title="${escapeHtml(zone.teaching_note || "")}">
@@ -656,15 +675,72 @@
         .filter(z => z.zone_id !== "Z-REAR" || state.scenario.amberSupport !== "none")
         .map(z => `<option value="${z.zone_id}">${escapeHtml(z.zone_name)}</option>`).join("");
     }
-    updateActionOptions();
     const finished = state.currentTurn > state.scenario.turns;
     [...$("orderForm").elements].forEach(el => el.disabled = finished);
+    const actorSelect = $("orderActor");
+    const amberOption = actorSelect.querySelector('option[value="AMBER"]');
+    if (amberOption) amberOption.disabled = state.scenario.amberSupport === "none";
+    const current = state.orders[state.currentTurn] || {};
+    const nextActor = nextRequiredActor(current);
+    if (!finished && state.scenario.turnOrderMode !== "simultaneous" && nextActor && actorSelect.value !== nextActor) {
+      actorSelect.value = nextActor;
+    }
+    updateActionOptions();
+    const selectedActor = actorSelect.value;
+    const canSubmit = !finished && canActorSubmit(selectedActor, current);
+    const submitButton = $("orderForm").querySelector('button[type="submit"]');
+    if (submitButton) submitButton.disabled = !canSubmit;
+    $("orderSequenceHint").textContent = orderSequenceHint(current);
     $("resolveTurnBtn").disabled = finished;
   }
 
   function updateActionOptions() {
     const actor = $("orderActor").value;
     $("orderAction").innerHTML = ACTIONS[actor].map(([name]) => `<option>${escapeHtml(name)}</option>`).join("");
+    if (state.scenario) {
+      const current = state.orders[state.currentTurn] || {};
+      const submitButton = $("orderForm").querySelector('button[type="submit"]');
+      if (submitButton) submitButton.disabled = state.currentTurn > state.scenario.turns || !canActorSubmit(actor, current);
+      $("orderSequenceHint").textContent = orderSequenceHint(current);
+    }
+  }
+
+  function activeOrderActors() {
+    return state.scenario?.amberSupport === "none" ? ["BLUE", "RED"] : ["BLUE", "RED", "AMBER"];
+  }
+
+  function turnOrderSequence() {
+    const actors = activeOrderActors();
+    if (state.scenario?.turnOrderMode === "simultaneous") return actors;
+    const first = state.scenario?.turnOrderMode === "red_first" || state.currentTurn % 2 === 1 ? "RED" : "BLUE";
+    const second = first === "RED" ? "BLUE" : "RED";
+    return [first, second, ...actors.filter(actor => actor === "AMBER")];
+  }
+
+  function nextRequiredActor(current = state.orders[state.currentTurn] || {}) {
+    return turnOrderSequence().find(actor => !current[actor]) || null;
+  }
+
+  function canActorSubmit(actor, current = state.orders[state.currentTurn] || {}) {
+    if (!activeOrderActors().includes(actor)) return false;
+    if (state.scenario?.turnOrderMode === "simultaneous") return true;
+    return actor === nextRequiredActor(current);
+  }
+
+  function orderVisibleBeforeResolution(actor) {
+    if (!state.scenario || state.scenario.turnOrderMode === "simultaneous") return false;
+    return state.scenario.firstOrderVisibility === "public" && actor === turnOrderSequence()[0];
+  }
+
+  function orderSequenceHint(current = state.orders[state.currentTurn] || {}) {
+    if (!state.scenario) return "";
+    if (state.scenario.turnOrderMode === "simultaneous") {
+      return "同時密封提交：各方可依任意順序提交，命令內容於結算前不公開。";
+    }
+    const sequence = turnOrderSequence();
+    const next = nextRequiredActor(current);
+    const visibility = state.scenario.firstOrderVisibility === "public" ? "先手命令公開給後手" : "先手命令保持密封";
+    return `${actorLabel(sequence[0])}先行；${visibility}。${next ? `目前輪到${actorLabel(next)}。` : "本回合命令均已提交。"}`;
   }
 
   function renderCurrentOrders() {
@@ -675,11 +751,15 @@
       orderList.innerHTML = `<p class="muted">本回合尚未提交命令。</p>`;
       return;
     }
-    orderList.innerHTML = values.map(order => `
-      <div class="order-item ${order.actor}">
+    orderList.innerHTML = values.map(order => {
+      if (!orderVisibleBeforeResolution(order.actor)) {
+        return `<div class="order-item ${order.actor}"><strong>${actorLabel(order.actor)}：命令已密封提交</strong><div>內容將於本回合結算後揭露。</div></div>`;
+      }
+      return `<div class="order-item ${order.actor}">
         <strong>${actorLabel(order.actor)}：${escapeHtml(order.action)}</strong>
         <div>${zoneName(order.zone)} · 資源 ${order.resource}${order.aiGenerated ? " · AI建議" : ""} · ${escapeHtml(order.rationale || "未填寫理由")}</div>
-      </div>`).join("");
+      </div>`;
+    }).join("");
   }
 
   function currentIntel() {
@@ -778,6 +858,12 @@
     event.preventDefault();
     if (!state.scenario || state.currentTurn > state.scenario.turns) return;
     const actor = $("orderActor").value;
+    const current = state.orders[state.currentTurn] || {};
+    if (!canActorSubmit(actor, current)) {
+      const next = nextRequiredActor(current);
+      toast(next ? `目前應由${actorLabel(next)}先提交命令。` : "本回合命令均已提交。");
+      return;
+    }
     if (actor === "AMBER" && state.scenario.amberSupport === "none") {
       toast("本想定未納入美軍支援。");
       return;
@@ -792,6 +878,8 @@
     };
     state.orders[state.currentTurn] ||= {};
     state.orders[state.currentTurn][actor] = order;
+    const nextActor = nextRequiredActor(state.orders[state.currentTurn]);
+    if (state.scenario.turnOrderMode !== "simultaneous" && nextActor) $("orderActor").value = nextActor;
     $("orderRationale").value = "";
     saveState(false);
     renderSimulation();
@@ -816,7 +904,7 @@
     const zones = DATA.zones.filter(z => z.zone_id !== "Z-REAR" || missingActors.includes("AMBER")).map(z => ({ id: z.zone_id, name: z.zone_name, domain: z.domain }));
     const events = currentEvents();
     const weather = currentWeather().map(w => ({ zone: w.zone_id, sea: w.sea_state_1_5, visibility: w.visibility_1_5 }));
-    return `你是兵推回合助理。只能使用下列完全合成、虛構的模擬資料；不得補入真實部隊、武器型號、座標、部署、射程、目標或可執行的現實作戰建議。\n\n請只回傳嚴格 JSON：{"orders":[{"actor":"BLUE|RED|AMBER","action":"必須從允許動作選一項","zone":"必須從允許區域選一項","resource":5到35的整數,"rationale":"繁體中文、80字內，明確說明如何根據資源、準備度、情報、事件、戰略壓力或天候作取捨"}]}\n\n必須補齊的角色：${JSON.stringify(missingActors)}\n允許動作：${JSON.stringify(availableActions)}\n允許區域：${JSON.stringify(zones)}\n當前狀態：${JSON.stringify({ turn: state.currentTurn, status: state.status, resources: state.scenario.resources, strategicParameters: state.scenario.strategicParameters, currentOrders: state.orders[state.currentTurn], events: events.map(event => ({ name: event.event_name, category: event.category, zone: event.zone_id, description: event.description })), weather })}\n\n每個缺少角色剛好一項命令；理由必須清楚呈現。`;
+    return `你是兵推回合助理。只能使用下列完全合成、虛構的模擬資料；不得補入真實部隊、武器型號、座標、部署、射程、目標或可執行的現實作戰建議。\n\n請只回傳嚴格 JSON：{"orders":[{"actor":"BLUE|RED|AMBER","action":"必須從允許動作選一項","zone":"必須從允許區域選一項","resource":5到35的整數,"rationale":"繁體中文、80字內，明確說明如何根據資源、準備度、情報、事件、戰略壓力或天候作取捨"}]}\n\n必須補齊的角色：${JSON.stringify(missingActors)}\n允許動作：${JSON.stringify(availableActions)}\n允許區域：${JSON.stringify(zones)}\n當前狀態：${JSON.stringify({ turn: state.currentTurn, turnOrderMode: state.scenario.turnOrderMode, firstOrderVisibility: state.scenario.firstOrderVisibility, status: state.status, resources: state.scenario.resources, strategicParameters: state.scenario.strategicParameters, currentOrders: state.orders[state.currentTurn], events: events.map(event => ({ name: event.event_name, category: event.category, zone: event.zone_id, description: event.description })), weather })}\n\n每個缺少角色剛好一項命令；理由必須清楚呈現。`;
   }
 
   function applyAiOrders(result, missingActors) {
@@ -1903,6 +1991,9 @@
       $("civilPressure").value = 3;
       $("amberSupport").value = "indirect";
       $("weatherPreset").value = "variable";
+      $("turnOrderMode").value = "simultaneous";
+      $("firstOrderVisibility").value = "sealed";
+      updateTurnOrderSettings();
       Object.entries(STRATEGIC_DEFAULTS).forEach(([key, value]) => { if ($(key)) $(key).value = value; });
       $("blueAircraft").value = 48;
       $("blueInterceptors").value = 160;
@@ -1918,6 +2009,7 @@
     });
     $("uncertainty").addEventListener("input", updateRangeLabels);
     $("civilPressure").addEventListener("input", updateRangeLabels);
+    $("turnOrderMode").addEventListener("change", updateTurnOrderSettings);
     $("scenarioTemplate").addEventListener("change", applyScenarioTemplate);
     $("llmProvider").addEventListener("change", () => { updateLlmProvider(false); saveLlmSettings(); });
     $("llmModel").addEventListener("input", saveLlmSettings);
@@ -1968,6 +2060,12 @@
     $("civilPressureValue").value = $("civilPressure").value;
   }
 
+  function updateTurnOrderSettings() {
+    const simultaneous = $("turnOrderMode").value === "simultaneous";
+    $("firstOrderVisibility").disabled = simultaneous;
+    if (simultaneous) $("firstOrderVisibility").value = "sealed";
+  }
+
   function applyScenarioTemplate() {
     const template = SCENARIO_TEMPLATES[$("scenarioTemplate").value];
     if (!template) return;
@@ -1980,9 +2078,13 @@
     $("civilPressure").value = template.civilPressure || 3;
     $("amberSupport").value = template.amberSupport;
     $("weatherPreset").value = template.weatherPreset;
+    $("turnOrderMode").value = template.turnOrderMode || "simultaneous";
+    $("firstOrderVisibility").value = template.firstOrderVisibility || "sealed";
+    updateTurnOrderSettings();
     const parameters = { ...STRATEGIC_DEFAULTS, ...(template.parameters || {}) };
     Object.entries(parameters).forEach(([key, value]) => { if ($(key)) $(key).value = value; });
     updateRangeLabels();
+    updateTurnOrderSettings();
     renderTemplateInfo();
     toast(`已套用「${$("scenarioTemplate").selectedOptions[0].textContent}」範本。`);
   }
