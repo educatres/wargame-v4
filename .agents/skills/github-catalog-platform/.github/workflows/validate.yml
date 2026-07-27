@@ -1,0 +1,28 @@
+name: Validate Catalog
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - run: npm run validate:catalog
+      - run: npm run enrich:catalog
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STRICT_GITHUB: "1"
+      - run: npm run build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STRICT_GITHUB: "1"
+          SITE_URL: ${{ vars.SITE_URL || 'https://example.github.io' }}
+          SITE_BASE: ${{ vars.SITE_BASE || '/' }}

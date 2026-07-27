@@ -1,0 +1,190 @@
+---
+import { entries, languages, tags } from "../lib/catalog";
+import "../styles/global.css";
+
+const totalStars = entries.reduce((sum, entry) => sum + entry.stars, 0);
+const totalAuthors = new Set(entries.map((entry) => entry.authorGitHub)).size;
+---
+
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="由 GitHub Pull Request 維護的公開軟體作品清單，收錄描述、安裝方法、作者 GitHub 與 Stars 指標。"
+    />
+    <title>GitHub 作品清單</title>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="masthead">
+        <div>
+          <p class="eyebrow">Community Software Catalog</p>
+          <h1>GitHub 作品清單</h1>
+          <p class="intro">
+            收錄學習者與開發者發布的程式作品，保留描述、安裝方法、原始碼與 GitHub Stars。
+          </p>
+        </div>
+        <div class="stats" aria-label="Catalog statistics">
+          <div>
+            <strong>{entries.length}</strong>
+            <span>作品</span>
+          </div>
+          <div>
+            <strong>{totalAuthors}</strong>
+            <span>作者</span>
+          </div>
+          <div>
+            <strong>{totalStars}</strong>
+            <span>Stars</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="toolbar" aria-label="Catalog controls">
+        <label class="search">
+          <span>搜尋</span>
+          <input id="search" type="search" placeholder="作品、作者、描述、標籤" autocomplete="off" />
+        </label>
+        <label>
+          <span>語言</span>
+          <select id="language">
+            <option value="">全部</option>
+            {languages.map((language) => <option value={language}>{language}</option>)}
+          </select>
+        </label>
+        <label>
+          <span>標籤</span>
+          <select id="tag">
+            <option value="">全部</option>
+            {tags.map((tag) => <option value={tag}>{tag}</option>)}
+          </select>
+        </label>
+        <label>
+          <span>排序</span>
+          <select id="sort">
+            <option value="stars">Stars</option>
+            <option value="name">名稱</option>
+            <option value="submittedAt">投稿日期</option>
+          </select>
+        </label>
+      </section>
+
+      <section class="catalog" id="catalog" aria-live="polite">
+        {
+          entries.length === 0 ? (
+            <div class="empty">
+              <h2>目前尚未收錄作品</h2>
+              <p>新增 catalog YAML 並執行建置後，作品會出現在這裡。</p>
+            </div>
+          ) : (
+            entries.map((entry) => (
+              <article
+                class="card"
+                data-name={entry.name.toLowerCase()}
+                data-description={entry.description.toLowerCase()}
+                data-author={entry.authorName.toLowerCase()}
+                data-github={entry.authorGitHub.toLowerCase()}
+                data-language={entry.language}
+                data-tags={entry.tags.join(",")}
+                data-stars={entry.stars}
+                data-submitted={entry.submittedAt}
+              >
+                <div class="cardTop">
+                  <div class="identity">
+                    {entry.avatarUrl ? <img src={entry.avatarUrl} alt="" loading="lazy" /> : <span class="avatarFallback" />}
+                    <div>
+                      <h2>{entry.name}</h2>
+                      <a href={`https://github.com/${entry.authorGitHub}`} target="_blank" rel="noreferrer">
+                        @{entry.authorGitHub}
+                      </a>
+                    </div>
+                  </div>
+                  <div class="rating" title="GitHub Stars">
+                    <span aria-hidden="true">★</span>
+                    <strong>{entry.stars}</strong>
+                  </div>
+                </div>
+
+                <p class="description">{entry.description}</p>
+
+                <div class="meta">
+                  <span>{entry.language}</span>
+                  <span>{entry.license}</span>
+                  <span>{entry.submittedAt}</span>
+                </div>
+
+                <div class="tags">
+                  {entry.tags.map((tag) => <span>{tag}</span>)}
+                </div>
+
+                <details>
+                  <summary>安裝方法</summary>
+                  <p>{entry.install}</p>
+                </details>
+
+                <div class="links">
+                  <a href={entry.repoUrl} target="_blank" rel="noreferrer">原始碼</a>
+                  {entry.homepage ? <a href={entry.homepage} target="_blank" rel="noreferrer">網站</a> : null}
+                </div>
+              </article>
+            ))
+          )
+        }
+      </section>
+    </main>
+
+    <script>
+      const cards = Array.from(document.querySelectorAll(".card"));
+      const catalog = document.querySelector("#catalog");
+      const controls = {
+        search: document.querySelector("#search"),
+        language: document.querySelector("#language"),
+        tag: document.querySelector("#tag"),
+        sort: document.querySelector("#sort")
+      };
+
+      function matches(card) {
+        const query = controls.search.value.trim().toLowerCase();
+        const language = controls.language.value;
+        const tag = controls.tag.value;
+        const haystack = [
+          card.dataset.name,
+          card.dataset.description,
+          card.dataset.author,
+          card.dataset.github,
+          card.dataset.language.toLowerCase(),
+          card.dataset.tags
+        ].join(" ");
+
+        return (
+          (!query || haystack.includes(query)) &&
+          (!language || card.dataset.language === language) &&
+          (!tag || card.dataset.tags.split(",").includes(tag))
+        );
+      }
+
+      function sortCards(visibleCards) {
+        const mode = controls.sort.value;
+        return visibleCards.sort((a, b) => {
+          if (mode === "name") return a.dataset.name.localeCompare(b.dataset.name);
+          if (mode === "submittedAt") return b.dataset.submitted.localeCompare(a.dataset.submitted);
+          return Number(b.dataset.stars) - Number(a.dataset.stars);
+        });
+      }
+
+      function render() {
+        const visible = sortCards(cards.filter(matches));
+        cards.forEach((card) => {
+          card.hidden = !visible.includes(card);
+        });
+        visible.forEach((card) => catalog.appendChild(card));
+      }
+
+      Object.values(controls).forEach((control) => control.addEventListener("input", render));
+      render();
+    </script>
+  </body>
+</html>

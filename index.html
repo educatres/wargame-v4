@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="臺海衝突課程用想定生成與回合推演系統。所有作戰參數均為合成資料。">
+  <title>臺海課程想定生成與兵推系統</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">教育模擬 · 離線執行 · 合成資料</p>
+      <h1>臺海課程想定生成與兵推系統</h1>
+      <p class="subtitle">用於情勢判斷、資源配置、情報不確定性、危機管理與課後檢討。</p>
+    </div>
+    <div class="header-actions">
+      <button id="saveBtn" class="secondary">儲存進度</button>
+      <button id="exportBtn" class="secondary">匯出 JSON</button>
+      <label class="file-button secondary">
+        匯入 JSON
+        <input id="importInput" type="file" accept=".json,application/json">
+      </label>
+    </div>
+  </header>
+
+  <aside class="safety-banner" role="note">
+    <strong>安全與教學界線：</strong>
+    本系統不含精確軍事座標、真實單位部署、現役庫存、弱點、射擊表或可靠的實戰命中／攔截率。
+    所有兵力、效能、損失及事件結果均為合成資料，不得用於真實作戰規劃。
+  </aside>
+
+  <nav class="tabs" aria-label="主要功能">
+    <button class="tab active" data-tab="builder">一、想定生成</button>
+    <button class="tab" data-tab="simulation">二、回合推演</button>
+    <button class="tab" data-tab="storm">三、STORM研究實驗室</button>
+    <button class="tab" data-tab="aar">四、課後檢討</button>
+    <button class="tab" data-tab="library">五、資料庫</button>
+    <button class="tab" data-tab="guide">六、教學指引</button>
+  </nav>
+
+  <main>
+    <section id="builder" class="panel active">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Scenario Builder</p>
+          <h2>建立課程想定</h2>
+        </div>
+        <span class="badge">完全離線</span>
+      </div>
+
+      <div class="two-column">
+        <form id="scenarioForm" class="card form-grid">
+          <label>
+            想定名稱
+            <input id="scenarioName" value="海峽警戒與有限封控：72小時聯合決策演練">
+          </label>
+          <label>
+            隨機種子
+            <input id="scenarioSeed" type="number" value="20260727" min="1">
+          </label>
+          <label>
+            教學重點
+            <select id="focus">
+              <option value="joint">聯合決策與整體情勢</option>
+              <option value="airdefense">防空資源與預警</option>
+              <option value="logistics">後勤持續性與修復</option>
+              <option value="intelligence">情報判讀與戰場迷霧</option>
+              <option value="civil">民事韌性與危機溝通</option>
+              <option value="diplomacy">升級控制與外交協調</option>
+            </select>
+          </label>
+          <label>
+            難度
+            <select id="difficulty">
+              <option value="intro">基礎</option>
+              <option value="standard" selected>標準</option>
+              <option value="advanced">進階</option>
+            </select>
+          </label>
+          <label>
+            回合數
+            <input id="turns" type="number" value="12" min="4" max="24">
+          </label>
+          <label>
+            每回合時數
+            <select id="hoursPerTurn">
+              <option value="3">3小時</option>
+              <option value="6" selected>6小時</option>
+              <option value="12">12小時</option>
+            </select>
+          </label>
+          <label>
+            情報不確定度
+            <input id="uncertainty" type="range" min="1" max="5" value="3">
+            <output id="uncertaintyValue">3</output>
+          </label>
+          <label>
+            民事壓力
+            <input id="civilPressure" type="range" min="1" max="5" value="3">
+            <output id="civilPressureValue">3</output>
+          </label>
+          <label>
+            美軍支援程度
+            <select id="amberSupport">
+              <option value="none">不納入</option>
+              <option value="indirect" selected>間接支援：ISR、後勤、外交</option>
+              <option value="limited">有限海空存在與防護支援</option>
+            </select>
+          </label>
+          <label>
+            初始天候
+            <select id="weatherPreset">
+              <option value="stable">穩定</option>
+              <option value="variable" selected>多變</option>
+              <option value="adverse">不利</option>
+            </select>
+          </label>
+          <label class="full">
+            教師補充限制
+            <textarea id="teacherConstraints" rows="3" placeholder="例如：避免升高衝突；不得以單純戰果作為唯一評分。">避免升高衝突；需保留後續回合資源；納入商船、人道與資訊環境。</textarea>
+          </label>
+          <div class="full actions">
+            <button type="submit" class="primary">生成想定</button>
+            <button type="button" id="loadDemoBtn" class="secondary">載入預設示範</button>
+          </div>
+        </form>
+
+        <div class="stack">
+          <article class="card">
+            <h3>生成器設計</h3>
+            <ol class="compact-list">
+              <li>依學習目標選擇任務、限制與評量重點。</li>
+              <li>使用抽象區域、能力指數及合成兵力包。</li>
+              <li>配置情報落差、天候、民事與外交事件。</li>
+              <li>建立每回合事件排程與成功條件。</li>
+              <li>保留教師人工修改與白方裁決權。</li>
+            </ol>
+          </article>
+          <article class="callout">
+            <h3>不採用真實武器勝負查表</h3>
+            <p>系統使用「能力、準備、感測、後勤、指揮、環境」等抽象指數，輸出決策後果及不確定性，而非宣稱某武器必定擊敗另一武器。</p>
+          </article>
+        </div>
+      </div>
+
+      <div id="scenarioPreview" class="preview empty-state">
+        尚未生成想定。調整左側參數後按下「生成想定」。
+      </div>
+    </section>
+
+    <section id="simulation" class="panel">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Turn-based Simulation</p>
+          <h2>回合推演</h2>
+        </div>
+        <div class="turn-controls">
+          <span id="turnBadge" class="badge">尚未開始</span>
+          <button id="resolveTurnBtn" class="primary">結算本回合</button>
+        </div>
+      </div>
+
+      <div id="simulationEmpty" class="empty-state">
+        請先至「想定生成」建立或載入一個想定。
+      </div>
+
+      <div id="simulationContent" hidden>
+        <div id="statusCards" class="metric-grid"></div>
+
+        <div class="simulation-layout">
+          <section class="card">
+            <div class="subheading">
+              <h3>概略情勢圖</h3>
+              <span class="muted">不含座標與真實部署</span>
+            </div>
+            <div id="zoneMap" class="zone-map" aria-label="抽象臺海區域圖"></div>
+            <div class="legend">
+              <span><i class="dot blue"></i>藍方壓力／行動</span>
+              <span><i class="dot red"></i>紅方壓力／行動</span>
+              <span><i class="dot amber"></i>外部支援</span>
+              <span><i class="dot neutral"></i>民事／天候事件</span>
+            </div>
+          </section>
+
+          <form id="orderForm" class="card form-grid">
+            <div class="full subheading">
+              <h3>下達回合命令</h3>
+              <span id="orderStatus" class="muted">每方每回合一項主要行動</span>
+            </div>
+            <label>
+              角色
+              <select id="orderActor">
+                <option value="BLUE">藍方（臺灣）</option>
+                <option value="RED">紅方（中國大陸）</option>
+                <option value="AMBER">琥珀方（美軍支援）</option>
+              </select>
+            </label>
+            <label>
+              行動
+              <select id="orderAction"></select>
+            </label>
+            <label>
+              目標區域
+              <select id="orderZone"></select>
+            </label>
+            <label>
+              投入資源點數
+              <input id="orderResource" type="number" min="5" max="35" value="20">
+            </label>
+            <label class="full">
+              決策理由
+              <textarea id="orderRationale" rows="3" placeholder="學生需說明目標、假設、風險與保留方案。"></textarea>
+            </label>
+            <div class="full actions">
+              <button type="submit" class="primary">提交／更新命令</button>
+              <button type="button" id="autoOrdersBtn" class="secondary">自動補齊其他角色</button>
+            </div>
+            <div id="currentOrders" class="full order-list"></div>
+          </form>
+        </div>
+
+        <div class="three-column">
+          <article class="card">
+            <h3>本回合情報</h3>
+            <div id="intelPanel"></div>
+          </article>
+          <article class="card">
+            <h3>天候與環境</h3>
+            <div id="weatherPanel"></div>
+          </article>
+          <article class="card">
+            <h3>事件／導調訊息</h3>
+            <div id="eventPanel"></div>
+          </article>
+        </div>
+
+        <article class="card">
+          <div class="subheading">
+            <h3>回合紀錄</h3>
+            <button id="clearRunBtn" class="danger">重設推演</button>
+          </div>
+          <div id="turnNarrative" class="narrative"></div>
+        </article>
+
+        <article class="card intercept-card">
+          <div class="subheading">
+            <div>
+              <h3>攔截資源配置教學實驗</h3>
+              <p class="muted">僅用合成機率比較資源配置，不代表真實系統。</p>
+            </div>
+          </div>
+          <div class="lab-grid">
+            <label>來襲目標數<input id="labIncoming" type="number" min="1" max="20" value="3"></label>
+            <label>配置攔截次數<input id="labShots" type="number" min="1" max="20" value="4"></label>
+            <label>單次基準機率<input id="labBaseP" type="range" min="20" max="70" value="43"><output id="labBasePValue">43%</output></label>
+            <label>偵測品質<input id="labDetection" type="range" min="40" max="100" value="78"><output id="labDetectionValue">78%</output></label>
+            <label>系統準備度<input id="labReadiness" type="range" min="40" max="100" value="80"><output id="labReadinessValue">80%</output></label>
+            <label>海象<input id="labSea" type="range" min="1" max="5" value="3"><output id="labSeaValue">3</output></label>
+            <label>干擾程度<input id="labJamming" type="range" min="0" max="50" value="22"><output id="labJammingValue">22%</output></label>
+          </div>
+          <div id="labResults" class="metric-grid"></div>
+          <p class="footnote">模型假設各次嘗試近似獨立，真實情境可能存在共同感測失敗、指管延遲、飽和攻擊及射擊窗口限制。</p>
+        </article>
+      </div>
+    </section>
+
+
+    <section id="storm" class="panel">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">STORM-inspired Campaign Analysis Lab</p>
+          <h2>STORM 合成化戰區作戰研究模式：教學實驗室</h2>
+          <p class="muted">本模組採用公開文獻中的分析概念重新設計，並非美軍正式 STORM 軟體或其演算法重製。</p>
+        </div>
+        <span class="badge">模型透明 · 批次重複 · 因子實驗</span>
+      </div>
+
+      <article class="callout storm-disclaimer">
+        <h3>課堂定位</h3>
+        <p>STORM 是戰役層級、資料驅動且具隨機性的分析思維。本教學版把大型模型縮成五種表徵、合成參數與可解釋的統計實驗，讓學生練習「先提出問題，再設計實驗，最後解讀分布」，而不是用單次結果預測真實戰爭。</p>
+      </article>
+
+      <div class="storm-flow card" aria-label="STORM戰役分析流程">
+        <button class="storm-flow-node active" data-storm-stage="systems"><strong>1 系統</strong><span>有哪些資產與支援網路？</span></button>
+        <span class="storm-arrow">→</span>
+        <button class="storm-flow-node" data-storm-stage="capabilities"><strong>2 能力</strong><span>各系統能做什麼？</span></button>
+        <span class="storm-arrow">→</span>
+        <button class="storm-flow-node" data-storm-stage="planning"><strong>3 計畫</strong><span>如何形成行動方案？</span></button>
+        <span class="storm-arrow">→</span>
+        <button class="storm-flow-node" data-storm-stage="execution"><strong>4 執行</strong><span>互動、消耗與狀態更新</span></button>
+        <span class="storm-arrow">→</span>
+        <button class="storm-flow-node" data-storm-stage="impact"><strong>5 影響</strong><span>任務效果、風險與代價</span></button>
+      </div>
+      <div id="stormStageExplanation" class="storm-explanation card"></div>
+
+      <div class="section-heading storm-subheading">
+        <div>
+          <p class="eyebrow">Five Representations</p>
+          <h3>五種模型表徵</h3>
+        </div>
+        <span class="muted">點選卡片查看資料、狀態與課堂問題</span>
+      </div>
+      <div id="stormRepresentations" class="representation-grid"></div>
+      <article id="stormRepresentationDetail" class="card representation-detail"></article>
+
+      <div class="section-heading storm-subheading">
+        <div>
+          <p class="eyebrow">Stochastic Replications</p>
+          <h3>批次隨機實驗：同一方案為何要跑很多次？</h3>
+        </div>
+      </div>
+
+      <div class="storm-lab-layout">
+        <form id="stormExperimentForm" class="card form-grid">
+          <label>
+            行動方案 COA
+            <select id="stormCoa">
+              <option value="balanced">均衡韌性防衛</option>
+              <option value="concentrated">集中主要方向</option>
+              <option value="logistics">後勤優先</option>
+              <option value="distributed">分散式 ISR 與指管</option>
+            </select>
+          </label>
+          <label>
+            重複次數
+            <select id="stormReplications">
+              <option value="30">30 次：課堂快速示範</option>
+              <option value="100" selected>100 次：一般分析</option>
+              <option value="300">300 次：較穩定分布</option>
+              <option value="500">500 次：進階比較</option>
+            </select>
+          </label>
+          <label>
+            指揮管制品質 C2
+            <input id="stormC2" type="range" min="40" max="100" value="72">
+            <output id="stormC2Value">72</output>
+          </label>
+          <label>
+            情監偵／情報品質 ISR
+            <input id="stormIsr" type="range" min="40" max="100" value="68">
+            <output id="stormIsrValue">68</output>
+          </label>
+          <label>
+            資產初始準備度
+            <input id="stormReadiness" type="range" min="40" max="100" value="76">
+            <output id="stormReadinessValue">76</output>
+          </label>
+          <label>
+            後勤持續性
+            <input id="stormSustainment" type="range" min="40" max="100" value="74">
+            <output id="stormSustainmentValue">74</output>
+          </label>
+          <label>
+            機動與運輸能力
+            <input id="stormMobility" type="range" min="40" max="100" value="70">
+            <output id="stormMobilityValue">70</output>
+          </label>
+          <label>
+            環境嚴苛度
+            <input id="stormEnvironment" type="range" min="1" max="5" value="3">
+            <output id="stormEnvironmentValue">3</output>
+          </label>
+          <label>
+            對手施壓強度
+            <input id="stormPressure" type="range" min="1" max="5" value="3">
+            <output id="stormPressureValue">3</output>
+          </label>
+          <label>
+            民事暴露程度
+            <input id="stormCivil" type="range" min="1" max="5" value="3">
+            <output id="stormCivilValue">3</output>
+          </label>
+          <label>
+            隨機種子
+            <input id="stormSeed" type="number" value="20260727" min="1">
+          </label>
+          <label>
+            成功門檻
+            <input id="stormThreshold" type="range" min="45" max="80" value="60">
+            <output id="stormThresholdValue">60</output>
+          </label>
+          <div class="full actions">
+            <button type="submit" class="primary">執行批次實驗</button>
+            <button type="button" id="stormLoadScenarioBtn" class="secondary">帶入目前想定</button>
+            <button type="button" id="stormCompareBtn" class="secondary">比較四種 COA</button>
+          </div>
+        </form>
+
+        <article class="card storm-method">
+          <h3>每一次重複會經過</h3>
+          <ol class="compact-list">
+            <li><strong>情報形成：</strong>ISR、C2、環境與隨機誤差共同形成可用情勢圖像。</li>
+            <li><strong>命令與資產反應：</strong>準備度、機動及後勤決定可執行能力。</li>
+            <li><strong>互動裁決：</strong>對手施壓、環境摩擦與方案特性造成不同消耗。</li>
+            <li><strong>狀態更新：</strong>計算任務效果、剩餘準備、資源與民事風險。</li>
+            <li><strong>統計彙整：</strong>觀察平均、分布、區間與極端結果，而非只看一次勝負。</li>
+          </ol>
+          <div class="model-equation">
+            <strong>概念式</strong>
+            <code>影響 = f(系統、能力、計畫、互動、環境、隨機性)</code>
+          </div>
+          <p class="footnote">所有係數為教學合成值；教師可用相同種子重現結果，或更換種子討論不確定性。</p>
+        </article>
+      </div>
+
+      <div id="stormEmptyResults" class="empty-state">調整參數並執行批次實驗，系統會顯示結果分布、信賴區間與敏感度。</div>
+      <div id="stormResults" hidden>
+        <div id="stormMetrics" class="metric-grid"></div>
+        <div class="two-column">
+          <article class="card">
+            <div class="subheading">
+              <div>
+                <h3>任務效果分布</h3>
+                <p class="muted">直方圖顯示多次重複，不是單一確定答案。</p>
+              </div>
+              <span id="stormDistributionLabel" class="badge"></span>
+            </div>
+            <div id="stormHistogram" class="histogram" role="img" aria-label="任務效果分布直方圖"></div>
+          </article>
+          <article class="card">
+            <h3>五種表徵的平均貢獻</h3>
+            <div id="stormContributionBars" class="bar-list"></div>
+          </article>
+        </div>
+        <div class="two-column">
+          <article class="card">
+            <h3>單因子敏感度</h3>
+            <p class="muted">將每個因素上下調整10點，觀察平均任務效果改變。</p>
+            <div id="stormSensitivity" class="sensitivity-list"></div>
+          </article>
+          <article class="card">
+            <h3>分析者應如何解讀</h3>
+            <div id="stormInterpretation"></div>
+          </article>
+        </div>
+        <article class="card table-card">
+          <div class="subheading">
+            <div>
+              <h3>COA方案比較</h3>
+              <p class="muted">以相同基礎條件與種子比較四種方案。</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>方案</th><th>成功率</th><th>平均任務效果</th><th>準備度</th><th>資源保留</th><th>民事風險</th><th>主要取捨</th></tr></thead>
+              <tbody id="stormComparisonBody"></tbody>
+            </table>
+          </div>
+        </article>
+      </div>
+
+      <div class="section-heading storm-subheading">
+        <div>
+          <p class="eyebrow">Design of Experiments</p>
+          <h3>2³ 因子實驗：找出真正重要的假設</h3>
+        </div>
+        <button id="stormDoeBtn" class="primary">執行 8 個設計點</button>
+      </div>
+      <div class="two-column">
+        <article class="card">
+          <p>此教學實驗同時改變三項因素的高低水準：</p>
+          <ul class="compact-list">
+            <li>A：C2 品質（基準 ±10）</li>
+            <li>B：ISR 品質（基準 ±10）</li>
+            <li>C：後勤持續性（基準 ±10）</li>
+          </ul>
+          <p>八個組合會使用相同的其他條件，各自執行多次重複。學生可比較「主效應」，並討論是否可能存在交互作用。</p>
+        </article>
+        <article id="stormDoeSummary" class="card">
+          <p class="muted">尚未執行因子實驗。</p>
+        </article>
+      </div>
+      <article id="stormDoeTableCard" class="card table-card" hidden>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>設計點</th><th>C2</th><th>ISR</th><th>後勤</th><th>平均任務效果</th><th>成功率</th><th>民事風險</th></tr></thead>
+            <tbody id="stormDoeBody"></tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="card storm-sources">
+        <h3>公開概念來源</h3>
+        <p>本課堂模組參考公開學術資料所描述的戰役分析、五種表徵、隨機重複與實驗設計概念。它沒有使用或重製正式 STORM 的程式、資料庫或受限情境。</p>
+        <ul class="compact-list">
+          <li><a href="https://nps.edu/web/research/-/applying-design-of-experiments-doe-to-improve-synthetic-theater-operations-research-model-storm-data-2021" target="_blank" rel="noopener">Naval Postgraduate School：Applying Design of Experiments to STORM</a></li>
+          <li><a href="https://upload.wikimedia.org/wikipedia/commons/4/49/Improving_the_analysis_capabilities_of_the_Synthetic_Theater_Operations_Research_Model_%28STORM%29_%28IA_improvingnalysis1094543878%29.pdf" target="_blank" rel="noopener">NPS Thesis：Improving the Analysis Capabilities of STORM</a></li>
+          <li><a href="https://informs-sim.org/wsc14papers/includes/files/440.pdf" target="_blank" rel="noopener">Winter Simulation Conference：Enhancing the Analytic Utility of STORM</a></li>
+        </ul>
+      </article>
+    </section>
+
+    <section id="aar" class="panel">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">After Action Review</p>
+          <h2>課後檢討與學習分析</h2>
+        </div>
+        <div class="header-actions">
+          <button id="exportCsvBtn" class="secondary">匯出回合 CSV</button>
+          <button id="printBtn" class="secondary">列印／存成 PDF</button>
+        </div>
+      </div>
+      <div id="aarEmpty" class="empty-state">尚無推演紀錄。</div>
+      <div id="aarContent" hidden>
+        <div id="aarMetrics" class="metric-grid"></div>
+        <div class="two-column">
+          <article class="card">
+            <h3>主要發現</h3>
+            <div id="aarInsights"></div>
+          </article>
+          <article class="card">
+            <h3>學生反思題</h3>
+            <ol class="compact-list">
+              <li>當時最重要的假設是什麼？後來是否成立？</li>
+              <li>哪一項情報最影響決策？其可信度是否足夠？</li>
+              <li>是否為後續回合保留足夠資源？</li>
+              <li>如何平衡防護、民事風險與升級控制？</li>
+              <li>若重做一次，會改變哪一項決策？</li>
+            </ol>
+          </article>
+        </div>
+        <article class="card table-card">
+          <h3>決策時間線</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>回合</th><th>主要事件</th><th>藍方決策</th><th>紅方決策</th><th>美軍支援</th><th>結果摘要</th>
+                </tr>
+              </thead>
+              <tbody id="timelineBody"></tbody>
+            </table>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="library" class="panel">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Data Library</p>
+          <h2>資料庫與模型透明度</h2>
+        </div>
+        <input id="librarySearch" class="search" placeholder="搜尋來源、能力或兵力包">
+      </div>
+      <div class="library-notice">
+        <strong>藍底：</strong>真實公開來源目錄與少量公告樣本；
+        <strong>綠底：</strong>課程用合成資料。
+      </div>
+      <div class="library-tabs">
+        <button class="mini-tab active" data-library="sources">公開來源</button>
+        <button class="mini-tab" data-library="capabilities">合成能力</button>
+        <button class="mini-tab" data-library="forces">合成兵力包</button>
+        <button class="mini-tab" data-library="activity">公開活動樣本</button>
+      </div>
+      <div id="libraryContent"></div>
+    </section>
+
+    <section id="guide" class="panel">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Teaching Guide</p>
+          <h2>建議上課流程</h2>
+        </div>
+      </div>
+      <div class="timeline-guide">
+        <article><span>1</span><div><h3>情境簡報</h3><p>教師發布任務、限制、角色及各組不同版本的初始情報。</p></div></article>
+        <article><span>2</span><div><h3>任務分析</h3><p>學生區分已知事實、推測與未知，提出最可能及最危險的對手行動。</p></div></article>
+        <article><span>3</span><div><h3>行動方案</h3><p>至少提出兩個方案，比較資源、後勤、民事與升級風險。</p></div></article>
+        <article><span>4</span><div><h3>回合推演</h3><p>提交命令、接收新情報、由規則引擎與白方共同裁決。</p></div></article>
+        <article><span>5</span><div><h3>課後檢討</h3><p>回放決策歷程，討論錯誤假設、機會成本及替代方案。</p></div></article>
+      </div>
+      <div class="two-column">
+        <article class="card">
+          <h3>建議評分構面</h3>
+          <ul class="compact-list">
+            <li>任務與成功條件定義：20%</li>
+            <li>情報可信度與不確定性處理：20%</li>
+            <li>資源、後勤及時間管理：20%</li>
+            <li>紅隊思維與應變能力：15%</li>
+            <li>民事、法律及升級風險：15%</li>
+            <li>課後反思與證據使用：10%</li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>適用課程</h3>
+          <ul class="compact-list">
+            <li>國家安全與戰略研究</li>
+            <li>聯合作戰與指參作業</li>
+            <li>情報分析與決策科學</li>
+            <li>國防資源、後勤與韌性</li>
+            <li>危機管理、國際關係與軍事倫理</li>
+            <li>建模模擬、資料庫與AI輔助決策</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>版本 2.0 · STORM教學實驗室 · 純 HTML/CSS/JavaScript · 可部署 GitHub Pages</span>
+    <span>資料只儲存在使用者瀏覽器，除非主動匯出。</span>
+  </footer>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="data/demo-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
