@@ -133,7 +133,7 @@ output { color: var(--primary); font-weight: 800; }
 .tag { padding: .25rem .55rem; border-radius: 99px; background: #eef2f5; font-size: .85rem; }
 
 .zone-map {
-  display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(4, minmax(80px, auto));
+  display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(5, minmax(80px, auto));
   gap: .55rem; min-height: 400px; padding: .7rem;
   background: linear-gradient(160deg, #e3edf3, #f6fafc); border-radius: .9rem; border: 1px solid var(--border);
 }
@@ -150,7 +150,7 @@ output { color: var(--primary); font-weight: 800; }
 .zone[data-zone="Z-E"] { grid-column: 3; grid-row: 2 / span 2; }
 .zone[data-zone="Z-SE"] { grid-column: 3; grid-row: 4; }
 .zone[data-zone="Z-ISL"] { grid-column: 2; grid-row: 1 / span 4; background: #f2eee5; border-color: #b7a889; }
-.zone[data-zone="Z-REAR"] { grid-column: 3; grid-row: 1; opacity: .75; transform: translate(10px, -8px); }
+.zone[data-zone="Z-REAR"] { grid-column: 1 / -1; grid-row: 5; opacity: .75; }
 .zone-name { font-weight: 900; }
 .zone-signals { display: flex; gap: .25rem; flex-wrap: wrap; }
 .signal { width: .7rem; height: .7rem; border-radius: 50%; }
