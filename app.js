@@ -559,6 +559,7 @@
       <div class="actions" style="margin-top:1rem">
         <button class="primary" id="goSimulationBtn">開始回合推演</button>
         <button class="secondary" id="regenerateEventsBtn">以相同設定重抽事件</button>
+        <button class="danger" id="clearScenarioBtn">清除想定</button>
       </div>
     `;
     $("goSimulationBtn").addEventListener("click", () => setTab("simulation"));
@@ -566,6 +567,7 @@
       $("scenarioSeed").value = Number($("scenarioSeed").value) + 1;
       beginScenario(generateScenario(readScenarioForm()));
     });
+    $("clearScenarioBtn").addEventListener("click", clearScenario);
   }
 
   function amberLabel(value) {
@@ -1617,6 +1619,25 @@
     renderSimulation();
     renderAAR();
     toast("推演已重設。");
+  }
+
+  function clearScenario() {
+    if (!state.scenario) return;
+    if (!confirm("確定要清除目前想定、回合紀錄與已儲存進度嗎？此操作無法復原。")) return;
+    state.scenario = null;
+    state.currentTurn = 1;
+    state.status = {};
+    state.orders = {};
+    state.logs = [];
+    state.revealedIntel = [];
+    state.storm = { activeStage: "systems", activeRepresentation: "c2", lastExperiment: null, comparison: [], doe: null };
+    try { localStorage.removeItem(STORAGE_KEY); } catch { /* State is still cleared for this session. */ }
+    renderScenario();
+    renderSimulation();
+    renderStorm();
+    renderAAR();
+    setTab("builder");
+    toast("想定與推演進度已清除。");
   }
 
   function download(name, content, type = "application/json") {
