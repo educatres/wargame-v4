@@ -13,6 +13,8 @@
       ["備援通訊", { command: 4, intel: 1, civilian: 0 }],
       ["後勤修復", { readiness: 1, sustainment: 5, civilian: 0 }],
       ["情報融合", { intel: 5, command: 1, civilian: 0 }],
+      ["無人機偵察與通訊中繼", { readiness: 1, sustainment: -1, command: 2, intel: 5, civilian: 0 }],
+      ["星鏈與高空平臺備援通訊", { readiness: 1, sustainment: -1, command: 6, intel: 2, civilian: 0 }],
       ["能源配給與電網調度", { readiness: -1, sustainment: 4, command: 2, civilian: -3 }],
       ["經濟持續運作協調", { readiness: 0, sustainment: 3, command: 2, civilian: -4 }]
     ],
@@ -32,6 +34,7 @@
       ["外交協調", { readiness: 0, command: 2, intel: 1, civilian: -3 }],
       ["遠距海上存在", { readiness: 1, command: 1, intel: 2, civilian: 2 }],
       ["人道支援準備", { readiness: 0, sustainment: 2, intel: 0, civilian: -5 }],
+      ["提供衛星與高空通訊支援", { readiness: 1, sustainment: 1, command: 6, intel: 3, civilian: 0 }],
       ["多國商船護航協調", { readiness: 1, sustainment: 2, command: 3, intel: 1, civilian: -2 }],
       ["工業補充與供應鏈動員", { readiness: 0, sustainment: 5, command: 1, intel: 0, civilian: -1 }]
     ]
@@ -147,6 +150,20 @@
     precisionStockpileDays: 30,
     nuclearStrikeCount: 0,
     globalEconomicShock: 1
+  };
+
+  const RESOURCE_DEFAULTS = {
+    blueAircraft: 48,
+    blueInterceptors: 160,
+    blueVessels: 14,
+    blueLogistics: 72,
+    blueDrones: 120,
+    starlinkNodes: 24,
+    highAltitudePlatforms: 6,
+    redAircraft: 96,
+    redIncoming: 180,
+    redVessels: 24,
+    redLogistics: 84
   };
 
   const STORM_STAGES = {
@@ -322,12 +339,15 @@
   function initialStatus(scenario) {
     const amberEnabled = scenario.amberSupport !== "none";
     const resourceBalance = scenario.resourceBalance || { blue: 0, red: 0 };
+    const resources = { ...RESOURCE_DEFAULTS, ...(scenario.resources || {}) };
+    const droneIntelBonus = clamp((resources.blueDrones / RESOURCE_DEFAULTS.blueDrones - 1) * 3, -4, 4);
+    const networkCommandBonus = clamp(((resources.starlinkNodes / RESOURCE_DEFAULTS.starlinkNodes) + (resources.highAltitudePlatforms / RESOURCE_DEFAULTS.highAltitudePlatforms) - 2) * 2, -5, 5);
     return {
       BLUE: {
         readiness: round1(clamp(averageForActor("BLUE", "readiness") + resourceBalance.blue * 0.12)),
         sustainment: round1(averageForActor("BLUE", "sustainment")),
-        command: round1(averageForActor("BLUE", "command_quality")),
-        intel: 64 - scenario.uncertainty * 3,
+        command: round1(clamp(averageForActor("BLUE", "command_quality") + networkCommandBonus)),
+        intel: round1(clamp(64 - scenario.uncertainty * 3 + droneIntelBonus)),
         resources: 100,
         civilianRisk: 25 + scenario.civilPressure * 5,
         powerAvailability: 100
@@ -357,19 +377,24 @@
     return {
       blueAircraft: number("blueAircraft", 240), blueInterceptors: number("blueInterceptors", 600),
       blueVessels: number("blueVessels", 80), blueLogistics: number("blueLogistics", 240),
+      blueDrones: number("blueDrones", 1000), starlinkNodes: number("starlinkNodes", 200),
+      highAltitudePlatforms: number("highAltitudePlatforms", 50),
       redAircraft: number("redAircraft", 360), redIncoming: number("redIncoming", 600),
       redVessels: number("redVessels", 100), redLogistics: number("redLogistics", 240)
     };
   }
 
   function calculateResourceBalance(resources) {
-    const blue = ((resources.blueAircraft / 48) + (resources.blueInterceptors / 160) + (resources.blueVessels / 14) + (resources.blueLogistics / 72)) * 5 - 20;
-    const red = ((resources.redAircraft / 96) + (resources.redIncoming / 180) + (resources.redVessels / 24) + (resources.redLogistics / 84)) * 5 - 20;
+    const normalized = { ...RESOURCE_DEFAULTS, ...(resources || {}) };
+    const blueBase = ((normalized.blueAircraft / 48) + (normalized.blueInterceptors / 160) + (normalized.blueVessels / 14) + (normalized.blueLogistics / 72)) * 5 - 20;
+    const networkBonus = ((normalized.blueDrones / 120) + (normalized.starlinkNodes / 24) + (normalized.highAltitudePlatforms / 6) - 3) * 2;
+    const blue = blueBase + networkBonus;
+    const red = ((normalized.redAircraft / 96) + (normalized.redIncoming / 180) + (normalized.redVessels / 24) + (normalized.redLogistics / 84)) * 5 - 20;
     return { blue: round1(clamp(blue, -15, 15)), red: round1(clamp(red, -15, 15)) };
   }
 
   function ensureScenarioResources(scenario) {
-    if (!scenario.resources) scenario.resources = readResourceInventory();
+    scenario.resources = { ...RESOURCE_DEFAULTS, ...(scenario.resources || readResourceInventory()) };
     scenario.resourceBalance ||= calculateResourceBalance(scenario.resources);
     scenario.strategicParameters = { ...STRATEGIC_DEFAULTS, ...(scenario.strategicParameters || {}) };
     scenario.turnOrderMode ||= "simultaneous";
@@ -562,9 +587,9 @@
       <article class="card" style="margin-top:1rem">
         <div class="subheading"><h3>本想定合成資源基線</h3><span class="muted">只用於方案比較與隨機模擬</span></div>
         <div class="preview-grid">
-          <div><strong>藍方</strong><p class="muted">航空架次 ${s.resources.blueAircraft} · 攔截彈 ${s.resources.blueInterceptors}<br>巡防平台 ${s.resources.blueVessels} · 補給批次 ${s.resources.blueLogistics}</p></div>
+          <div><strong>藍方</strong><p class="muted">航空架次 ${s.resources.blueAircraft} · 攔截彈 ${s.resources.blueInterceptors}<br>巡防平台 ${s.resources.blueVessels} · 補給批次 ${s.resources.blueLogistics}<br>無人機任務批次 ${s.resources.blueDrones}</p></div>
           <div><strong>紅方</strong><p class="muted">航空架次 ${s.resources.redAircraft} · 合成來襲目標 ${s.resources.redIncoming}<br>海上平台 ${s.resources.redVessels} · 補給批次 ${s.resources.redLogistics}</p></div>
-          <div><strong>資源壓力</strong><p class="muted">藍方資源修正 ${s.resourceBalance.blue >= 0 ? "+" : ""}${s.resourceBalance.blue}<br>紅方資源修正 ${s.resourceBalance.red >= 0 ? "+" : ""}${s.resourceBalance.red}</p></div>
+          <div><strong>通訊與資源壓力</strong><p class="muted">星鏈節點 ${s.resources.starlinkNodes} · 高空通訊平臺 ${s.resources.highAltitudePlatforms}<br>藍方資源修正 ${s.resourceBalance.blue >= 0 ? "+" : ""}${s.resourceBalance.blue}<br>紅方資源修正 ${s.resourceBalance.red >= 0 ? "+" : ""}${s.resourceBalance.red}</p></div>
         </div>
       </article>
       <div class="actions" style="margin-top:1rem">
@@ -1999,6 +2024,9 @@
       $("blueInterceptors").value = 160;
       $("blueVessels").value = 14;
       $("blueLogistics").value = 72;
+      $("blueDrones").value = 120;
+      $("starlinkNodes").value = 24;
+      $("highAltitudePlatforms").value = 6;
       $("redAircraft").value = 96;
       $("redIncoming").value = 180;
       $("redVessels").value = 24;
