@@ -281,6 +281,9 @@
   const round1 = (v) => Math.round(v * 10) / 10;
   const actorLabel = (id) => ({ BLUE: "藍方", RED: "紅方", AMBER: "美軍支援", WHITE: "白方" }[id] || id);
   const zoneName = (id) => DATA.zones.find(z => z.zone_id === id)?.zone_name || id;
+  const ORDER_BUDGET = 35;
+  const MIN_SUPPORT_ACTIONS = 2;
+  const MAX_SUPPORT_ACTIONS = 4;
 
   function mulberry32(seed) {
     let a = seed >>> 0;
@@ -683,7 +686,7 @@
     $("zoneMap").innerHTML = zones.map(zone => {
       const signals = [];
       Object.values(currentOrders).forEach(order => {
-        if (orderVisibleBeforeResolution(order.actor) && order.zone === zone.zone_id) signals.push(order.actor.toLowerCase());
+        if (orderVisibleBeforeResolution(order.actor) && orderItems(order).some(item => item.zone === zone.zone_id)) signals.push(order.actor.toLowerCase());
       });
       events.filter(event => event.zone_id === zone.zone_id).forEach(() => signals.push("neutral"));
       return `<div class="zone" data-zone="${zone.zone_id}" title="${escapeHtml(zone.teaching_note || "")}">
@@ -700,6 +703,7 @@
         .filter(z => z.zone_id !== "Z-REAR" || state.scenario.amberSupport !== "none")
         .map(z => `<option value="${z.zone_id}">${escapeHtml(z.zone_name)}</option>`).join("");
     }
+    renderSupportActions();
     const finished = state.currentTurn > state.scenario.turns;
     [...$("orderForm").elements].forEach(el => el.disabled = finished);
     const actorSelect = $("orderActor");
@@ -722,6 +726,7 @@
   function updateActionOptions() {
     const actor = $("orderActor").value;
     $("orderAction").innerHTML = ACTIONS[actor].map(([name]) => `<option>${escapeHtml(name)}</option>`).join("");
+    renderSupportActions();
     if (state.scenario) {
       const current = state.orders[state.currentTurn] || {};
       const submitButton = $("orderForm").querySelector('button[type="submit"]');
@@ -768,6 +773,95 @@
     return `${actorLabel(sequence[0])}先行；${visibility}。${next ? `目前輪到${actorLabel(next)}。` : "本回合命令均已提交。"}`;
   }
 
+  function riskLabel(value) {
+    return ({ low: "低", medium: "中", high: "高" }[value] || "中");
+  }
+
+  function defaultOrderItem(actor, primary = false) {
+    return {
+      action: ACTIONS[actor][0][0],
+      zone: "Z-CW",
+      resource: primary ? 20 : 5,
+      priority: primary ? 4 : 3,
+      condition: "情勢未出現重大惡化",
+      risk: "medium"
+    };
+  }
+
+  // Retain compatibility with saved single-action orders and older JSON exports.
+  function orderPrimary(order) {
+    return order?.primary || {
+      action: order?.action || "未指定行動", zone: order?.zone || "Z-CW",
+      resource: Number(order?.resource) || 0, priority: 4,
+      condition: "舊版命令未記錄條件", risk: "medium"
+    };
+  }
+
+  function orderSupports(order) {
+    return Array.isArray(order?.supports) ? order.supports : [];
+  }
+
+  function orderItems(order) {
+    return order ? [orderPrimary(order), ...orderSupports(order)] : [];
+  }
+
+  function orderTotalResource(order) {
+    return orderItems(order).reduce((total, item) => total + (Number(item.resource) || 0), 0);
+  }
+
+  function supportActionMarkup(actor, item, index, disabled) {
+    const actions = ACTIONS[actor].map(([name]) => `<option value="${escapeAttr(name)}" ${name === item.action ? "selected" : ""}>${escapeHtml(name)}</option>`).join("");
+    const zones = DATA.zones.filter(z => z.zone_id !== "Z-REAR" || state.scenario.amberSupport !== "none")
+      .map(z => `<option value="${z.zone_id}" ${z.zone_id === item.zone ? "selected" : ""}>${escapeHtml(z.zone_name)}</option>`).join("");
+    return `<fieldset class="support-action" data-support-index="${index}" ${disabled ? "disabled" : ""}>
+      <legend>支援行動 ${index + 1}</legend>
+      <label>行動<select class="support-action-name">${actions}</select></label>
+      <label>區域<select class="support-action-zone">${zones}</select></label>
+      <label>資源點數<input class="support-action-resource" type="number" min="3" max="25" value="${item.resource}"></label>
+      <label>優先級<select class="support-action-priority">${[5,4,3,2,1].map(value => `<option value="${value}" ${Number(item.priority) === value ? "selected" : ""}>${value}</option>`).join("")}</select></label>
+      <label>風險<select class="support-action-risk"><option value="low" ${item.risk === "low" ? "selected" : ""}>低</option><option value="medium" ${item.risk === "medium" ? "selected" : ""}>中</option><option value="high" ${item.risk === "high" ? "selected" : ""}>高</option></select></label>
+      <label class="support-condition">條件<input class="support-action-condition" maxlength="100" value="${escapeAttr(item.condition || "情勢未出現重大惡化")}"></label>
+      <button type="button" class="danger remove-support-action" ${index < MIN_SUPPORT_ACTIONS ? "disabled title=\"至少需兩項支援行動\"" : ""}>移除</button>
+    </fieldset>`;
+  }
+
+  function renderSupportActions() {
+    const host = $("supportActionsList");
+    if (!host || !state.scenario) return;
+    const actor = $("orderActor").value;
+    const finished = state.currentTurn > state.scenario.turns;
+    let draft = host._draft;
+    if (!draft || draft.actor !== actor) {
+      draft = { actor, supports: Array.from({ length: MIN_SUPPORT_ACTIONS }, () => defaultOrderItem(actor)) };
+      host._draft = draft;
+    }
+    host.innerHTML = draft.supports.map((item, index) => supportActionMarkup(actor, item, index, finished)).join("");
+    $("addSupportActionBtn").disabled = finished || draft.supports.length >= MAX_SUPPORT_ACTIONS;
+    updateOrderBudget();
+  }
+
+  function readSupportActions() {
+    return [...document.querySelectorAll("#supportActionsList .support-action")].map(row => ({
+      action: row.querySelector(".support-action-name").value,
+      zone: row.querySelector(".support-action-zone").value,
+      resource: Number(row.querySelector(".support-action-resource").value) || 0,
+      priority: Number(row.querySelector(".support-action-priority").value) || 3,
+      condition: row.querySelector(".support-action-condition").value.trim(),
+      risk: row.querySelector(".support-action-risk").value
+    }));
+  }
+
+  function updateOrderBudget() {
+    const status = $("orderBudgetStatus");
+    if (!status) return;
+    const primary = Number($("orderResource").value) || 0;
+    const supportTotal = readSupportActions().reduce((sum, item) => sum + item.resource, 0);
+    const total = primary + supportTotal;
+    const remaining = ORDER_BUDGET - total;
+    status.classList.toggle("budget-over", remaining < 0);
+    status.textContent = `本命令包：主行動 ${primary} 點＋支援 ${supportTotal} 點＝${total}/${ORDER_BUDGET} 點；${remaining >= 0 ? `尚餘 ${remaining} 點` : `超出 ${Math.abs(remaining)} 點，無法提交`}。`;
+  }
+
   function renderCurrentOrders() {
     const current = state.orders[state.currentTurn] || {};
     const orderList = $("currentOrders");
@@ -780,9 +874,13 @@
       if (!orderVisibleBeforeResolution(order.actor)) {
         return `<div class="order-item ${order.actor}"><strong>${actorLabel(order.actor)}：命令已密封提交</strong><div>內容將於本回合結算後揭露。</div></div>`;
       }
+      const primary = orderPrimary(order);
+      const supports = orderSupports(order);
       return `<div class="order-item ${order.actor}">
-        <strong>${actorLabel(order.actor)}：${escapeHtml(order.action)}</strong>
-        <div>${zoneName(order.zone)} · 資源 ${order.resource}${order.aiGenerated ? " · AI建議" : ""} · ${escapeHtml(order.rationale || "未填寫理由")}</div>
+        <strong>${actorLabel(order.actor)}：主行動 ${escapeHtml(primary.action)}</strong>
+        <div>${zoneName(primary.zone)} · ${primary.resource}/${ORDER_BUDGET} 點 · 優先 ${primary.priority} · 風險 ${riskLabel(primary.risk)}${order.aiGenerated ? " · AI建議" : ""}</div>
+        <div class="order-support-summary">支援：${supports.map(item => `${escapeHtml(item.action)}（${item.resource}點／優先${item.priority}／${riskLabel(item.risk)}）`).join("；") || "無（舊版紀錄）"}</div>
+        <small>合計 ${orderTotalResource(order)}/${ORDER_BUDGET} 點 · 條件：${escapeHtml(primary.condition || "未填寫")} · ${escapeHtml(order.rationale || "未填寫理由")}</small>
       </div>`;
     }).join("");
   }
@@ -893,19 +991,34 @@
       toast("本想定未納入美軍支援。");
       return;
     }
-    const order = {
-      actor,
+    const primary = {
       action: $("orderAction").value,
       zone: $("orderZone").value,
-      resource: clamp(Number($("orderResource").value) || 20, 5, 35),
-      rationale: $("orderRationale").value.trim(),
-      submittedAt: new Date().toISOString()
+      resource: Number($("orderResource").value) || 0,
+      priority: Number($("orderPriority").value) || 4,
+      condition: $("orderCondition").value.trim(),
+      risk: $("orderRisk").value
+    };
+    const supports = readSupportActions();
+    const total = primary.resource + supports.reduce((sum, item) => sum + item.resource, 0);
+    const validItems = [primary, ...supports].every((item, index) => ACTIONS[actor].some(([name]) => name === item.action)
+      && DATA.zones.some(zone => zone.zone_id === item.zone)
+      && Number.isInteger(item.resource) && item.resource >= (index === 0 ? 10 : 3) && item.resource <= (index === 0 ? ORDER_BUDGET : 25)
+      && item.priority >= 1 && item.priority <= 5 && item.condition && ["low", "medium", "high"].includes(item.risk));
+    if (supports.length < MIN_SUPPORT_ACTIONS || supports.length > MAX_SUPPORT_ACTIONS || !validItems || total > ORDER_BUDGET) {
+      toast(`命令包須有 1 項主行動、${MIN_SUPPORT_ACTIONS}–${MAX_SUPPORT_ACTIONS} 項支援行動；每項需完整填寫，且合計不得超過 ${ORDER_BUDGET} 點。`);
+      return;
+    }
+    const order = {
+      actor, primary, supports, resourceBudget: ORDER_BUDGET,
+      rationale: $("orderRationale").value.trim(), submittedAt: new Date().toISOString()
     };
     state.orders[state.currentTurn] ||= {};
     state.orders[state.currentTurn][actor] = order;
     const nextActor = nextRequiredActor(state.orders[state.currentTurn]);
     if (state.scenario.turnOrderMode !== "simultaneous" && nextActor) $("orderActor").value = nextActor;
     $("orderRationale").value = "";
+    $("supportActionsList")._draft = null;
     saveState(false);
     renderSimulation();
     toast(`${actorLabel(actor)}命令已提交。`);
@@ -914,10 +1027,15 @@
   function fallbackAutoFill(missingActors) {
     const rng = mulberry32(state.scenario.seed + state.currentTurn * 991);
     missingActors.forEach(actor => {
-      const action = pick(ACTIONS[actor], rng)[0];
-      const zone = pick(DATA.zones.filter(z => z.zone_id !== "Z-REAR" || actor === "AMBER"), rng).zone_id;
+      const pickItem = (resource, priority) => ({
+        action: pick(ACTIONS[actor], rng)[0],
+        zone: pick(DATA.zones.filter(z => z.zone_id !== "Z-REAR" || actor === "AMBER"), rng).zone_id,
+        resource, priority, condition: "情勢未出現重大惡化", risk: "medium"
+      });
       state.orders[state.currentTurn][actor] = {
-        actor, action, zone, resource: Math.round(12 + rng() * 15),
+        actor, primary: pickItem(Math.round(14 + rng() * 5), 4),
+        supports: [pickItem(Math.round(4 + rng() * 3), 3), pickItem(Math.round(4 + rng() * 3), 2)],
+        resourceBudget: ORDER_BUDGET,
         rationale: "本機合成規則：依本回合的合成態勢補齊代表性行動。",
         submittedAt: new Date().toISOString()
       };
@@ -929,7 +1047,7 @@
     const zones = DATA.zones.filter(z => z.zone_id !== "Z-REAR" || missingActors.includes("AMBER")).map(z => ({ id: z.zone_id, name: z.zone_name, domain: z.domain }));
     const events = currentEvents();
     const weather = currentWeather().map(w => ({ zone: w.zone_id, sea: w.sea_state_1_5, visibility: w.visibility_1_5 }));
-    return `你是兵推回合助理。只能使用下列完全合成、虛構的模擬資料；不得補入真實部隊、武器型號、座標、部署、射程、目標或可執行的現實作戰建議。\n\n請只回傳嚴格 JSON：{"orders":[{"actor":"BLUE|RED|AMBER","action":"必須從允許動作選一項","zone":"必須從允許區域選一項","resource":5到35的整數,"rationale":"繁體中文、80字內，明確說明如何根據資源、準備度、情報、事件、戰略壓力或天候作取捨"}]}\n\n必須補齊的角色：${JSON.stringify(missingActors)}\n允許動作：${JSON.stringify(availableActions)}\n允許區域：${JSON.stringify(zones)}\n當前狀態：${JSON.stringify({ turn: state.currentTurn, turnOrderMode: state.scenario.turnOrderMode, firstOrderVisibility: state.scenario.firstOrderVisibility, status: state.status, resources: state.scenario.resources, strategicParameters: state.scenario.strategicParameters, currentOrders: state.orders[state.currentTurn], events: events.map(event => ({ name: event.event_name, category: event.category, zone: event.zone_id, description: event.description })), weather })}\n\n每個缺少角色剛好一項命令；理由必須清楚呈現。`;
+    return `你是兵推回合助理。只能使用下列完全合成、虛構的模擬資料；不得補入真實部隊、武器型號、座標、部署、射程、目標或可執行的現實作戰建議。\n\n請只回傳嚴格 JSON：{"orders":[{"actor":"BLUE|RED|AMBER","primary":{"action":"允許動作之一","zone":"允許區域之一","resource":10到35的整數,"priority":1到5,"condition":"繁體中文、100字內","risk":"low|medium|high"},"supports":[{"action":"允許動作之一","zone":"允許區域之一","resource":3到25的整數,"priority":1到5,"condition":"繁體中文、100字內","risk":"low|medium|high"},{"action":"...第二項支援行動"}],"rationale":"繁體中文、80字內"}]}。每個角色恰有 1 個主行動與 2–4 個支援行動，所有行動 resource 合計不得超過 ${ORDER_BUDGET}。\n\n必須補齊的角色：${JSON.stringify(missingActors)}\n允許動作：${JSON.stringify(availableActions)}\n允許區域：${JSON.stringify(zones)}\n當前狀態：${JSON.stringify({ turn: state.currentTurn, turnOrderMode: state.scenario.turnOrderMode, firstOrderVisibility: state.scenario.firstOrderVisibility, status: state.status, resources: state.scenario.resources, strategicParameters: state.scenario.strategicParameters, currentOrders: state.orders[state.currentTurn], events: events.map(event => ({ name: event.event_name, category: event.category, zone: event.zone_id, description: event.description })), weather })}`;
   }
 
   function applyAiOrders(result, missingActors) {
@@ -938,10 +1056,18 @@
     const accepted = new Set();
     rows.forEach(row => {
       const actor = String(row?.actor || "");
-      const action = String(row?.action || "");
-      if (!missingActors.includes(actor) || accepted.has(actor) || !ACTIONS[actor].some(([name]) => name === action) || !allowedZones.has(row?.zone)) return;
+      const primary = row?.primary;
+      const supports = Array.isArray(row?.supports) ? row.supports : [];
+      const validItem = (item, min) => item && ACTIONS[actor].some(([name]) => name === item.action) && allowedZones.has(item.zone)
+        && Number.isInteger(Number(item.resource)) && Number(item.resource) >= min && Number(item.priority) >= 1 && Number(item.priority) <= 5
+        && String(item.condition || "").trim() && ["low", "medium", "high"].includes(item.risk);
+      const total = [primary, ...supports].reduce((sum, item) => sum + Number(item?.resource || 0), 0);
+      if (!missingActors.includes(actor) || accepted.has(actor) || !validItem(primary, 10) || supports.length < MIN_SUPPORT_ACTIONS || supports.length > MAX_SUPPORT_ACTIONS || !supports.every(item => validItem(item, 3)) || total > ORDER_BUDGET) return;
       state.orders[state.currentTurn][actor] = {
-        actor, action, zone: row.zone, resource: Math.round(clamp(Number(row.resource) || 20, 5, 35)),
+        actor,
+        primary: { ...primary, resource: Math.round(Number(primary.resource)), priority: Math.round(Number(primary.priority)), condition: String(primary.condition).trim().slice(0, 100) },
+        supports: supports.map(item => ({ ...item, resource: Math.round(Number(item.resource)), priority: Math.round(Number(item.priority)), condition: String(item.condition).trim().slice(0, 100) })),
+        resourceBudget: ORDER_BUDGET,
         rationale: String(row.rationale || "AI 未提供理由。").replace(/[\r\n]+/g, " ").slice(0, 180),
         aiGenerated: true, submittedAt: new Date().toISOString()
       };
@@ -983,28 +1109,38 @@
 
   function orderScore(order, status, rng) {
     if (!order) return 0;
-    const effort = Math.sqrt(order.resource) * 2.3;
+    const items = orderItems(order);
+    const effort = items.reduce((sum, item, index) => {
+      const roleWeight = index === 0 ? 1 : 0.58;
+      const priorityWeight = 0.8 + Number(item.priority || 3) * 0.08;
+      const riskWeight = item.risk === "high" ? 1.06 : item.risk === "low" ? 0.96 : 1;
+      return sum + Math.sqrt(item.resource) * 2.3 * roleWeight * priorityWeight * riskWeight;
+    }, 0);
     const readiness = status.readiness * 0.22;
     const command = status.command * 0.16;
     const sustain = status.sustainment * 0.12;
-    const riskBonus = (order.resource > 25 ? 4 : 0);
+    const riskBonus = orderTotalResource(order) > 25 ? 4 : 0;
     const resourceModifier = state.scenario?.resourceBalance?.[order.actor.toLowerCase()] || 0;
     return effort + readiness + command + sustain + riskBonus + resourceModifier + (rng() - 0.5) * 14;
   }
 
   function applyOwnAction(actor, order) {
     if (!order) return;
-    const effect = actionEffect(actor, order.action);
     const status = state.status[actor];
-    const scale = order.resource / 20;
-    status.readiness = clamp(status.readiness + (effect.readiness || 0) * scale);
-    status.sustainment = clamp(status.sustainment + (effect.sustainment || 0) * scale);
-    status.command = clamp(status.command + (effect.command || 0) * scale);
-    status.intel = clamp(status.intel + (effect.intel || 0) * scale);
-    status.resources = clamp(status.resources - order.resource * 0.72);
-    if (actor === "BLUE" || actor === "RED") {
-      state.status.BLUE.civilianRisk = clamp(state.status.BLUE.civilianRisk + (effect.civilian || 0) * scale);
-    }
+    orderItems(order).forEach((item, index) => {
+      const effect = actionEffect(actor, item.action);
+      const roleWeight = index === 0 ? 1 : 0.58;
+      const priorityWeight = 0.8 + Number(item.priority || 3) * 0.08;
+      const scale = (item.resource / 20) * roleWeight * priorityWeight;
+      status.readiness = clamp(status.readiness + (effect.readiness || 0) * scale);
+      status.sustainment = clamp(status.sustainment + (effect.sustainment || 0) * scale);
+      status.command = clamp(status.command + (effect.command || 0) * scale);
+      status.intel = clamp(status.intel + (effect.intel || 0) * scale);
+      if (actor === "BLUE" || actor === "RED") {
+        state.status.BLUE.civilianRisk = clamp(state.status.BLUE.civilianRisk + (effect.civilian || 0) * scale);
+      }
+    });
+    status.resources = clamp(status.resources - orderTotalResource(order) * 0.72);
   }
 
   function applyEvent(event) {
@@ -1083,14 +1219,15 @@
 
     // Sustainment deterioration and limited recovery
     ["BLUE", "RED"].forEach(actor => {
-      const load = (orders[actor]?.resource || 10) * 0.08;
+      const load = (orderTotalResource(orders[actor]) || 10) * 0.08;
       state.status[actor].sustainment = clamp(state.status[actor].sustainment - load - rng() * 1.5);
       state.status[actor].command = clamp(state.status[actor].command - Math.max(0, state.scenario.uncertainty - 2) * 0.5 + rng());
     });
 
     if (orders.AMBER && state.scenario.amberSupport !== "none") {
-      state.status.BLUE.intel = clamp(state.status.BLUE.intel + (orders.AMBER.action === "提供ISR支援" ? 4 : 1));
-      state.status.BLUE.sustainment = clamp(state.status.BLUE.sustainment + (orders.AMBER.action === "提升後勤準備" ? 4 : 0.8));
+      const amberActions = orderItems(orders.AMBER).map(item => item.action);
+      state.status.BLUE.intel = clamp(state.status.BLUE.intel + (amberActions.includes("提供ISR支援") ? 4 : 1));
+      state.status.BLUE.sustainment = clamp(state.status.BLUE.sustainment + (amberActions.includes("提升後勤準備") ? 4 : 0.8));
     }
 
     const outcome = balance > 12 ? "藍方在本回合取得較佳態勢，但仍須保存資源。" :
@@ -1810,12 +1947,14 @@
 
   function exportCSV() {
     if (!state.logs.length) return toast("尚無回合紀錄。");
-    const header = ["turn","elapsed_hours","event","blue_action","red_action","amber_action","blue_readiness","red_readiness","civilian_risk","outcome","key_risk"];
+    const header = ["turn","elapsed_hours","event","blue_primary","blue_supports","blue_resource_total","red_primary","red_supports","red_resource_total","amber_primary","amber_supports","amber_resource_total","blue_readiness","red_readiness","civilian_risk","outcome","key_risk"];
     const lines = [header.join(",")];
     state.logs.forEach(log => {
       const values = [
         log.turn, log.elapsedHours, log.event,
-        log.orders.BLUE?.action || "", log.orders.RED?.action || "", log.orders.AMBER?.action || "",
+        orderPrimary(log.orders.BLUE).action, orderSupports(log.orders.BLUE).map(item => item.action).join("；"), orderTotalResource(log.orders.BLUE),
+        orderPrimary(log.orders.RED).action, orderSupports(log.orders.RED).map(item => item.action).join("；"), orderTotalResource(log.orders.RED),
+        log.orders.AMBER ? orderPrimary(log.orders.AMBER).action : "", log.orders.AMBER ? orderSupports(log.orders.AMBER).map(item => item.action).join("；") : "", log.orders.AMBER ? orderTotalResource(log.orders.AMBER) : "",
         log.statusAfter.BLUE.readiness, log.statusAfter.RED.readiness, log.statusAfter.BLUE.civilianRisk,
         log.outcome, log.keyRisk
       ];
@@ -2049,6 +2188,27 @@
     $("generateWithLlmBtn").addEventListener("click", generateWithLlm);
     $("clearLlmKeyBtn").addEventListener("click", clearLlmKey);
     $("orderActor").addEventListener("change", updateActionOptions);
+    $("addSupportActionBtn").addEventListener("click", () => {
+      const host = $("supportActionsList");
+      const draft = host._draft || { actor: $("orderActor").value, supports: readSupportActions() };
+      draft.supports = readSupportActions();
+      if (draft.supports.length < MAX_SUPPORT_ACTIONS) draft.supports.push(defaultOrderItem(draft.actor));
+      host._draft = draft;
+      renderSupportActions();
+    });
+    $("supportActionsList").addEventListener("input", updateOrderBudget);
+    $("supportActionsList").addEventListener("change", updateOrderBudget);
+    $("supportActionsList").addEventListener("click", event => {
+      const button = event.target.closest(".remove-support-action");
+      if (!button || button.disabled) return;
+      const host = $("supportActionsList");
+      const draft = host._draft || { actor: $("orderActor").value, supports: readSupportActions() };
+      draft.supports = readSupportActions();
+      draft.supports.splice(Number(button.closest(".support-action").dataset.supportIndex), 1);
+      host._draft = draft;
+      renderSupportActions();
+    });
+    ["orderResource", "orderPriority", "orderRisk", "orderCondition"].forEach(id => $(id).addEventListener("input", updateOrderBudget));
     $("orderForm").addEventListener("submit", submitOrder);
     $("eventPanel").addEventListener("submit", event => {
       if (event.target.id === "whiteEventForm") publishWhiteEvent(event);

@@ -285,7 +285,7 @@
           <form id="orderForm" class="card form-grid">
             <div class="full subheading">
               <h3>下達回合命令</h3>
-              <span id="orderStatus" class="muted">每方每回合一項主要行動</span>
+              <span id="orderStatus" class="muted">每方每回合 1 項主行動＋2–4 項支援行動，共用 35 點預算</span>
             </div>
             <label>
               角色
@@ -296,7 +296,7 @@
               </select>
             </label>
             <label>
-              行動
+              主行動
               <select id="orderAction"></select>
             </label>
             <label>
@@ -304,9 +304,33 @@
               <select id="orderZone"></select>
             </label>
             <label>
-              投入資源點數
-              <input id="orderResource" type="number" min="5" max="35" value="20">
+              主行動資源點數
+              <input id="orderResource" type="number" min="10" max="35" value="20">
             </label>
+            <label>
+              主行動優先級
+              <select id="orderPriority">
+                <option value="5">5／決定性</option><option value="4" selected>4／高</option><option value="3">3／中</option><option value="2">2／低</option><option value="1">1／保留</option>
+              </select>
+            </label>
+            <label>
+              主行動風險
+              <select id="orderRisk">
+                <option value="low">低</option><option value="medium" selected>中</option><option value="high">高</option>
+              </select>
+            </label>
+            <label class="full">
+              主行動執行條件
+              <input id="orderCondition" maxlength="100" value="情勢未出現重大惡化" placeholder="例如：情報信心達可接受水準">
+            </label>
+            <section class="full support-actions" aria-labelledby="supportActionsTitle">
+              <div class="subheading">
+                <div><h4 id="supportActionsTitle">支援行動</h4><small>需 2–4 項；每項均占用同一回合預算。</small></div>
+                <button type="button" id="addSupportActionBtn" class="secondary">新增支援行動</button>
+              </div>
+              <div id="supportActionsList"></div>
+              <p id="orderBudgetStatus" class="muted" aria-live="polite"></p>
+            </section>
             <label class="full">
               決策理由
               <textarea id="orderRationale" rows="3" placeholder="請說明目標、假設、風險與保留方案。"></textarea>

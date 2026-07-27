@@ -41,7 +41,19 @@ SQLite 另提供 `scenario_master`、`setting_catalog`、`resource_catalog`、`a
       "civilianRisk": 40
     }
   },
-  "orders": {},
+  "orders": {
+    "1": {
+      "BLUE": {
+        "actor": "BLUE",
+        "primary": { "action": "情報融合", "zone": "Z-ISL", "resource": 18, "priority": 4, "condition": "情資可供決策", "risk": "medium" },
+        "supports": [
+          { "action": "備援通訊", "zone": "Z-ISL", "resource": 6, "priority": 3, "condition": "通訊品質下降", "risk": "low" },
+          { "action": "後勤修復", "zone": "Z-ISL", "resource": 5, "priority": 2, "condition": "修復需求確認", "risk": "low" }
+        ],
+        "resourceBudget": 35
+      }
+    }
+  },
   "logs": []
 }
 ```
