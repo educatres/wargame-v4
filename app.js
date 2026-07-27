@@ -517,14 +517,14 @@
 
   function renderZoneMap() {
     const currentOrders = state.orders[state.currentTurn] || {};
-    const currentEvent = state.scenario.events.find(e => Number(e.trigger_turn) === state.currentTurn);
+    const events = currentEvents();
     const zones = DATA.zones.filter(z => z.zone_id !== "Z-REAR" || state.scenario.amberSupport !== "none");
     $("zoneMap").innerHTML = zones.map(zone => {
       const signals = [];
       Object.values(currentOrders).forEach(order => {
         if (order.zone === zone.zone_id) signals.push(order.actor.toLowerCase());
       });
-      if (currentEvent?.zone_id === zone.zone_id) signals.push("neutral");
+      events.filter(event => event.zone_id === zone.zone_id).forEach(() => signals.push("neutral"));
       return `<div class="zone" data-zone="${zone.zone_id}" title="${escapeHtml(zone.teaching_note || "")}">
         <div><span class="zone-name">${escapeHtml(zone.zone_name)}</span><br><small>${escapeHtml(zone.domain)} · ${escapeHtml(zone.distance_band)}</small></div>
         <div class="zone-signals">${signals.map(s => `<i class="signal ${s}"></i>`).join("")}</div>
@@ -583,6 +583,11 @@
     }));
   }
 
+  function currentEvents() {
+    if (!state.scenario) return [];
+    return state.scenario.events.filter(event => Number(event.trigger_turn) === state.currentTurn);
+  }
+
   function renderTurnPanels() {
     const intel = currentIntel();
     $("intelPanel").innerHTML = intel.length ? intel.map(i => `
@@ -603,13 +608,53 @@
         <li>降水機率：${worst.precip_probability_pct}%（合成）</li>
       </ul>` : `<p class="muted">無資料。</p>`;
 
-    const event = state.scenario.events.find(e => Number(e.trigger_turn) === state.currentTurn);
-    $("eventPanel").innerHTML = event ? `
+    const events = currentEvents();
+    const eventList = events.length ? events.map(event => `
       <div class="turn-log">
         <strong>${escapeHtml(event.event_name)}</strong>
         <p>${escapeHtml(event.description)}</p>
-        <small>${escapeHtml(event.category)} · ${zoneName(event.zone_id)}</small>
-      </div>` : `<p class="muted">白方可視推演狀況臨時加入事件。</p>`;
+        <small>${escapeHtml(event.category)} · ${zoneName(event.zone_id)}${event.whiteInjected ? " · 白方臨時發布" : ""}</small>
+      </div>`).join("") : `<p class="muted">本回合沒有預排事件。</p>`;
+    const zones = DATA.zones
+      .filter(zone => zone.zone_id !== "Z-REAR" || state.scenario.amberSupport !== "none")
+      .map(zone => `<option value="${zone.zone_id}">${escapeHtml(zone.zone_name)}</option>`).join("");
+    const finished = state.currentTurn > state.scenario.turns;
+    $("eventPanel").innerHTML = `${eventList}
+      <form id="whiteEventForm" class="white-event-form">
+        <h4>白方臨時導調事件</h4>
+        <label>事件名稱<input id="whiteEventName" required maxlength="80" placeholder="例如：民間通訊壅塞" ${finished ? "disabled" : ""}></label>
+        <label>類別
+          <select id="whiteEventCategory" ${finished ? "disabled" : ""}>
+            <option>民事</option><option>情報</option><option>氣象</option><option>後勤</option><option>外交</option><option>指管</option><option>資訊</option><option>其他</option>
+          </select>
+        </label>
+        <label>影響區域<select id="whiteEventZone" ${finished ? "disabled" : ""}>${zones}</select></label>
+        <label>導調說明<textarea id="whiteEventDescription" required maxlength="300" rows="3" placeholder="說明白方發布的情境變化與應注意事項。" ${finished ? "disabled" : ""}></textarea></label>
+        <button type="submit" class="secondary" ${finished ? "disabled" : ""}>立即發布本回合事件</button>
+      </form>`;
+  }
+
+  function publishWhiteEvent(event) {
+    event.preventDefault();
+    if (!state.scenario || state.currentTurn > state.scenario.turns) return;
+    const name = $("whiteEventName").value.trim();
+    const description = $("whiteEventDescription").value.trim();
+    const zone = $("whiteEventZone").value;
+    if (!name || !description || !DATA.zones.some(item => item.zone_id === zone)) return;
+    state.scenario.events.push({
+      event_id: `WHITE-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+      trigger_turn: state.currentTurn,
+      event_name: name.slice(0, 80),
+      category: $("whiteEventCategory").value,
+      zone_id: zone,
+      affected_actor: "WHITE",
+      description: description.slice(0, 300),
+      whiteInjected: true,
+      publishedAt: new Date().toISOString()
+    });
+    saveState(false);
+    renderSimulation();
+    toast("白方臨時事件已發布並納入本回合。");
   }
 
   function submitOrder(event) {
@@ -652,9 +697,9 @@
   function autoOrderPrompt(missingActors) {
     const availableActions = Object.fromEntries(missingActors.map(actor => [actor, ACTIONS[actor].map(([name]) => name)]));
     const zones = DATA.zones.filter(z => z.zone_id !== "Z-REAR" || missingActors.includes("AMBER")).map(z => ({ id: z.zone_id, name: z.zone_name, domain: z.domain }));
-    const event = state.scenario.events.find(e => Number(e.trigger_turn) === state.currentTurn);
+    const events = currentEvents();
     const weather = currentWeather().map(w => ({ zone: w.zone_id, sea: w.sea_state_1_5, visibility: w.visibility_1_5 }));
-    return `你是兵推回合助理。只能使用下列完全合成、虛構的模擬資料；不得補入真實部隊、武器型號、座標、部署、射程、目標或可執行的現實作戰建議。\n\n請只回傳嚴格 JSON：{"orders":[{"actor":"BLUE|RED|AMBER","action":"必須從允許動作選一項","zone":"必須從允許區域選一項","resource":5到35的整數,"rationale":"繁體中文、80字內，明確說明如何根據資源、準備度、情報、事件或天候作取捨"}]}\n\n必須補齊的角色：${JSON.stringify(missingActors)}\n允許動作：${JSON.stringify(availableActions)}\n允許區域：${JSON.stringify(zones)}\n當前狀態：${JSON.stringify({ turn: state.currentTurn, status: state.status, resources: state.scenario.resources, currentOrders: state.orders[state.currentTurn], event: event ? { name: event.event_name, category: event.category, zone: event.zone_id } : null, weather })}\n\n每個缺少角色剛好一項命令；理由必須清楚呈現。`;
+    return `你是兵推回合助理。只能使用下列完全合成、虛構的模擬資料；不得補入真實部隊、武器型號、座標、部署、射程、目標或可執行的現實作戰建議。\n\n請只回傳嚴格 JSON：{"orders":[{"actor":"BLUE|RED|AMBER","action":"必須從允許動作選一項","zone":"必須從允許區域選一項","resource":5到35的整數,"rationale":"繁體中文、80字內，明確說明如何根據資源、準備度、情報、事件或天候作取捨"}]}\n\n必須補齊的角色：${JSON.stringify(missingActors)}\n允許動作：${JSON.stringify(availableActions)}\n允許區域：${JSON.stringify(zones)}\n當前狀態：${JSON.stringify({ turn: state.currentTurn, status: state.status, resources: state.scenario.resources, currentOrders: state.orders[state.currentTurn], events: events.map(event => ({ name: event.event_name, category: event.category, zone: event.zone_id, description: event.description })), weather })}\n\n每個缺少角色剛好一項命令；理由必須清楚呈現。`;
   }
 
   function applyAiOrders(result, missingActors) {
@@ -752,13 +797,13 @@
     const orders = state.orders[state.currentTurn] || {};
     const rng = mulberry32(state.scenario.seed + state.currentTurn * 7919 + hashText(JSON.stringify(orders)));
     const difficulty = DIFFICULTY[state.scenario.difficulty];
-    const event = state.scenario.events.find(e => Number(e.trigger_turn) === state.currentTurn) || null;
+    const events = currentEvents();
     const weather = currentWeather();
     const avgSea = weather.reduce((sum, w) => sum + Number(w.sea_state_1_5), 0) / Math.max(1, weather.length);
     const avgVisibility = weather.reduce((sum, w) => sum + Number(w.visibility_1_5), 0) / Math.max(1, weather.length);
 
     Object.values(orders).forEach(order => applyOwnAction(order.actor, order));
-    applyEvent(event);
+    events.forEach(applyEvent);
 
     const blueScore = orderScore(orders.BLUE, state.status.BLUE, rng) + state.status.BLUE.intel * 0.13;
     const redScore = orderScore(orders.RED, state.status.RED, rng) + state.status.RED.intel * 0.13;
@@ -792,7 +837,7 @@
     const log = {
       turn: state.currentTurn,
       elapsedHours: (state.currentTurn - 1) * state.scenario.hoursPerTurn,
-      event: event ? event.event_name : "無預排事件",
+      event: events.length ? events.map(event => event.event_name).join("；") : "無預排事件",
       orders: JSON.parse(JSON.stringify(orders)),
       blueScore: round1(blueScore),
       redScore: round1(redScore),
@@ -1706,6 +1751,9 @@
     $("clearLlmKeyBtn").addEventListener("click", clearLlmKey);
     $("orderActor").addEventListener("change", updateActionOptions);
     $("orderForm").addEventListener("submit", submitOrder);
+    $("eventPanel").addEventListener("submit", event => {
+      if (event.target.id === "whiteEventForm") publishWhiteEvent(event);
+    });
     $("autoOrdersBtn").addEventListener("click", autoFillOrders);
     $("resolveTurnBtn").addEventListener("click", resolveTurn);
     $("clearRunBtn").addEventListener("click", resetRun);

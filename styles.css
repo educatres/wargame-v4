@@ -171,6 +171,10 @@ output { color: var(--primary); font-weight: 800; }
 .turn-log { border-left: 4px solid var(--primary); padding: .7rem .9rem; background: #f7fafc; border-radius: .25rem .75rem .75rem .25rem; }
 .turn-log h4 { margin: 0 0 .35rem; }
 .turn-log p { margin-bottom: .25rem; }
+.white-event-form { display: grid; gap: .55rem; margin-top: .85rem; padding-top: .85rem; border-top: 1px solid var(--border); }
+.white-event-form h4 { margin: 0; }
+.white-event-form label { display: grid; gap: .3rem; font-weight: 700; color: #384858; }
+.white-event-form button { justify-self: start; }
 
 .lab-grid { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); gap: .8rem; margin: .8rem 0 1rem; }
 .footnote { color: var(--muted); font-size: .84rem; margin-bottom: 0; }
