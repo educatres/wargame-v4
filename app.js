@@ -554,7 +554,7 @@
     orderList.innerHTML = values.map(order => `
       <div class="order-item ${order.actor}">
         <strong>${actorLabel(order.actor)}：${escapeHtml(order.action)}</strong>
-        <div>${zoneName(order.zone)} · 資源 ${order.resource} · ${escapeHtml(order.rationale || "未填寫理由")}</div>
+        <div>${zoneName(order.zone)} · 資源 ${order.resource}${order.aiGenerated ? " · AI建議" : ""} · ${escapeHtml(order.rationale || "未填寫理由")}</div>
       </div>`).join("");
   }
 
@@ -629,27 +629,70 @@
     toast(`${actorLabel(actor)}命令已提交。`);
   }
 
-  function autoFillOrders() {
-    if (!state.scenario) return;
+  function fallbackAutoFill(missingActors) {
     const rng = mulberry32(state.scenario.seed + state.currentTurn * 991);
-    state.orders[state.currentTurn] ||= {};
-    const actors = state.scenario.amberSupport === "none" ? ["BLUE", "RED"] : ["BLUE", "RED", "AMBER"];
-    actors.forEach(actor => {
-      if (state.orders[state.currentTurn][actor]) return;
+    missingActors.forEach(actor => {
       const action = pick(ACTIONS[actor], rng)[0];
       const zone = pick(DATA.zones.filter(z => z.zone_id !== "Z-REAR" || actor === "AMBER"), rng).zone_id;
       state.orders[state.currentTurn][actor] = {
-        actor,
-        action,
-        zone,
-        resource: Math.round(12 + rng() * 15),
-        rationale: "系統自動產生：依本回合態勢選擇一項代表性行動。",
+        actor, action, zone, resource: Math.round(12 + rng() * 15),
+        rationale: "本機合成規則：依本回合的合成態勢補齊代表性行動。",
         submittedAt: new Date().toISOString()
       };
     });
+  }
+
+  function autoOrderPrompt(missingActors) {
+    const availableActions = Object.fromEntries(missingActors.map(actor => [actor, ACTIONS[actor].map(([name]) => name)]));
+    const zones = DATA.zones.filter(z => z.zone_id !== "Z-REAR" || missingActors.includes("AMBER")).map(z => ({ id: z.zone_id, name: z.zone_name, domain: z.domain }));
+    const event = state.scenario.events.find(e => Number(e.trigger_turn) === state.currentTurn);
+    const weather = currentWeather().map(w => ({ zone: w.zone_id, sea: w.sea_state_1_5, visibility: w.visibility_1_5 }));
+    return `你是教學兵推的回合助理。只能使用下列完全合成、虛構的課堂資料；不得補入真實部隊、武器型號、座標、部署、射程、目標或可執行的現實作戰建議。\n\n請只回傳嚴格 JSON：{"orders":[{"actor":"BLUE|RED|AMBER","action":"必須從允許動作選一項","zone":"必須從允許區域選一項","resource":5到35的整數,"rationale":"繁體中文、80字內，明確說明如何根據資源、準備度、情報、事件或天候作取捨"}]}\n\n必須補齊的角色：${JSON.stringify(missingActors)}\n允許動作：${JSON.stringify(availableActions)}\n允許區域：${JSON.stringify(zones)}\n當前狀態：${JSON.stringify({ turn: state.currentTurn, status: state.status, resources: state.scenario.resources, currentOrders: state.orders[state.currentTurn], event: event ? { name: event.event_name, category: event.category, zone: event.zone_id } : null, weather })}\n\n每個缺少角色剛好一項命令；理由必須可供教師與學生檢視。`;
+  }
+
+  function applyAiOrders(result, missingActors) {
+    const rows = Array.isArray(result?.orders) ? result.orders : [];
+    const allowedZones = new Set(DATA.zones.filter(z => z.zone_id !== "Z-REAR" || missingActors.includes("AMBER")).map(z => z.zone_id));
+    const accepted = new Set();
+    rows.forEach(row => {
+      const actor = String(row?.actor || "");
+      const action = String(row?.action || "");
+      if (!missingActors.includes(actor) || accepted.has(actor) || !ACTIONS[actor].some(([name]) => name === action) || !allowedZones.has(row?.zone)) return;
+      state.orders[state.currentTurn][actor] = {
+        actor, action, zone: row.zone, resource: Math.round(clamp(Number(row.resource) || 20, 5, 35)),
+        rationale: String(row.rationale || "AI 未提供理由。").replace(/[\r\n]+/g, " ").slice(0, 180),
+        aiGenerated: true, submittedAt: new Date().toISOString()
+      };
+      accepted.add(actor);
+    });
+    return missingActors.filter(actor => !accepted.has(actor));
+  }
+
+  async function autoFillOrders() {
+    if (!state.scenario) return;
+    state.orders[state.currentTurn] ||= {};
+    const actors = state.scenario.amberSupport === "none" ? ["BLUE", "RED"] : ["BLUE", "RED", "AMBER"];
+    let missingActors = actors.filter(actor => !state.orders[state.currentTurn][actor]);
+    if (!missingActors.length) return toast("所有角色本回合都已有命令。");
+    const apiKey = $("llmApiKey").value.trim();
+    let aiUsed = false;
+    if (apiKey) {
+      const initialMissing = missingActors.length;
+      const button = $("autoOrdersBtn");
+      button.disabled = true;
+      try {
+        const provider = $("llmProvider").value;
+        const result = extractJson(await requestLlm(provider, $("llmModel").value.trim(), apiKey, autoOrderPrompt(missingActors), $("llmReasoning").value));
+        missingActors = applyAiOrders(result, missingActors);
+        aiUsed = missingActors.length < initialMissing;
+      } catch (error) {
+        toast(`AI 補齊失敗，改用本機合成規則：${error.message}`);
+      } finally { button.disabled = false; }
+    }
+    if (missingActors.length) fallbackAutoFill(missingActors);
     saveState(false);
     renderSimulation();
-    toast("已自動補齊尚未提交的角色命令。");
+    toast(aiUsed ? "已由 AI 依當前狀態補齊命令與理由。" : "已以本機合成規則補齊尚未提交的角色命令。");
   }
 
   function actionEffect(actor, actionName) {
@@ -696,9 +739,9 @@
     state.status.BLUE.civilianRisk = clamp(state.status.BLUE.civilianRisk + Number(event.civilian_risk_delta || 0));
   }
 
-  function resolveTurn() {
+  async function resolveTurn() {
     if (!state.scenario || state.currentTurn > state.scenario.turns) return;
-    autoFillOrders();
+    await autoFillOrders();
     const orders = state.orders[state.currentTurn] || {};
     const rng = mulberry32(state.scenario.seed + state.currentTurn * 7919 + hashText(JSON.stringify(orders)));
     const difficulty = DIFFICULTY[state.scenario.difficulty];
