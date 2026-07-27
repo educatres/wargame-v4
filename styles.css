@@ -192,6 +192,7 @@ output { color: var(--primary); font-weight: 800; }
 
 .lab-grid { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); gap: .8rem; margin: .8rem 0 1rem; }
 .footnote { color: var(--muted); font-size: .84rem; margin-bottom: 0; }
+.action-safety-note { margin: 0; padding: .65rem .75rem; border-left: 4px solid var(--amber); border-radius: .25rem .6rem .6rem .25rem; background: #fff8e8; }
 
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; min-width: 860px; }

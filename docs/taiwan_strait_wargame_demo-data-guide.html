@@ -1,0 +1,738 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="taiwan_strait_wargame_demo.xlsx 的工作表、欄位、關聯與系統用途完整說明。">
+  <title>臺海教學兵推資料庫｜Excel 資料說明文件</title>
+  <style>
+    :root {
+      --navy: #102f49;
+      --navy-2: #173f5f;
+      --teal: #087f8c;
+      --teal-soft: #e7f5f5;
+      --blue-soft: #eaf3fb;
+      --green-soft: #edf7e8;
+      --amber: #f4c430;
+      --amber-soft: #fff7d6;
+      --red: #c93c4b;
+      --red-soft: #fff0f1;
+      --ink: #17212b;
+      --muted: #5f6f7d;
+      --line: #d6e0e7;
+      --paper: #f5f8fa;
+      --card: #ffffff;
+      --shadow: 0 12px 35px rgba(16, 47, 73, .09);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: Inter, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+      line-height: 1.7;
+    }
+    a { color: inherit; }
+    code, .mono { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+    code { padding: .12rem .38rem; border-radius: .35rem; background: #edf2f5; color: #153f59; }
+    .hero {
+      color: white;
+      background:
+        radial-gradient(circle at 85% 15%, rgba(244,196,48,.24), transparent 28%),
+        linear-gradient(135deg, #0c273d, #154f67 66%, #087f8c);
+      padding: 4.5rem max(2rem, calc((100vw - 1380px) / 2));
+    }
+    .eyebrow { margin: 0 0 .5rem; color: #8de0df; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+    h1 { margin: 0; max-width: 960px; font-size: clamp(2rem, 5vw, 4rem); line-height: 1.13; letter-spacing: -.03em; }
+    .hero .lead { max-width: 900px; margin: 1.25rem 0 0; color: #dcecf3; font-size: 1.12rem; }
+    .hero-meta { display: flex; flex-wrap: wrap; gap: .65rem; margin-top: 1.5rem; }
+    .hero-meta span { padding: .42rem .75rem; border: 1px solid rgba(255,255,255,.25); border-radius: 999px; background: rgba(255,255,255,.09); }
+    .layout { display: grid; grid-template-columns: 290px minmax(0, 1fr); max-width: 1500px; margin: 0 auto; }
+    .sidebar {
+      position: sticky;
+      top: 0;
+      align-self: start;
+      height: 100vh;
+      overflow: auto;
+      padding: 1.5rem 1rem 3rem;
+      background: #fff;
+      border-right: 1px solid var(--line);
+    }
+    .sidebar strong { display: block; color: var(--navy); margin: .25rem .5rem .8rem; }
+    .search { width: 100%; padding: .75rem .85rem; border: 1px solid var(--line); border-radius: .7rem; font: inherit; background: #f8fafb; }
+    .nav-group { margin-top: 1rem; }
+    .nav-group small { display: block; margin: .7rem .55rem .35rem; color: var(--muted); font-weight: 800; letter-spacing: .08em; }
+    .sidebar a { display: block; padding: .42rem .58rem; border-radius: .45rem; text-decoration: none; color: #425466; font-size: .9rem; }
+    .sidebar a:hover, .sidebar a.active { color: var(--navy); background: var(--teal-soft); font-weight: 700; }
+    main { min-width: 0; padding: 2rem clamp(1rem, 3vw, 3.25rem) 5rem; }
+    .section { scroll-margin-top: 1rem; margin-bottom: 3rem; }
+    .section-title { margin: 0 0 .45rem; color: var(--navy); font-size: clamp(1.55rem, 3vw, 2.35rem); line-height: 1.2; }
+    .section-intro { max-width: 970px; color: var(--muted); }
+    .stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 1rem; margin-top: 1.4rem; }
+    .stat { padding: 1.2rem; border-radius: .9rem; background: var(--card); box-shadow: var(--shadow); border-top: 4px solid var(--teal); }
+    .stat strong { display: block; color: var(--navy); font-size: 2rem; line-height: 1; }
+    .stat span { color: var(--muted); font-size: .88rem; }
+    .callout { padding: 1rem 1.15rem; margin: 1rem 0; border-left: 5px solid var(--teal); border-radius: .55rem; background: var(--teal-soft); }
+    .callout.warning { border-color: var(--amber); background: var(--amber-soft); }
+    .callout.danger { border-color: var(--red); background: var(--red-soft); }
+    .callout h3 { margin: 0 0 .35rem; color: var(--navy); }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+    .card { padding: 1.2rem; border: 1px solid var(--line); border-radius: .85rem; background: var(--card); box-shadow: 0 6px 20px rgba(16,47,73,.05); }
+    .card h3 { margin: 0 0 .45rem; color: var(--navy); }
+    .flow { display: grid; grid-template-columns: repeat(5, minmax(150px, 1fr)); gap: .8rem; align-items: stretch; margin-top: 1.3rem; }
+    .flow-node { position: relative; padding: 1rem; border-radius: .75rem; background: white; border: 1px solid var(--line); }
+    .flow-node:not(:last-child)::after { content: "→"; position: absolute; z-index: 2; right: -.72rem; top: 42%; color: var(--teal); font-weight: 900; }
+    .flow-node strong { color: var(--navy); display: block; }
+    .flow-node small { color: var(--muted); }
+    .legend { display: flex; flex-wrap: wrap; gap: .55rem; margin: 1rem 0; }
+    .badge { display: inline-flex; align-items: center; gap: .3rem; padding: .25rem .58rem; border-radius: 999px; font-size: .78rem; font-weight: 800; white-space: nowrap; }
+    .badge.core { color: #075c63; background: #dff5f2; }
+    .badge.library { color: #19598c; background: var(--blue-soft); }
+    .badge.mirror { color: #745b00; background: var(--amber-soft); }
+    .badge.reference { color: #5b6470; background: #edf0f2; }
+    .badge.issue { color: #9e2737; background: var(--red-soft); }
+    .sheet-index { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: .75rem; }
+    .sheet-index a { display: block; padding: .85rem; text-decoration: none; border: 1px solid var(--line); border-radius: .7rem; background: #fff; }
+    .sheet-index a:hover { border-color: var(--teal); transform: translateY(-1px); }
+    .sheet-index strong { display: block; color: var(--navy); font-size: .9rem; }
+    .sheet-index span { color: var(--muted); font-size: .78rem; }
+    .sheet { scroll-margin-top: 1rem; margin: 1.25rem 0; padding: 1.35rem; border-radius: .95rem; background: white; border: 1px solid var(--line); box-shadow: var(--shadow); }
+    .sheet[hidden] { display: none; }
+    .sheet-head { display: flex; gap: 1rem; justify-content: space-between; align-items: flex-start; }
+    .sheet h3 { margin: 0; color: var(--navy); font-size: 1.4rem; }
+    .sheet-title { color: var(--muted); }
+    .sheet-meta { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .4rem; }
+    .usage { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; margin: 1rem 0; }
+    .usage > div { padding: .85rem; border-radius: .65rem; background: #f7fafb; }
+    .usage strong { display: block; color: var(--navy); }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: .65rem; }
+    table { width: 100%; border-collapse: collapse; min-width: 820px; font-size: .88rem; }
+    th { position: sticky; top: 0; z-index: 1; color: white; background: var(--navy-2); text-align: left; }
+    th, td { padding: .62rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+    tbody tr:nth-child(even) { background: #f7faf8; }
+    td:first-child { color: #0b6170; font-weight: 700; }
+    .relation-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+    .relation-grid ul { padding-left: 1.15rem; margin-bottom: 0; }
+    .formula { overflow-x: auto; padding: .9rem; border-radius: .6rem; background: #102f49; color: #e8f6fa; white-space: nowrap; }
+    .empty-result { display: none; padding: 1rem; color: var(--muted); }
+    footer { padding: 2rem; text-align: center; color: var(--muted); border-top: 1px solid var(--line); background: white; }
+    @media (max-width: 1050px) {
+      .layout { display: block; }
+      .sidebar { position: relative; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+      .sidebar .nav-group { display: none; }
+      .stats, .sheet-index { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .flow { grid-template-columns: 1fr; }
+      .flow-node:not(:last-child)::after { content: "↓"; right: 50%; top: auto; bottom: -.75rem; }
+    }
+    @media (max-width: 680px) {
+      .hero { padding: 3rem 1.2rem; }
+      main { padding: 1.2rem .75rem 4rem; }
+      .stats, .grid-2, .sheet-index, .usage, .relation-grid { grid-template-columns: 1fr; }
+      .sheet-head { display: block; }
+      .sheet-meta { justify-content: flex-start; margin-top: .6rem; }
+    }
+    @media print {
+      .sidebar, .search { display: none !important; }
+      .layout { display: block; }
+      .hero { padding: 2rem; }
+      main { padding: 1rem; }
+      .sheet { break-inside: avoid; box-shadow: none; }
+      .table-wrap { overflow: visible; }
+      table { min-width: 0; font-size: 7.5pt; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <p class="eyebrow">Data Sheet Reference · 2026-07-28</p>
+    <h1>taiwan_strait_wargame_demo.xlsx<br>完整資料說明</h1>
+    <p class="lead">逐張解釋 22 個工作表、欄位語意、資料關聯、公式，以及它們在「想定生成、回合推演、STORM、事後檢討、資料庫、LLM」中的實際用途。</p>
+    <div class="hero-meta"><span>教育用合成資料</span><span>不含精確座標</span><span>來源：reference/taiwan_strait_wargame_demo.xlsx</span></div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <strong>文件導覽</strong>
+      <input id="search" class="search" type="search" placeholder="搜尋工作表、欄位或用途">
+      <div class="nav-group">
+        <small>總覽</small>
+        <a href="#overview">架構定位</a>
+        <a href="#data-flow">資料流</a>
+        <a href="#quality">資料品質注意</a>
+        <a href="#sheet-catalog">工作表索引</a>
+        <small>工作表</small>
+        <div id="sheetNav"></div>
+        <small>附錄</small>
+        <a href="#relationships">關聯鍵</a>
+        <a href="#formulas">公式說明</a>
+      </div>
+    </aside>
+
+    <main>
+      <section id="overview" class="section">
+        <h2 class="section-title">先理解：Excel 不是瀏覽器的即時資料源</h2>
+        <p class="section-intro">這份 Excel 是可攜式資料庫、欄位字典、教學樣本與分析儀表板。網頁開啟時不會讀取 <code>.xlsx</code>；實際執行資料來自 <code>data/demo-data.js</code>，部分設定則直接寫在 <code>app.js</code> 與 <code>index.html</code>。</p>
+        <div class="stats">
+          <div class="stat"><strong>22</strong><span>工作表</span></div>
+          <div class="stat"><strong>5</strong><span>直接影響回合引擎的資料表</span></div>
+          <div class="stat"><strong>4</strong><span>資料庫頁面可搜尋目錄</span></div>
+          <div class="stat"><strong>2</strong><span>含 Excel 教學公式的工作表</span></div>
+        </div>
+        <div class="callout">
+          <h3>三種「被系統使用」的層次</h3>
+          <p><span class="badge core">核心執行</span> 對應資料會在想定生成或回合結算中讀取。<span class="badge library">資料庫展示</span> 只在「五、資料庫」頁面搜尋與顯示。<span class="badge mirror">設定鏡像</span> Excel 有同一份目錄，但目前網頁使用 <code>app.js</code>/<code>index.html</code> 內建常數，而不是讀取這張工作表。</p>
+        </div>
+        <div class="callout warning">
+          <h3>抽象作戰類型的安全邊界</h3>
+          <p>20_Actions 現有38項行動，其中12項以【航空】、【防空】、【遠程火力】、【海上】或【水下】標示抽象任務類型。這些資料只提供準備度、持續性、指管、情報與民事風險的合成修正；不保存真實武器型號、射程、座標、目標、彈藥量、命中率或交戰程序。</p>
+        </div>
+      </section>
+
+      <section id="data-flow" class="section">
+        <h2 class="section-title">系統資料流</h2>
+        <div class="flow">
+          <div class="flow-node"><strong>Excel / SQLite</strong><small>可攜副本、教學樣本、資料字典、分析儀表板</small></div>
+          <div class="flow-node"><strong>demo-data.js</strong><small>角色區域、兵力、能力、天候、情報、事件與公開來源</small></div>
+          <div class="flow-node"><strong>想定生成</strong><small>抽樣事件與情報；套用範本、資源、回合規則</small></div>
+          <div class="flow-node"><strong>回合推演</strong><small>命令、天候、事件、戰略壓力共同更新狀態</small></div>
+          <div class="flow-node"><strong>localStorage / AAR</strong><small>保存當前想定、命令、回合紀錄與實驗結果</small></div>
+        </div>
+        <div class="grid-2" style="margin-top:1rem">
+          <article class="card"><h3>由 data/demo-data.js 讀取</h3><p><code>zones</code>、<code>forcePackages</code>、<code>weather</code>、<code>intelligenceReports</code>、<code>eventCards</code> 會直接參與生成或推演；<code>publicSources</code>、<code>capabilities</code>、<code>publicActivitySample</code> 用於資料庫頁面。</p></article>
+          <article class="card"><h3>由 app.js / index.html 讀取</h3><p><code>SCENARIO_TEMPLATES</code>、<code>ACTIONS</code>、<code>RESOURCE_DEFAULTS</code>、<code>LLM_PRESETS</code> 與全部表單控制項目前是程式內建。工作表 17–21 是同步目錄與文件，不是執行時唯一真相來源；抽象作戰類型也必須同步更新 <code>ACTIONS</code>、<code>actionCatalog</code>、SQLite 與 Excel。</p></article>
+        </div>
+      </section>
+
+      <section id="quality" class="section">
+        <h2 class="section-title">目前資料品質與同步注意</h2>
+        <div class="callout danger">
+          <h3>17_Scenario_Templates 的 Q–W 欄標題與內容錯位</h3>
+          <p>目前實際內容依序是：Q＝目標、R＝成功條件、S＝限制、T＝參考資料、U＝戰略參數、V＝資源、W＝事件；但表頭顯示的順序不同。解析此表時應依本文件的「實際內容」欄，不可直接相信 Q–W 表頭。</p>
+        </div>
+        <div class="callout warning">
+          <h3>16_Dashboard 有舊版統計</h3>
+          <p>Dashboard 顯示兵力包 20 個、事件卡 12 張，但工作表實際已有兵力包 23 筆、事件卡 15 筆。該 Dashboard 是 Excel 靜態分析頁，不會被網頁回合引擎讀取。</p>
+        </div>
+        <div class="callout warning">
+          <h3>公開來源筆數在副本間不同</h3>
+          <p>Excel / SQLite 的 <code>01_Public_Sources</code> 有 16 筆；目前 <code>data/demo-data.js</code> 有 19 筆，因此網頁「資料庫」頁面會顯示 19 筆。修改任何副本後應重新執行同步流程。</p>
+        </div>
+      </section>
+
+      <section id="sheet-catalog" class="section">
+        <h2 class="section-title">工作表索引</h2>
+        <p class="section-intro">每張表都列出資料範圍、筆數、用途層次與完整欄位字典。可用左側搜尋即時篩選。</p>
+        <div class="legend"><span class="badge core">核心執行</span><span class="badge library">資料庫展示</span><span class="badge mirror">設定鏡像</span><span class="badge reference">參考／分析</span><span class="badge issue">已知注意事項</span></div>
+        <div id="sheetIndex" class="sheet-index"></div>
+        <div id="emptyResult" class="empty-result">找不到符合搜尋條件的工作表或欄位。</div>
+        <div id="sheetSections"></div>
+      </section>
+
+      <section id="relationships" class="section">
+        <h2 class="section-title">主要關聯鍵</h2>
+        <div class="relation-grid">
+          <article class="card"><h3>actor_id</h3><ul><li>主檔：<code>04_Actors.actor_id</code></li><li>被 06、07、11、13 引用</li><li>值域：BLUE、RED、AMBER、WHITE</li><li>程式目前以硬編碼 <code>actorLabel()</code> 顯示名稱</li></ul></article>
+          <article class="card"><h3>zone_id</h3><ul><li>主檔：<code>05_Zones.zone_id</code></li><li>被 06、08、09、10、11、12 引用</li><li>控制地圖、命令目標、情報／事件位置與天候</li><li><code>Z-REAR</code> 會依外部支援設定決定是否顯示</li></ul></article>
+          <article class="card"><h3>turn</h3><ul><li>情境回合數來自 03／17 或表單</li><li>串接 08、09、10、11、12、13</li><li>天候超過第 12 回合時會循環使用 1–12 回合資料</li><li>AAR 以回合紀錄重建時間線</li></ul></article>
+          <article class="card"><h3>package_id</h3><ul><li>主檔：<code>06_Force_Packages.package_id</code></li><li>由 13_Attrition 引用</li><li>網頁只用兵力包的角色平均值初始化狀態</li><li>損耗樣本不會回寫網頁兵力包</li></ul></article>
+          <article class="card"><h3>template_key</h3><ul><li>03 與 17 對應同一情境範本</li><li>網頁實際使用 <code>app.js/SCENARIO_TEMPLATES</code></li><li>切換範本時更新名稱、焦點、難度、回合與戰略參數</li></ul></article>
+          <article class="card"><h3>resource_id / action_id</h3><ul><li>19、20 是程式設定的可讀目錄</li><li>網頁實際使用 <code>RESOURCE_DEFAULTS</code> 與 <code>ACTIONS</code></li><li>資源影響初始平衡；行動修正回合狀態</li></ul></article>
+        </div>
+      </section>
+
+      <section id="formulas" class="section">
+        <h2 class="section-title">教學公式與網頁對應</h2>
+        <article class="card">
+          <h3>修正後單次效果機率</h3>
+          <div class="formula">adjusted = min(0.95, base_p × (0.6 + 0.4×detection) × (0.75 + 0.25×readiness) × (1 − 0.08×(sea−1)) × (1 − 0.12×jamming))</div>
+          <p>出現在 12_Engagements 與 14_Intercept_Lab。網頁的 <code>updateLab()</code> 以相同公式即時計算，但不讀取 Excel 的公式儲存格。</p>
+          <h3>至少一次成功</h3>
+          <div class="formula">at_least_one = 1 − (1 − adjusted)<sup>interceptor_shots</sup></div>
+          <p>假設各次嘗試近似獨立，只供比較資源投入的邊際效益。</p>
+          <h3>期望剩餘目標</h3>
+          <div class="formula">expected_residual = max(0, incoming_targets × (1 − at_least_one))</div>
+          <p>是期望值而非單次裁決結果；不得解讀為真實攔截率或武器性能。</p>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <footer>本文件依 2026-07-28 工作區內的 taiwan_strait_wargame_demo.xlsx、app.js、index.html 與 demo-data.js 撰寫。</footer>
+
+  <script>
+    const F = (name, type, meaning, use) => ({ name, type, meaning, use });
+    const sheets = [
+      {
+        id: "00_README", title: "資料庫定位與安全邊界", range: "A1:H13", rows: "10 項說明", badges: ["reference"],
+        summary: "工作簿入口頁，說明用途、資料分層、時間／區域尺度、禁止用途與表間關聯。",
+        use: "只供 Excel 使用者閱讀；不會載入網頁，也不影響任何計算。",
+        flow: "人工閱讀 → 理解安全界線與資料分層。",
+        fields: [
+          F("項目", "TEXT", "說明主題，例如定位、資料分層、安全邊界、時間尺度。", "Excel 文件索引。"),
+          F("內容", "TEXT", "該主題的完整說明。", "教學與治理說明，不進入回合引擎。")
+        ]
+      },
+      {
+        id: "01_Public_Sources", title: "公開與商用資料來源目錄", range: "A1:M19", rows: "16 筆", badges: ["library", "issue"],
+        summary: "保存來源的出版者、授權、更新頻率、可用欄位、用途與限制；不是把外部原始資料完整複製進來。",
+        use: "對應 data/demo-data.js 的 publicSources；由 renderLibrary() 顯示在「五、資料庫 → 公開來源」。Excel 目前 16 筆，網頁資料副本目前 19 筆。",
+        flow: "公開來源目錄 → 資料庫頁面搜尋／外部連結；不直接參與回合裁決。",
+        fields: [
+          F("source_id", "TEXT / PK", "來源代碼，例如 SRC-001。", "辨識與同步來源項目。"),
+          F("資料庫/來源 (name)", "TEXT", "資料集、網站、報告或服務名稱。", "資料庫頁面的主要顯示與搜尋欄。"),
+          F("類別 (category)", "TEXT", "軍事活動、氣象、地圖、戰略研究等分類。", "搜尋與理解適用範圍。"),
+          F("發布者 (publisher)", "TEXT", "政府、智庫、學術或商業發布單位。", "資料庫列表顯示。"),
+          F("存取 (access_type)", "TEXT", "官方公開、研究公開、註冊或付費。", "資料庫列表顯示；協助判斷取得條件。"),
+          F("格式 (format)", "TEXT", "網頁、CSV、JSON API、PDF、NetCDF 等。", "規劃後續匯入方式。"),
+          F("可用欄位/內容 (available_fields)", "TEXT", "該來源可提供的資料內容。", "資料設計參考，不會自動抓取。"),
+          F("授權 (license)", "TEXT", "授權或引用條款。", "資料治理與再利用檢查。"),
+          F("更新 (update_frequency)", "TEXT", "每日、年度、版本更新等。", "維護頻率規劃。"),
+          F("建議用途 (suggested_use)", "TEXT", "適合做背景、趨勢、事件或情境起始資料。", "資料庫頁面顯示。"),
+          F("主要限制 (limitations)", "TEXT", "解析度、估計誤差、授權或不適用情境。", "避免把公開資料錯用為即時作戰資料。"),
+          F("URL", "URL", "來源網址。", "資料庫頁面建立外部超連結。"),
+          F("查核日期 (checked_date)", "DATE", "最後確認來源可用性的日期。", "維護追蹤。")
+        ]
+      },
+      {
+        id: "02_Public_Activity", title: "國防部公開活動樣本", range: "A1:G8", rows: "5 筆", badges: ["library"],
+        summary: "少量官方公開活動公告的結構化範例，用來示範資料欄位與資料庫頁面。",
+        use: "對應 publicActivitySample；由 renderLibrary() 顯示在「五、資料庫 → 公開活動樣本」。不參與生成事件或回合勝負。",
+        flow: "公開公告樣本 → 資料庫列表／趨勢格式示範。",
+        fields: [
+          F("report_date", "DATE / PK", "公告日期。", "列表日期與排序依據。"),
+          F("PLA_aircraft (pla_aircraft)", "INTEGER", "公告中的軍機數量。", "資料庫頁面顯示；不進入兵力平衡。"),
+          F("PLAN_ships (plan_ships)", "INTEGER", "公告中的軍艦數量。", "資料庫頁面顯示。"),
+          F("official_ships", "INTEGER", "公告中的公務船數量。", "資料庫頁面顯示。"),
+          F("aircraft_cross_or_enter", "INTEGER", "越線或進入特定空域的數量摘要。", "資料庫頁面顯示。"),
+          F("摘要 (summary)", "TEXT", "公告重點文字。", "資料庫頁面顯示與搜尋。"),
+          F("source_url", "URL", "原始公告網址。", "追溯來源；目前頁面列表未顯示此欄。")
+        ]
+      },
+      {
+        id: "03_Scenario", title: "九種內建合成情境主檔摘要", range: "A1:L12", rows: "9 筆", badges: ["mirror"],
+        summary: "用一列概括一個情境範本的名稱、回合、重點、支援、天候與行動順序。",
+        use: "文件／SQLite 主檔摘要。網頁實際使用 app.js 的 SCENARIO_TEMPLATES；不直接讀取此表。完整設定見 17_Scenario_Templates。",
+        flow: "範本摘要 ↔ 17 完整設定；同步到 app.js 常數後才會影響想定生成。",
+        fields: [
+          F("scenario_id", "TEXT / PK", "情境主檔代碼。", "Excel／SQLite 識別，不是網頁生成情境的 TS-種子 ID。"),
+          F("scenario_name", "TEXT", "預設想定名稱。", "同步後顯示於想定名稱欄。"),
+          F("template_key", "TEXT", "範本鍵，例如 blockade。", "對應 scenarioTemplate 選單與 SCENARIO_TEMPLATES 鍵。"),
+          F("difficulty", "ENUM", "intro、standard、advanced。", "決定事件數、壓力與隨機摩擦倍率。"),
+          F("turns", "INTEGER", "總回合數。", "控制推演終止與事件排程。"),
+          F("hours_per_turn", "INTEGER", "每回合代表的小時數。", "換算 T+時間與戰略壓力經過天數。"),
+          F("time_range", "TEXT", "整體時間範圍摘要。", "文件顯示；網頁由 turns × hoursPerTurn 動態計算。"),
+          F("focus", "ENUM", "joint、airdefense、logistics、intelligence、civil、diplomacy。", "選取目標、成功條件與課程重點。"),
+          F("amber_support", "ENUM", "none、indirect、limited。", "控制外部支援角色、遠端區域與貢獻倍率。"),
+          F("weather_preset", "ENUM", "stable、variable、adverse。", "修正海象與能見度。"),
+          F("turn_order_mode", "ENUM", "simultaneous、red_first、alternating。", "決定提交順序與先手。"),
+          F("data_class", "TEXT", "EDUCATIONAL_SYNTHETIC。", "安全分類與匯入檢查概念。")
+        ]
+      },
+      {
+        id: "04_Actors", title: "角色與任務", range: "A1:F7", rows: "4 筆", badges: ["reference"],
+        summary: "BLUE、RED、AMBER、WHITE 的角色定位、目標、限制與課堂分組。",
+        use: "Excel／SQLite 角色主檔。網頁目前以 actorLabel() 與內建角色陣列顯示名稱，沒有直接讀取 DATA.actors。",
+        flow: "actor_id 作為 06、07、11、13 的關聯鍵；程式邏輯以相同代碼判斷角色。",
+        fields: [
+          F("actor_id", "TEXT / PK", "BLUE、RED、AMBER、WHITE。", "所有角色關聯與條件判斷的穩定代碼。"),
+          F("actor_name", "TEXT", "完整角色名稱。", "參考用；網頁顯示文字目前硬編碼。"),
+          F("role", "TEXT", "防衛方、施壓方、外部支援方或裁判。", "課程說明。"),
+          F("primary_objective", "TEXT", "角色主要目標。", "教學簡報與決策依據。"),
+          F("constraints", "TEXT", "角色行動限制。", "教學／白方裁決依據，不自動套用數值。"),
+          F("class_assignment", "TEXT", "學生組、教師或助教分工。", "課堂角色配置。")
+        ]
+      },
+      {
+        id: "05_Zones", title: "抽象區域", range: "A1:H11", rows: "8 筆", badges: ["core"],
+        summary: "不含精確座標的區域主檔，描述海域／陸域、距離帶、活動壓力與民事密度。",
+        use: "對應 DATA.zones；供 zoneName()、概略情勢圖、命令目標、白方事件、情報／天候面板與 LLM 命令提示使用。",
+        flow: "zone_id → 兵力起始區、每回合天候、情報、事件、命令與交互作用。",
+        fields: [
+          F("zone_id", "TEXT / PK", "抽象區域代碼，例如 Z-CW、Z-ISL、Z-REAR。", "所有區域資料的關聯鍵。"),
+          F("zone_name", "TEXT", "顯示名稱。", "情勢圖、選單、情報、天候與 AAR 顯示。"),
+          F("domain", "TEXT", "海域、陸域或遠端。", "地圖說明與 LLM 提示。"),
+          F("distance_band", "TEXT", "近岸、海峽中央、外海、城鎮／山地等。", "概略情勢圖說明，不用於距離計算。"),
+          F("activity_pressure", "ENUM", "低／中／高活動壓力。", "資料說明；目前回合引擎沒有直接換算。"),
+          F("civilian_density", "ENUM", "低／中／高民事密度。", "教學判斷；目前沒有直接進入公式。"),
+          F("maneuver_space", "ENUM", "低／中／高機動空間。", "教學判斷；目前沒有直接進入公式。"),
+          F("teaching_note", "TEXT", "區域教學提示與安全註記。", "情勢圖 hover 提示。")
+        ]
+      },
+      {
+        id: "06_Force_Packages", title: "合成兵力包與初始狀態", range: "A1:L26", rows: "23 筆", badges: ["core", "library"],
+        summary: "以抽象兵力包表示角色能力與狀態，不對應真實單位；含無人機、星鏈節點與高空通訊支援群。",
+        use: "averageForActor() 依角色平均 readiness、sustainment、command_quality 初始化回合狀態；survivability 平均值可帶入 STORM mobility。也顯示於資料庫的合成兵力包頁籤。",
+        flow: "actor_id 分組平均 → initialStatus()；start_zone → 資料庫顯示；不逐包進行網頁損耗。",
+        fields: [
+          F("package_id", "TEXT / PK", "兵力包代碼。", "13_Attrition 的 package_id 外鍵。"),
+          F("actor_id", "TEXT / FK", "所屬角色。", "分組計算角色初始平均值。"),
+          F("package_name", "TEXT", "抽象兵力包名稱。", "資料庫頁面顯示與搜尋。"),
+          F("domain", "TEXT", "C2、防空、航空、海軍、後勤、無人系統、衛星／高空通訊等。", "資料庫分類與 STORM 系統概念。"),
+          F("start_zone", "TEXT / FK", "起始抽象區域。", "資料庫頁面以 zoneName() 顯示。"),
+          F("readiness", "INTEGER 0–100", "初始準備／妥善指數。", "角色平均後成為初始 readiness。"),
+          F("combat_effect", "INTEGER 0–100", "抽象任務效果。", "資料庫顯示；目前回合公式不直接讀取。"),
+          F("survivability", "INTEGER 0–100", "抽象生存／韌性。", "資料庫顯示；BLUE 平均值可帶入 STORM mobility。"),
+          F("sustainment", "INTEGER 0–100", "後勤持續性。", "角色平均後成為初始 sustainment。"),
+          F("command_quality", "INTEGER 0–100", "指揮管制品質。", "角色平均後成為初始 command；藍方再疊加通訊資源修正。"),
+          F("priority", "INTEGER 1–5", "教學優先級。", "資料治理參考；目前回合引擎未使用。"),
+          F("data_type", "TEXT", "合成資料標記。", "安全分類。")
+        ]
+      },
+      {
+        id: "07_Capabilities", title: "能力與平台類型目錄", range: "A1:L21", rows: "18 筆", badges: ["library"],
+        summary: "以 1–5 指數比較能力角色，包含感測、涵蓋、機動、生存、持續與成本。",
+        use: "對應 DATA.capabilities；只顯示於「五、資料庫 → 合成能力」。目前不直接參與回合分數或 STORM 計算。",
+        flow: "能力目錄 → 資料庫搜尋／課程比較；不等同真實系統性能。",
+        fields: [
+          F("capability_id", "TEXT / PK", "能力目錄代碼。", "資料識別。"),
+          F("capability_name", "TEXT", "抽象能力或平台名稱。", "資料庫主要顯示與搜尋。"),
+          F("actor_id", "TEXT / FK", "所屬角色。", "資料庫顯示角色標籤。"),
+          F("domain", "TEXT", "防空、感測、航空、海軍、網路、無人系統、通訊等。", "能力分類。"),
+          F("role", "TEXT", "主要任務角色。", "資料庫列表顯示。"),
+          F("sensor_index", "INTEGER 1–5", "感測能力指數。", "資料庫列表顯示。"),
+          F("reach_index", "INTEGER 1–5", "抽象涵蓋／可達能力。", "資料庫列表顯示；不代表真實射程。"),
+          F("mobility_index", "INTEGER 1–5", "機動能力指數。", "Excel 參考；網頁資料庫目前未顯示此欄。"),
+          F("survivability_index", "INTEGER 1–5", "生存與韌性指數。", "資料庫列表顯示。"),
+          F("sustainment_index", "INTEGER 1–5", "持續運作能力。", "資料庫列表顯示。"),
+          F("cost_index", "INTEGER 1–5", "相對成本／負荷。", "Excel 參考；目前網頁未顯示。"),
+          F("note", "TEXT", "限制、尺度與安全說明。", "資料庫列表顯示。")
+        ]
+      },
+      {
+        id: "08_Weather", title: "合成海象與能見度", range: "A1:I99", rows: "96 筆", badges: ["core"],
+        summary: "12 回合 × 8 區域的合成天候資料。",
+        use: "currentWeather() 依當前回合取出資料；超過 12 回合會循環。stable/adverse 預設會修正海象與能見度；最差區域顯示於面板，平均環境值進入回合裁決。",
+        flow: "turn + zone_id → 天候面板 → avgSea / avgVisibility → environmentPenalty → 回合 balance。",
+        fields: [
+          F("turn", "INTEGER / PK 部分", "第幾回合。", "currentWeather() 的主要篩選條件。"),
+          F("hour_from_start", "INTEGER", "距情境起點的小時數。", "Excel 時序說明；網頁用情境 hoursPerTurn 另算時間。"),
+          F("zone_id", "TEXT / FK / PK 部分", "天候所屬區域。", "顯示最不利區域名稱。"),
+          F("sea_state_1_5", "INTEGER 1–5", "海象嚴苛度，數值越高越不利。", "天候預設修正；平均值增加環境懲罰。"),
+          F("visibility_1_5", "INTEGER 1–5", "能見度品質，數值越高越佳。", "天候預設修正；平均值影響環境懲罰。"),
+          F("wind_kts", "INTEGER", "合成風速（節）。", "天候面板顯示，不直接進入公式。"),
+          F("precip_probability_pct", "INTEGER 0–100", "合成降水機率。", "天候面板顯示。"),
+          F("scenario_note", "TEXT", "天候情境備註。", "Excel 資料說明；目前網頁未顯示。"),
+          F("data_type", "TEXT", "SYNTHETIC。", "安全分類。")
+        ]
+      },
+      {
+        id: "09_Intelligence", title: "合成情報與教師真實狀態", range: "A1:L33", rows: "30 筆", badges: ["core"],
+        summary: "情報報告同時保存學生可見研判、來源可靠度、信心與教師真實狀態。",
+        use: "generateScenario() 依不確定度抽樣 3–6 筆並調整 confidence_pct；回合情報面板顯示 report_type、report_text、source_reliability 與 confidence_pct。",
+        flow: "情報樣本 → 隨機抽樣與重新排程 → scenario.intel → 每回合情報面板。",
+        fields: [
+          F("report_id", "TEXT / PK", "情報報告代碼。", "生成時改寫為 GEN-INT-*。"),
+          F("turn", "INTEGER", "情報發布回合。", "currentIntel() 篩選顯示。"),
+          F("recipient_actor", "TEXT / FK", "情報接收角色。", "保留角色差異；目前面板未再依角色過濾。"),
+          F("zone_id", "TEXT / FK", "情報涉及區域。", "情報面板顯示區域名稱。"),
+          F("report_type", "TEXT", "後勤跡象、電磁活動等類型。", "情報面板標題。"),
+          F("report_text", "TEXT", "可供決策的合成觀測文字。", "情報面板正文與 LLM 當前狀態背景。"),
+          F("source_reliability", "ENUM A–D", "來源可靠度分級。", "情報面板顯示。"),
+          F("confidence_pct", "INTEGER 0–100", "分析信心百分比。", "生成時依 uncertainty 下調並加隨機量。"),
+          F("assessed_level", "INTEGER 1–5", "分析者研判的強度。", "AAR 比較用；目前網頁面板未顯示。"),
+          F("teacher_truth_level", "INTEGER 1–5", "教師／白方掌握的合成真實狀態。", "課後檢討用；不應提前給學生。"),
+          F("visibility", "TEXT", "學生可見或管理者可見。", "資料治理標記；目前 generateScenario() 未依此欄過濾。"),
+          F("note", "TEXT", "合成與 AAR 使用說明。", "Excel 參考。")
+        ]
+      },
+      {
+        id: "10_Event_Cards", title: "情境事件卡", range: "A1:M18", rows: "15 筆", badges: ["core"],
+        summary: "固定／條件事件及其對準備、持續、指管與民事風險的影響。",
+        use: "generateScenario() 依難度與回合數抽樣事件並重新排程；currentEvents() 依回合顯示；applyEvent() 更新狀態。白方臨時事件使用相容欄位結構，但預設數值修正為 0。",
+        flow: "事件卡 → 範本抽樣／案例事件追加 → scenario.events → 回合面板與 applyEvent()。",
+        fields: [
+          F("event_id", "TEXT / PK", "事件代碼。", "生成時加入種子；白方事件使用 WHITE-*。"),
+          F("trigger_turn", "INTEGER", "觸發回合。", "currentEvents() 篩選。"),
+          F("event_name", "TEXT", "事件名稱。", "回合面板與 AAR 時間線。"),
+          F("category", "TEXT", "民事、資訊、電子戰、氣象、後勤、外交、C2 等。", "事件面板分類顯示。"),
+          F("zone_id", "TEXT / FK", "影響區域。", "事件面板、概略情勢圖訊號。"),
+          F("affected_actor", "TEXT", "BLUE、RED、AMBER、WHITE 或 ALL。", "applyEvent() 決定哪些角色狀態被修正。"),
+          F("description", "TEXT", "情境變化與影響說明。", "事件面板與 LLM 提示。"),
+          F("readiness_delta", "INTEGER", "準備度加減值。", "applyEvent() 直接加到受影響角色 readiness。"),
+          F("mobility_delta", "INTEGER", "機動修正。", "保留給擴充；目前回合狀態沒有 mobility 欄，未套用。"),
+          F("sustainment_delta", "INTEGER", "持續性加減值。", "applyEvent() 更新 sustainment。"),
+          F("command_delta", "INTEGER", "指管加減值。", "applyEvent() 更新 command。"),
+          F("civilian_risk_delta", "INTEGER", "藍方民事風險加減值。", "applyEvent() 更新 BLUE.civilianRisk。"),
+          F("trigger_type", "TEXT", "固定或條件。", "資料說明；目前引擎仍依 trigger_turn 直接觸發。")
+        ]
+      },
+      {
+        id: "11_Orders", title: "示範回合命令", range: "A1:J39", rows: "36 筆", badges: ["reference"],
+        summary: "12 回合、BLUE／RED／AMBER 的示範命令紀錄。",
+        use: "只供 Excel／SQLite 資料模型與 Dashboard 示範。網頁命令由表單或 AI 產生，保存在 state.orders / localStorage，不載入此表。",
+        flow: "Excel 樣本 → Dashboard／資料庫原型；網頁另走 orderForm → state.orders → resolveTurn()。",
+        fields: [
+          F("order_id", "TEXT / PK", "命令代碼。", "Excel／SQLite 識別。"),
+          F("turn", "INTEGER", "命令所屬回合。", "Excel 時序分析。"),
+          F("actor_id", "TEXT / FK", "下令角色。", "關聯角色主檔。"),
+          F("zone_id", "TEXT / FK", "行動目標區域。", "關聯區域主檔。"),
+          F("action", "TEXT", "主要行動名稱。", "概念上應對應 20_Actions；Excel 樣本仍是單一行動的舊版紀錄。"),
+          F("resource_points", "INTEGER", "投入抽象資源點數。", "新版網頁會彙總命令包的主行動與2–4項支援行動，並限制在35點內。"),
+          F("risk_level_1_5", "INTEGER 1–5", "命令風險分級。", "新版網頁每項行動均保存低／中／高風險；此表保留舊版1–5示範欄。"),
+          F("rationale", "TEXT", "決策理由。", "網頁會保存並顯示於命令與 AAR。"),
+          F("status", "TEXT", "已提交等狀態。", "Excel 流程示範；網頁以是否存在於 state.orders 判斷。"),
+          F("note", "TEXT", "合成命令備註。", "安全與資料來源說明。")
+        ]
+      },
+      {
+        id: "12_Engagements", title: "合成交戰與防護判定", range: "A1:Q27", rows: "24 筆", badges: ["reference"],
+        summary: "交互作用樣本與防護機率公式，用於資料庫原型與 Excel 分析。",
+        use: "網頁不載入 engagement_log。其 adjusted_p 與 at_least_one_success_p 公式和網頁『攔截資源配置實驗』的 updateLab() 相同。",
+        flow: "輸入條件 → Excel 公式 → 裁決樣本／Dashboard；網頁僅平行重算，不共享紀錄。",
+        fields: [
+          F("engagement_id", "TEXT / PK", "交互作用代碼。", "Excel／SQLite 識別。"),
+          F("turn", "INTEGER", "發生回合。", "時序分析。"),
+          F("attacker", "TEXT / FK", "作用發起角色。", "角色關聯。"),
+          F("defender", "TEXT / FK", "防護角色。", "角色關聯。"),
+          F("zone_id", "TEXT / FK", "發生區域。", "區域分析。"),
+          F("incoming_targets", "INTEGER", "合成來襲目標數。", "期望剩餘目標的基數。"),
+          F("interceptor_shots", "INTEGER", "配置嘗試次數。", "至少一次成功機率的次方指數。"),
+          F("base_p", "REAL 0–1", "單次基準效果機率。", "修正公式輸入；非真實性能。"),
+          F("detection_quality", "REAL 0–1", "偵測品質。", "修正單次機率。"),
+          F("readiness", "REAL 0–1", "系統準備度。", "修正單次機率。"),
+          F("sea_state", "INTEGER 1–5", "海象嚴苛度。", "海象越高，單次機率越低。"),
+          F("jamming_level", "REAL 0–1", "干擾程度。", "干擾越高，單次機率越低。"),
+          F("adjusted_p", "FORMULA / REAL", "綜合偵測、準備、海象與干擾後的單次機率。", "Excel 公式示範；網頁 updateLab() 平行計算。"),
+          F("at_least_one_success_p", "FORMULA / REAL", "多次投入至少一次成功的機率。", "Excel 公式示範。"),
+          F("adjudicated_outcome", "TEXT", "防護成功或部分／未成功。", "示範裁決結果；網頁回合引擎不用此欄。"),
+          F("damage_severity", "TEXT", "無、輕微、中等、重大等。", "Excel 損害分析。"),
+          F("safety_note", "TEXT", "合成資料安全提醒。", "防止被解讀為實戰統計。")
+        ]
+      },
+      {
+        id: "13_Attrition", title: "合成損耗與恢復紀錄", range: "A1:M33", rows: "30 筆", badges: ["reference"],
+        summary: "兵力包準備度、彈藥／燃料指數、損害與修復的回合樣本。",
+        use: "Excel／SQLite 與 Dashboard 分析用。網頁回合結算直接更新角色整體狀態，不載入或寫回 attrition_log。",
+        flow: "package_id + turn → 損耗／修復紀錄 → Dashboard 角色彙總。",
+        fields: [
+          F("attrition_id", "TEXT / PK", "損耗紀錄代碼。", "Excel／SQLite 識別。"),
+          F("turn", "INTEGER", "損耗回合。", "時序分析。"),
+          F("package_id", "TEXT / FK", "受影響兵力包。", "關聯 06_Force_Packages。"),
+          F("actor_id", "TEXT / FK", "所屬角色。", "Dashboard 依角色彙總。"),
+          F("cause", "TEXT", "交互作用、事件損害、維修延誤等。", "原因分類。"),
+          F("readiness_before", "INTEGER 0–100", "變化前準備度。", "Dashboard 平均值。"),
+          F("readiness_loss", "INTEGER", "本次損失。", "計算 readiness_after 的組成。"),
+          F("repair_gain", "INTEGER", "本次修復回升。", "計算 readiness_after 的組成。"),
+          F("readiness_after", "INTEGER 0–100", "變化後準備度。", "Dashboard 角色平均與趨勢。"),
+          F("ammo_change_index", "INTEGER", "抽象彈藥變化指數。", "Dashboard 加總；非真實庫存。"),
+          F("fuel_change_index", "INTEGER", "抽象燃料變化指數。", "Dashboard 加總；非真實庫存。"),
+          F("damage_level", "TEXT", "損害嚴重度。", "Excel 分析分類。"),
+          F("note", "TEXT", "合成損耗／恢復註記。", "安全說明。")
+        ]
+      },
+      {
+        id: "14_Intercept_Lab", title: "攔截資源配置教學實驗", range: "A1:M14", rows: "6 筆", badges: ["reference"],
+        summary: "六組合成輸入案例與三個衍生機率／期望值。",
+        use: "對應 demo-data.js 的 interceptLab，但 app.js 目前沒有讀取 DATA.interceptLab。網頁實驗室由使用者輸入並用 updateLab() 即時計算相同公式。",
+        flow: "案例輸入 → Excel 公式／結果；網頁另由 lab* 控制項 → updateLab()。",
+        fields: [
+          F("case_id", "TEXT / PK", "教學案例代碼。", "案例辨識。"),
+          F("case_name", "TEXT", "案例名稱。", "課堂比較標籤。"),
+          F("incoming_targets", "INTEGER", "合成來襲目標數。", "期望剩餘目標基數。"),
+          F("interceptor_shots", "INTEGER", "配置嘗試次數。", "至少一次成功機率。"),
+          F("base_p", "REAL 0–1", "基準單次機率。", "公式輸入。"),
+          F("detection_quality", "REAL 0–1", "偵測品質。", "公式輸入。"),
+          F("readiness", "REAL 0–1", "準備度。", "公式輸入。"),
+          F("sea_state", "INTEGER 1–5", "海象。", "公式輸入。"),
+          F("jamming_level", "REAL 0–1", "干擾程度。", "公式輸入。"),
+          F("adjusted_single_attempt_p", "FORMULA / REAL", "修正後單次效果機率。", "網頁 updateLab() 對應 adjusted。"),
+          F("at_least_one_success_p", "FORMULA / REAL", "至少一次成功機率。", "網頁 updateLab() 對應 atLeastOne。"),
+          F("expected_residual_targets", "FORMULA / REAL", "期望剩餘目標數。", "網頁 updateLab() 對應 residual。"),
+          F("note", "TEXT", "合成教學參數註記。", "安全說明。")
+        ]
+      },
+      {
+        id: "15_Data_Dictionary", title: "資料字典與分類", range: "A1:E28", rows: "25 筆", badges: ["reference"],
+        summary: "列出重要表／欄位、資料型別、說明與真實／合成分類；是摘要字典，不是每個欄位都收錄。",
+        use: "Excel／SQLite 維護文件；網頁不載入。完整欄位定義以本 HTML 與實際表頭為準。",
+        flow: "表與欄位 → 說明／分類 → 維護與稽核。",
+        fields: [
+          F("table_name", "TEXT", "資料表名稱。", "定位欄位所屬表。"),
+          F("field_name", "TEXT", "欄位名稱。", "定位被說明欄位。"),
+          F("data_type", "TEXT", "TEXT、INTEGER、REAL、DATE、FORMULA、JSON 等。", "匯入與驗證參考。"),
+          F("description", "TEXT", "欄位語意、尺度或限制。", "資料維護說明。"),
+          F("data_class", "TEXT", "真實來源、真實公開資料、合成或系統設定。", "安全分類與使用界線。")
+        ]
+      },
+      {
+        id: "16_Dashboard", title: "Excel 分析儀表板", range: "A1:L36", rows: "多區塊", badges: ["reference", "issue"],
+        summary: "彙整來源、兵力、情境、情報、交互作用、事件、損耗與準備度趨勢，包含圖表。",
+        use: "只在 Excel 中檢視；網頁有獨立的狀態卡與 AAR，不讀取此 Dashboard。當前兵力包與事件卡 KPI 尚未更新。",
+        flow: "01／06／10／12／13 的樣本 → 靜態彙總區與圖表；不回饋到回合引擎。",
+        fields: [
+          F("A3:D7 KPI 區", "區塊", "公開來源、兵力包、情境回合、情報報告的值／單位／說明。", "Excel 概覽；兵力包顯示 20，實際已 23。"),
+          F("H3:L7 交戰摘要", "區塊", "交互作用、成功裁決、事件卡、公開活動樣本。", "Excel 概覽；事件卡顯示 12，實際已 15。"),
+          F("A10:F13 損耗彙總", "區塊", "依 actor_id 彙總準備度前後、彈藥／燃料指數與事件數。", "支援損耗比較圖。"),
+          F("H10:K21 準備度趨勢", "區塊", "每回合 BLUE、RED、AMBER 準備度。", "支援趨勢折線圖。"),
+          F("圖表", "Excel Chart", "損耗比較與準備度趨勢。", "簡報與課後檢討。"),
+          F("使用建議", "TEXT", "說明公開背景層、教師合成參數、情報隔離與裁決留痕。", "課程流程提醒。")
+        ]
+      },
+      {
+        id: "17_Scenario_Templates", title: "情境範本完整設定", range: "A1:X12", rows: "9 筆", badges: ["mirror", "issue"],
+        summary: "保存九種範本的名稱、回合、先手、支援、天候、案例來源、敘事、JSON 目標／參數／事件。",
+        use: "對應 data.scenarioTemplates 的文件副本；網頁實際由 app.js 的 SCENARIO_TEMPLATES 與 FOCUS_LIBRARY 執行。",
+        flow: "範本目錄 → 同步 app.js 常數 → applyScenarioTemplate() / generateScenario() / LLM prompt。",
+        warning: "Q–W 欄目前表頭錯位。下列欄位已按『欄位位置＋實際內容』說明。",
+        fields: [
+          F("template_key", "TEXT / PK", "範本鍵。", "對應 scenarioTemplate 選單。"),
+          F("介面標籤", "TEXT", "選單顯示名稱。", "同步 index.html option。"),
+          F("想定名稱", "TEXT", "範本預設名稱。", "切換範本時帶入 scenarioName。"),
+          F("重點", "ENUM", "focus 鍵。", "選取 FOCUS_LIBRARY 的目標與成功條件。"),
+          F("難度", "ENUM", "intro／standard／advanced。", "事件數與壓力倍率。"),
+          F("回合", "INTEGER", "總回合數。", "套用到 turns。"),
+          F("時數/回合", "INTEGER", "每回合小時數。", "套用到 hoursPerTurn。"),
+          F("時間範圍", "TEXT", "T+0 至結束時間。", "文件顯示。"),
+          F("情報不確定度", "INTEGER 1–5", "情報雜訊設定。", "影響初始 intel 與 confidence_pct。"),
+          F("民事壓力", "INTEGER 1–5", "初始民事壓力。", "影響 BLUE.civilianRisk。"),
+          F("外部支援", "ENUM", "none／indirect／limited。", "控制 AMBER 角色與貢獻。"),
+          F("天候", "ENUM", "stable／variable／adverse。", "修正海象與能見度。"),
+          F("回合順序", "ENUM", "simultaneous／red_first／alternating。", "決定命令先後。"),
+          F("先手公開", "ENUM", "sealed／public。", "後手是否看得到先手命令。"),
+          F("來源/案例", "TEXT", "案例來源標籤。", "想定預覽顯示來源。"),
+          F("簡介", "TEXT", "範本情境摘要。", "預覽、LLM prompt 與 scenario.overview。"),
+          F("Q欄：表頭『戰略參數JSON』", "JSON（實際為 objectives_json）", "實際保存教學目標陣列。", "同步後成為 scenario.objectives。"),
+          F("R欄：表頭『資源JSON』", "JSON（實際為 success_criteria_json）", "實際保存成功條件陣列。", "同步後成為 scenario.successCriteria。"),
+          F("S欄：表頭『目標JSON』", "JSON（實際為 constraints_json）", "實際保存額外限制陣列。", "追加到 scenario.constraints。"),
+          F("T欄：表頭『成功條件JSON』", "JSON（實際為 references_json）", "實際保存參考資料陣列。", "範本說明區顯示參考連結。"),
+          F("U欄：表頭『限制JSON』", "JSON（實際為 strategic_parameters_json）", "實際保存封控型態、能源、彈藥、核升級與經濟衝擊參數。", "applyStrategicPressure() 的設定來源概念。"),
+          F("V欄：表頭『參考資料JSON』", "JSON（實際為 resources_json）", "實際保存 11 項合成資源。", "同步後成為資源預設值。"),
+          F("W欄：事件JSON", "JSON", "範本專屬案例事件陣列。", "generateScenario() 追加至抽樣事件。"),
+          F("資料分類", "TEXT", "EDUCATIONAL_SYNTHETIC。", "安全分類。")
+        ]
+      },
+      {
+        id: "18_Settings", title: "全部介面控制項目錄", range: "A1:N65", rows: "62 筆", badges: ["mirror"],
+        summary: "由 index.html 控制項同步產生的設定字典，涵蓋想定、LLM、命令、攔截實驗與 STORM。",
+        use: "文件與 SQLite 設定目錄；網頁實際直接讀取 DOM 控制項，不會用 DATA.settingCatalog 建立表單。",
+        flow: "index.html 控制項 → settingCatalog 快照；修改表格本身不會改變介面。",
+        fields: [
+          F("setting_id", "TEXT", "DOM 元素 id，例如 turns、llmProvider、stormC2。", "對照 app.js 的 $(id) 存取。"),
+          F("介面區段", "TEXT", "global、builder、simulation、storm 等。", "定位功能頁。"),
+          F("設定名稱", "TEXT", "使用者看到的標籤。", "文件顯示。"),
+          F("控制類型", "TEXT", "text、number、range、select、textarea、file 等。", "表單型態說明。"),
+          F("預設值", "TEXT / NUMBER", "HTML 初始值或預設選項。", "對照載入示範與重設行為。"),
+          F("最小值", "NUMBER", "數字／滑桿下限。", "輸入驗證。"),
+          F("最大值", "NUMBER", "數字／滑桿上限。", "輸入驗證。"),
+          F("步進", "NUMBER", "step 屬性。", "輸入精度。"),
+          F("選項值JSON", "JSON", "select 的機器值陣列。", "比對 app.js 邏輯值。"),
+          F("選項標籤JSON", "JSON", "select 的顯示文字陣列。", "介面文件。"),
+          F("預設停用", "BOOLEAN 0/1", "控制項起始是否 disabled。", "例如同時密封提交時先手公開選單停用。"),
+          F("敏感資料", "BOOLEAN 0/1", "是否為 API Key 等敏感值。", "提醒不可寫入資料庫。"),
+          F("來源", "TEXT", "目前為 index.html。", "同步追溯。"),
+          F("備註", "TEXT", "同步或安全說明。", "API Key 欄明示只保存空白預設。")
+        ]
+      },
+      {
+        id: "19_Resources", title: "合成資源目錄", range: "A1:J14", rows: "11 筆", badges: ["mirror"],
+        summary: "BLUE／RED 的航空、防空、海上、後勤、無人機、星鏈與高空通訊資源預設值及上下限。",
+        use: "文件目錄；網頁實際使用 app.js 的 RESOURCE_DEFAULTS、readResourceInventory() 與 calculateResourceBalance()。",
+        flow: "介面輸入 → readResourceInventory() → resourceBalance；無人機修正初始情報，星鏈／高空平臺修正初始指管。",
+        fields: [
+          F("resource_id", "TEXT / PK", "程式資源鍵。", "對應表單 id 與 scenario.resources 屬性。"),
+          F("actor_id", "TEXT", "資源歸屬角色。", "資源平衡分組。"),
+          F("類別", "TEXT", "航空、防空、後勤、無人系統、衛星／高空通訊等。", "文件分類。"),
+          F("資源名稱", "TEXT", "介面顯示名稱。", "對照 index.html。"),
+          F("預設值", "NUMBER", "基線合成存量。", "正規化資源平衡；基線時修正為 0。"),
+          F("最小值", "NUMBER", "允許最小值。", "介面與讀值限制。"),
+          F("最大值", "NUMBER", "允許最大值。", "介面與 readResourceInventory() clamp。"),
+          F("單位", "TEXT", "合成單位。", "避免解讀為真實編制。"),
+          F("效果說明", "TEXT", "影響資源平衡、情報或指管。", "理解 calculateResourceBalance() 與 initialStatus()。"),
+          F("資料分類", "TEXT", "EDUCATIONAL_SYNTHETIC。", "安全分類。")
+        ]
+      },
+      {
+        id: "20_Actions", title: "回合行動與抽象修正", range: "A1:J41", rows: "38 筆", badges: ["mirror"],
+        summary: "BLUE、RED、AMBER 可選行動與五項狀態修正；含12項航空、防空、遠程火力、海上及水下抽象作戰類型。",
+        use: "文件目錄；網頁實際使用 app.js 的 ACTIONS。updateActionOptions() 建立選單，applyOwnAction() 依主／支援角色、優先級與投入資源套用修正。",
+        flow: "角色 → 命令包 → actionEffect() → 主／支援權重 × 優先級 × resource/20 → 更新狀態與民事風險。",
+        warning: "作戰類型只表示抽象任務效果與取捨，不可解讀為真實武器性能、目標選擇或交戰建議。",
+        fields: [
+          F("action_id", "TEXT / PK", "行動目錄代碼。", "資料識別；網頁以行動名稱比對。"),
+          F("actor_id", "TEXT", "可使用此行動的角色。", "決定命令選單內容。"),
+          F("行動名稱", "TEXT", "命令名稱。", "ACTIONS 查找鍵、命令顯示與 AI 允許值。"),
+          F("準備度修正", "INTEGER", "readiness 加減基值。", "依命令包角色、優先級與 resource/20 加權後套用。"),
+          F("持續性修正", "INTEGER", "sustainment 加減基值。", "依命令包角色、優先級與 resource/20 加權後套用。"),
+          F("指管修正", "INTEGER", "command 加減基值。", "依命令包角色、優先級與 resource/20 加權後套用。"),
+          F("情報修正", "INTEGER", "intel 加減基值。", "依命令包角色、優先級與 resource/20 加權後套用。"),
+          F("民事風險修正", "INTEGER", "BLUE.civilianRisk 加減基值。", "BLUE 或 RED 行動均可能影響藍方民事風險。"),
+          F("資料分類", "TEXT", "EDUCATIONAL_SYNTHETIC。", "安全分類。"),
+          F("備註", "TEXT", "與 app.js 同步及數值限制說明。", "維護提醒。")
+        ]
+      },
+      {
+        id: "21_LLM_Providers", title: "LLM 供應商與 Endpoint", range: "A1:F7", rows: "4 筆", badges: ["mirror"],
+        summary: "Gemini、OpenAI、Claude、CGU／相容 API 的模型與 Endpoint 預設值。",
+        use: "文件目錄；網頁實際使用 app.js 的 LLM_PRESETS。updateLlmProvider() 依供應商帶入 Endpoint、模型與 datalist。",
+        flow: "供應商選擇 → LLM_PRESETS → Endpoint / model → requestLlm()；API Key 僅存瀏覽器 localStorage。",
+        fields: [
+          F("provider_id", "TEXT / PK", "gemini、openai、claude、cgu。", "llmProvider 選單值與 requestLlm() 分支。"),
+          F("供應商", "TEXT", "顯示名稱。", "LLM 狀態訊息。"),
+          F("預設模型", "TEXT", "切換供應商時帶入的模型。", "llmModel 初始值。"),
+          F("API Endpoint", "HTTPS URL", "供應商 API 基底網址。", "依供應商組成 generateContent、responses 或 messages 路徑。"),
+          F("模型清單JSON", "JSON", "模型建議清單。", "llmModelOptions datalist。"),
+          F("API Key 保存政策", "TEXT", "瀏覽器本機；資料庫不保存。", "安全提醒；實際程式目前保存於 localStorage，可手動清除。")
+        ]
+      }
+    ];
+
+    const badgeLabels = {
+      core: "核心執行",
+      library: "資料庫展示",
+      mirror: "設定鏡像",
+      reference: "參考／分析",
+      issue: "注意事項"
+    };
+
+    const escapeHtml = value => String(value).replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[char]));
+
+    function render() {
+      document.getElementById("sheetNav").innerHTML = sheets.map(s => `<a href="#sheet-${s.id}">${s.id}</a>`).join("");
+      document.getElementById("sheetIndex").innerHTML = sheets.map(s => `<a href="#sheet-${s.id}" data-search-card="${escapeHtml(JSON.stringify(s))}"><strong>${s.id}</strong><span>${s.title} · ${s.rows}</span></a>`).join("");
+      document.getElementById("sheetSections").innerHTML = sheets.map(s => `
+        <article id="sheet-${s.id}" class="sheet" data-search="${escapeHtml(JSON.stringify(s))}">
+          <div class="sheet-head">
+            <div><h3>${s.id}</h3><div class="sheet-title">${s.title}</div></div>
+            <div class="sheet-meta"><span class="badge reference">${s.range}</span><span class="badge reference">${s.rows}</span>${s.badges.map(b => `<span class="badge ${b}">${badgeLabels[b]}</span>`).join("")}</div>
+          </div>
+          <div class="usage">
+            <div><strong>資料內容</strong>${s.summary}</div>
+            <div><strong>實際系統用途</strong>${s.use}</div>
+          </div>
+          <p><strong>資料流：</strong>${s.flow}</p>
+          ${s.warning ? `<div class="callout danger"><strong>${s.warning}</strong></div>` : ""}
+          <div class="table-wrap"><table>
+            <thead><tr><th>欄位</th><th>型別／尺度</th><th>欄位意義</th><th>在系統中的用途</th></tr></thead>
+            <tbody>${s.fields.map(f => `<tr><td><span class="mono">${f.name}</span></td><td>${f.type}</td><td>${f.meaning}</td><td>${f.use}</td></tr>`).join("")}</tbody>
+          </table></div>
+        </article>`).join("");
+    }
+
+    render();
+
+    const search = document.getElementById("search");
+    search.addEventListener("input", () => {
+      const query = search.value.trim().toLowerCase();
+      let visible = 0;
+      document.querySelectorAll(".sheet").forEach(sheet => {
+        const match = !query || sheet.dataset.search.toLowerCase().includes(query);
+        sheet.hidden = !match;
+        if (match) visible += 1;
+      });
+      document.querySelectorAll("#sheetIndex a").forEach(card => {
+        card.style.display = !query || card.dataset.searchCard.toLowerCase().includes(query) ? "block" : "none";
+      });
+      document.getElementById("emptyResult").style.display = visible ? "none" : "block";
+    });
+
+    const navLinks = [...document.querySelectorAll(".sidebar a")];
+    const observer = new IntersectionObserver(entries => {
+      const active = entries.filter(entry => entry.isIntersecting).sort((a,b) => b.intersectionRatio - a.intersectionRatio)[0];
+      if (!active) return;
+      navLinks.forEach(link => link.classList.toggle("active", link.getAttribute("href") === `#${active.target.id}`));
+    }, { rootMargin: "-15% 0px -72% 0px", threshold: [0, .1, .5] });
+    document.querySelectorAll("main section[id], .sheet[id]").forEach(section => observer.observe(section));
+  </script>
+</body>
+</html>

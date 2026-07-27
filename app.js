@@ -16,7 +16,12 @@
       ["無人機偵察與通訊中繼", { readiness: 1, sustainment: -1, command: 2, intel: 5, civilian: 0 }],
       ["星鏈與高空平臺備援通訊", { readiness: 1, sustainment: -1, command: 6, intel: 2, civilian: 0 }],
       ["能源配給與電網調度", { readiness: -1, sustainment: 4, command: 2, civilian: -3 }],
-      ["經濟持續運作協調", { readiness: 0, sustainment: 3, command: 2, civilian: -4 }]
+      ["經濟持續運作協調", { readiness: 0, sustainment: 3, command: 2, civilian: -4 }],
+      ["【航空】空中攔截任務", { readiness: 2, sustainment: -2, command: 1, intel: 2, civilian: 1 }],
+      ["【防空】分層防空交戰", { readiness: 2, sustainment: -3, command: 2, intel: 1, civilian: 1 }],
+      ["【遠程火力】遠程火力反制", { readiness: -1, sustainment: -3, command: 0, intel: 1, civilian: 4 }],
+      ["【海上】海上拒止任務", { readiness: 1, sustainment: -2, command: 1, intel: 1, civilian: 2 }],
+      ["【水下】水下威懾與反潛警戒", { readiness: 1, sustainment: -2, command: 1, intel: 3, civilian: 1 }]
     ],
     RED: [
       ["增加空中施壓", { readiness: -1, command: 1, intel: 0, civilian: 3 }],
@@ -25,7 +30,11 @@
       ["遠程火力展示", { readiness: -2, command: 0, intel: 0, civilian: 6 }],
       ["調整封控區", { sustainment: 1, command: 1, intel: 0, civilian: 3 }],
       ["外交訊息操作", { readiness: 0, command: 1, intel: 2, civilian: -1 }],
-      ["海警與海上民兵執法封控", { readiness: 0, sustainment: 1, command: 1, intel: 2, civilian: 5 }]
+      ["海警與海上民兵執法封控", { readiness: 0, sustainment: 1, command: 1, intel: 2, civilian: 5 }],
+      ["【航空】空中攔截與護航", { readiness: 1, sustainment: -2, command: 1, intel: 1, civilian: 3 }],
+      ["【遠程火力】遠程火力施壓", { readiness: -2, sustainment: -3, command: 0, intel: 0, civilian: 7 }],
+      ["【海上】海上拒止行動", { readiness: 1, sustainment: -2, command: 1, intel: 1, civilian: 4 }],
+      ["【水下】水下封控與反潛警戒", { readiness: 1, sustainment: -2, command: 1, intel: 2, civilian: 4 }]
     ],
     AMBER: [
       ["提供ISR支援", { readiness: 0, command: 1, intel: 6, civilian: 0 }],
@@ -36,7 +45,10 @@
       ["人道支援準備", { readiness: 0, sustainment: 2, intel: 0, civilian: -5 }],
       ["提供衛星與高空通訊支援", { readiness: 1, sustainment: 1, command: 6, intel: 3, civilian: 0 }],
       ["多國商船護航協調", { readiness: 1, sustainment: 2, command: 3, intel: 1, civilian: -2 }],
-      ["工業補充與供應鏈動員", { readiness: 0, sustainment: 5, command: 1, intel: 0, civilian: -1 }]
+      ["工業補充與供應鏈動員", { readiness: 0, sustainment: 5, command: 1, intel: 0, civilian: -1 }],
+      ["【航空】區域空中攔截支援", { readiness: 2, sustainment: -2, command: 2, intel: 3, civilian: 1 }],
+      ["【海上】多國海上防護協調", { readiness: 1, sustainment: -2, command: 3, intel: 2, civilian: -1 }],
+      ["【水下】水下監視與反潛支援", { readiness: 1, sustainment: -1, command: 2, intel: 5, civilian: 0 }]
     ]
   };
 
