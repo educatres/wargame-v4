@@ -1714,18 +1714,17 @@
   }
 
   const LLM_PRESETS = {
-    gemini: { model: "gemini-3.5-flash", label: "Gemini", models: ["gemini-3.5-flash", "gemini-3.6-flash"] },
-    openai: { model: "gpt-5.5", label: "OpenAI", models: ["gpt-5.4-mini", "gpt-5.5", "gpt-5.6"] },
-    claude: { model: "claude-sonnet-4-20250514", label: "Claude", models: ["claude-sonnet-4-20250514"] },
+    gemini: { model: "gemini-3.5-flash", label: "Gemini", endpoint: "https://generativelanguage.googleapis.com/v1beta", models: ["gemini-3.5-flash", "gemini-3.6-flash"] },
+    openai: { model: "gpt-5.5", label: "OpenAI", endpoint: "https://api.openai.com/v1", models: ["gpt-5.4-mini", "gpt-5.5", "gpt-5.6"] },
+    claude: { model: "claude-sonnet-4-20250514", label: "Claude", endpoint: "https://api.anthropic.com/v1", models: ["claude-sonnet-4-20250514"] },
     cgu: { model: "gpt-5.4-mini", label: "長庚 CGU LLM API", endpoint: "https://air.cgu.edu.tw/cgullmapi/v1", models: ["gpt-5.4-mini", "gpt-5.5", "gpt-5.6"] }
   };
 
   function updateLlmProvider(preserveValues = false) {
     const provider = $("llmProvider").value;
     const preset = LLM_PRESETS[provider];
-    $("llmEndpointWrap").hidden = provider !== "cgu";
     if (!preserveValues) {
-      if (provider === "cgu") $("llmEndpoint").value = preset.endpoint;
+      $("llmEndpoint").value = preset.endpoint;
       $("llmModel").value = preset.model;
     }
     $("llmModelOptions").innerHTML = preset.models.map(model => `<option value="${escapeAttr(model)}"></option>`).join("");
@@ -1754,7 +1753,7 @@
       if (saved.apiKey) $("llmApiKey").value = saved.apiKey;
       if (saved.endpoint) $("llmEndpoint").value = saved.endpoint;
       if (typeof saved.instruction === "string") $("llmInstruction").value = saved.instruction;
-      $("llmPanel").open = saved.panelOpen === true;
+      $("llmPanel").open = true;
     } catch { /* Ignore malformed or unavailable browser storage. */ }
   }
 
@@ -1787,32 +1786,38 @@
     return /\/responses$/i.test(base) ? base : `${base}/responses`;
   }
 
+  function normalizeMessagesEndpoint(endpoint) {
+    const base = String(endpoint || "").trim().replace(/\/+$/, "");
+    return /\/messages$/i.test(base) ? base : `${base}/messages`;
+  }
+
   function authorizationHeader(apiKey) {
     return /^Bearer\s+/i.test(apiKey) ? apiKey : `Bearer ${apiKey}`;
   }
 
   async function requestLlm(provider, model, apiKey, prompt, reasoning) {
+    const endpointBase = $("llmEndpoint").value.trim().replace(/\/+$/, "");
+    if (!/^https:\/\//i.test(endpointBase)) throw new Error("請輸入所選供應商的 HTTPS API Endpoint");
     if (provider === "gemini") {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+      const endpoint = `${endpointBase}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
       const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: 0.7 } }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error?.message || `Gemini HTTP ${response.status}`);
       return data?.candidates?.[0]?.content?.parts?.map(part => part.text || "").join("") || "";
     }
     if (provider === "openai") {
-      const response = await fetch("https://api.openai.com/v1/responses", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": authorizationHeader(apiKey) }, body: JSON.stringify({ model, input: prompt, reasoning: { effort: reasoning }, text: { format: { type: "json_object" } } }) });
+      const response = await fetch(normalizeResponsesEndpoint(endpointBase), { method: "POST", headers: { "Content-Type": "application/json", "Authorization": authorizationHeader(apiKey) }, body: JSON.stringify({ model, input: prompt, reasoning: { effort: reasoning }, text: { format: { type: "json_object" } } }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error?.message || `OpenAI HTTP ${response.status}`);
       return responseText(data);
     }
     if (provider === "claude") {
-      const response = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" }, body: JSON.stringify({ model, max_tokens: 1200, temperature: 0.7, messages: [{ role: "user", content: prompt }] }) });
+      const response = await fetch(normalizeMessagesEndpoint(endpointBase), { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" }, body: JSON.stringify({ model, max_tokens: 1200, temperature: 0.7, messages: [{ role: "user", content: prompt }] }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error?.message || `Claude HTTP ${response.status}`);
       return data.content?.map(part => part.text || "").join("") || "";
     }
-    const endpoint = normalizeResponsesEndpoint($("llmEndpoint").value);
-    if (!/^https:\/\//i.test(endpoint)) throw new Error("請輸入 CGU／相容 API 的 HTTPS Endpoint");
+    const endpoint = normalizeResponsesEndpoint(endpointBase);
     const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": authorizationHeader(apiKey) }, body: JSON.stringify({ model, store: false, input: prompt, reasoning: { effort: reasoning }, text: { format: { type: "json_object" } } }) });
     const data = await response.json();
     if (!response.ok) throw new Error(data?.error?.message || `相容 API HTTP ${response.status}`);

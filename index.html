@@ -202,7 +202,7 @@
             <h3>不採用真實武器勝負查表</h3>
             <p>系統使用「能力、準備、感測、後勤、指揮、環境」等抽象指數，輸出決策後果及不確定性，而非宣稱某武器必定擊敗另一武器。</p>
           </article>
-          <details id="llmPanel" class="card llm-card">
+          <details id="llmPanel" class="card llm-card" open>
             <summary><span>LLM 輔助想定敘事</span><small>點選展開／收合</small></summary>
             <div class="llm-card-body">
               <div class="subheading">
@@ -214,7 +214,7 @@
                 <label>模型名稱<input id="llmModel" list="llmModelOptions" value="gemini-3.5-flash" autocomplete="off"><datalist id="llmModelOptions"></datalist></label>
                 <label>思考力度<select id="llmReasoning"><option value="minimal">最小</option><option value="low" selected>低</option><option value="medium">中</option><option value="high">高</option></select></label>
                 <label>API Key<input id="llmApiKey" type="password" autocomplete="off" placeholder="會儲存在此瀏覽器，可手動清除"></label>
-                <label id="llmEndpointWrap" hidden>CGU API Endpoint<input id="llmEndpoint" type="url" value="https://air.cgu.edu.tw/cgullmapi/v1" placeholder="https://air.cgu.edu.tw/cgullmapi/v1" autocomplete="off"></label>
+                <label id="llmEndpointWrap">API Endpoint<input id="llmEndpoint" type="url" value="https://generativelanguage.googleapis.com/v1beta" placeholder="選擇供應商後自動帶入" autocomplete="off"></label>
                 <label class="full">額外敘事指示（選填）<textarea id="llmInstruction" rows="2" placeholder="例如：著重民事韌性與後勤取捨；不要描述真實地點或單位。"></textarea></label>
                 <div class="full actions">
                   <button type="button" id="generateWithLlmBtn" class="primary">以 LLM 生成想定</button>
