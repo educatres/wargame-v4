@@ -3,6 +3,7 @@
 
   const DATA = window.WARGAME_DATA;
   const STORAGE_KEY = "taiwan-strait-scenario-generator-v1";
+  const LLM_SETTINGS_KEY = "taiwan-strait-scenario-generator-llm-v1";
 
   const ACTIONS = {
     BLUE: [
@@ -68,6 +69,15 @@
     intro: { noise: 0.55, events: 0.65, pressure: 0.75, label: "基礎" },
     standard: { noise: 0.8, events: 0.9, pressure: 1.0, label: "標準" },
     advanced: { noise: 1.0, events: 1.15, pressure: 1.2, label: "進階" }
+  };
+
+  const SCENARIO_TEMPLATES = {
+    blockade: { name: "海峽警戒與有限封控：72小時聯合決策演練", focus: "joint", difficulty: "standard", turns: 12, amberSupport: "indirect", weatherPreset: "variable", overview: "有限封控、商運改道與資訊操作同時出現；各方須在不完整資訊下保存資源並避免危機升級。" },
+    airdefense: { name: "多軸空情與分層防護：48小時資源配置演練", focus: "airdefense", difficulty: "advanced", turns: 8, amberSupport: "indirect", weatherPreset: "variable", overview: "多方向空情與合成來襲目標造成警戒壓力，學生必須在預警、攔截存量與民事影響之間做取捨。" },
+    logistics: { name: "港口延誤與後勤韌性：96小時持續性演練", focus: "logistics", difficulty: "standard", turns: 16, amberSupport: "limited", weatherPreset: "adverse", overview: "港口作業、運輸節點與維修批次陸續受阻；課程重點是優先順序、替代路線與資源保存。" },
+    grayzone: { name: "灰色地帶與資訊迷霧：跨域判讀演練", focus: "intelligence", difficulty: "advanced", turns: 10, amberSupport: "indirect", weatherPreset: "stable", overview: "不明海空活動、訊息操作與模糊歸因事件交錯，學生需區分事實、推測與未知。" },
+    humanitarian: { name: "人道疏散與民事協調：危機韌性演練", focus: "civil", difficulty: "standard", turns: 10, amberSupport: "limited", weatherPreset: "variable", overview: "人道需求、商運延誤與公共訊息壓力升高；資源配置需兼顧防護、疏散與基本服務。" },
+    deescalation: { name: "危機降溫與外交窗口：升級控制演練", focus: "diplomacy", difficulty: "advanced", turns: 8, amberSupport: "indirect", weatherPreset: "stable", overview: "高風險互動後出現有限降溫窗口，學生需將資源使用、公開訊息與外交協調連成一致策略。" }
   };
 
   const STORM_STAGES = {
@@ -324,6 +334,7 @@
     ].filter(Boolean);
 
     const overviewTemplates = [
+      SCENARIO_TEMPLATES[formValues.template]?.overview,
       "紅方宣布在臺海周邊進行高強度聯合活動，商船改道、空運受限，雙方在資訊不完整下尋求維持自身目標。",
       "一系列海空活動與資訊操作使區域風險升高，藍方需要在有限資源下維持指揮、交通與民事韌性。",
       "區域出現有限封控、電磁干擾及外交施壓。各方必須判斷對手意圖，並避免局部事件失控。"
@@ -361,6 +372,7 @@
       name: $("scenarioName").value.trim() || "未命名課程想定",
       seed: Number($("scenarioSeed").value) || Date.now(),
       focus: $("focus").value,
+      template: $("scenarioTemplate").value,
       difficulty: $("difficulty").value,
       turns: clamp(Number($("turns").value) || 12, 4, 24),
       hoursPerTurn: Number($("hoursPerTurn").value),
@@ -1459,16 +1471,37 @@
   }
 
   const LLM_PRESETS = {
-    gemini: { model: "gemini-3.5-flash", label: "Gemini" },
-    openai: { model: "gpt-4.1-mini", label: "OpenAI" },
-    claude: { model: "claude-sonnet-4-20250514", label: "Claude" },
-    cgu: { model: "gpt-4o-mini", label: "CGU／相容 API" }
+    gemini: { model: "gemini-3.5-flash", label: "Gemini", models: ["gemini-3.5-flash", "gemini-3.6-flash"] },
+    openai: { model: "gpt-5.5", label: "OpenAI", models: ["gpt-5.4-mini", "gpt-5.5", "gpt-5.6"] },
+    claude: { model: "claude-sonnet-4-20250514", label: "Claude", models: ["claude-sonnet-4-20250514"] },
+    cgu: { model: "gpt-5.4-mini", label: "長庚 CGU LLM API", endpoint: "https://air.cgu.edu.tw/cgullmapi/v1", models: ["gpt-5.4-mini", "gpt-5.5", "gpt-5.6"] }
   };
 
   function updateLlmProvider() {
     const provider = $("llmProvider").value;
+    const preset = LLM_PRESETS[provider];
     $("llmEndpointWrap").hidden = provider !== "cgu";
-    $("llmModel").value = LLM_PRESETS[provider].model;
+    if (provider === "cgu") $("llmEndpoint").value = preset.endpoint;
+    $("llmModel").value = preset.model;
+    $("llmModelOptions").innerHTML = preset.models.map(model => `<option value="${escapeAttr(model)}"></option>`).join("");
+  }
+
+  function saveLlmKey() {
+    try { localStorage.setItem(LLM_SETTINGS_KEY, JSON.stringify({ apiKey: $("llmApiKey").value })); } catch { toast("無法寫入瀏覽器 localStorage。") }
+  }
+
+  function loadLlmKey() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(LLM_SETTINGS_KEY) || "{}");
+      if (saved.apiKey) $("llmApiKey").value = saved.apiKey;
+    } catch { /* Ignore malformed or unavailable browser storage. */ }
+  }
+
+  function clearLlmKey() {
+    try { localStorage.removeItem(LLM_SETTINGS_KEY); } catch { /* Best-effort removal. */ }
+    $("llmApiKey").value = "";
+    $("llmStatus").textContent = "已清除儲存在此瀏覽器的 API Key。";
+    toast("已清除 API Key。");
   }
 
   function llmPrompt(formValues) {
@@ -1484,7 +1517,20 @@
     return JSON.parse(clean.slice(start, end + 1));
   }
 
-  async function requestLlm(provider, model, apiKey, prompt) {
+  function responseText(data) {
+    return data.output_text || data.output?.flatMap(item => item.content || []).map(part => part.text || "").join("") || "";
+  }
+
+  function normalizeResponsesEndpoint(endpoint) {
+    const base = String(endpoint || "").trim().replace(/\/+$/, "");
+    return /\/responses$/i.test(base) ? base : `${base}/responses`;
+  }
+
+  function authorizationHeader(apiKey) {
+    return /^Bearer\s+/i.test(apiKey) ? apiKey : `Bearer ${apiKey}`;
+  }
+
+  async function requestLlm(provider, model, apiKey, prompt, reasoning) {
     if (provider === "gemini") {
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
       const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: 0.7 } }) });
@@ -1493,10 +1539,10 @@
       return data?.candidates?.[0]?.content?.parts?.map(part => part.text || "").join("") || "";
     }
     if (provider === "openai") {
-      const response = await fetch("https://api.openai.com/v1/responses", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` }, body: JSON.stringify({ model, input: prompt, text: { format: { type: "json_object" } } }) });
+      const response = await fetch("https://api.openai.com/v1/responses", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": authorizationHeader(apiKey) }, body: JSON.stringify({ model, input: prompt, reasoning: { effort: reasoning }, text: { format: { type: "json_object" } } }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error?.message || `OpenAI HTTP ${response.status}`);
-      return data.output_text || data.output?.flatMap(item => item.content || []).map(part => part.text || "").join("") || "";
+      return responseText(data);
     }
     if (provider === "claude") {
       const response = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" }, body: JSON.stringify({ model, max_tokens: 1200, temperature: 0.7, messages: [{ role: "user", content: prompt }] }) });
@@ -1504,12 +1550,12 @@
       if (!response.ok) throw new Error(data?.error?.message || `Claude HTTP ${response.status}`);
       return data.content?.map(part => part.text || "").join("") || "";
     }
-    const endpoint = $("llmEndpoint").value.trim();
+    const endpoint = normalizeResponsesEndpoint($("llmEndpoint").value);
     if (!/^https:\/\//i.test(endpoint)) throw new Error("請輸入 CGU／相容 API 的 HTTPS Endpoint");
-    const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` }, body: JSON.stringify({ model, messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, temperature: 0.7 }) });
+    const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": authorizationHeader(apiKey) }, body: JSON.stringify({ model, store: false, input: prompt, reasoning: { effort: reasoning }, text: { format: { type: "json_object" } } }) });
     const data = await response.json();
     if (!response.ok) throw new Error(data?.error?.message || `相容 API HTTP ${response.status}`);
-    return data.choices?.[0]?.message?.content || "";
+    return responseText(data);
   }
 
   function cleanLlmList(value, fallback, max) {
@@ -1520,7 +1566,7 @@
 
   async function generateWithLlm() {
     const apiKey = $("llmApiKey").value.trim();
-    if (!apiKey) return toast("請輸入 API Key；系統不會儲存它。");
+    if (!apiKey) return toast("請輸入 API Key；可保存在此瀏覽器並隨時清除。");
     const provider = $("llmProvider").value;
     const button = $("generateWithLlmBtn");
     const status = $("llmStatus");
@@ -1528,22 +1574,20 @@
     button.disabled = true;
     status.textContent = `正在向 ${LLM_PRESETS[provider].label} 請求合成想定…`;
     try {
-      const result = extractJson(await requestLlm(provider, $("llmModel").value.trim(), apiKey, llmPrompt(formValues)));
+      saveLlmKey();
+      const result = extractJson(await requestLlm(provider, $("llmModel").value.trim(), apiKey, llmPrompt(formValues), $("llmReasoning").value));
       const scenario = generateScenario(formValues);
       scenario.overview = String(result.overview || scenario.overview).slice(0, 500);
       scenario.objectives = cleanLlmList(result.objectives, scenario.objectives, 4);
       scenario.successCriteria = cleanLlmList(result.successCriteria, scenario.successCriteria, 4);
       scenario.constraints = [...scenario.constraints, ...cleanLlmList(result.constraints, [], 5)].slice(0, 7);
-      scenario.llmNarrative = { provider: LLM_PRESETS[provider].label, model: $("llmModel").value.trim(), eventIdeas: cleanLlmList(result.eventIdeas, [], 4) };
+      scenario.llmNarrative = { provider: LLM_PRESETS[provider].label, model: $("llmModel").value.trim(), reasoning: $("llmReasoning").value, eventIdeas: cleanLlmList(result.eventIdeas, [], 4) };
       beginScenario(scenario);
-      status.textContent = `已使用 ${scenario.llmNarrative.provider} 生成敘事；API Key 未保存。`;
+      status.textContent = `已使用 ${scenario.llmNarrative.provider} 生成敘事；API Key 已保存於此瀏覽器，可手動清除。`;
     } catch (error) {
       status.textContent = "生成失敗。";
       toast(`LLM 生成失敗：${error.message}`);
-    } finally {
-      $("llmApiKey").value = "";
-      button.disabled = false;
-    }
+    } finally { button.disabled = false; }
   }
 
   function bindEvents() {
@@ -1582,8 +1626,11 @@
     });
     $("uncertainty").addEventListener("input", updateRangeLabels);
     $("civilPressure").addEventListener("input", updateRangeLabels);
+    $("scenarioTemplate").addEventListener("change", applyScenarioTemplate);
     $("llmProvider").addEventListener("change", updateLlmProvider);
+    $("llmApiKey").addEventListener("input", saveLlmKey);
     $("generateWithLlmBtn").addEventListener("click", generateWithLlm);
+    $("clearLlmKeyBtn").addEventListener("click", clearLlmKey);
     $("orderActor").addEventListener("change", updateActionOptions);
     $("orderForm").addEventListener("submit", submitOrder);
     $("autoOrdersBtn").addEventListener("click", autoFillOrders);
@@ -1621,9 +1668,22 @@
     $("civilPressureValue").value = $("civilPressure").value;
   }
 
+  function applyScenarioTemplate() {
+    const template = SCENARIO_TEMPLATES[$("scenarioTemplate").value];
+    if (!template) return;
+    $("scenarioName").value = template.name;
+    $("focus").value = template.focus;
+    $("difficulty").value = template.difficulty;
+    $("turns").value = template.turns;
+    $("amberSupport").value = template.amberSupport;
+    $("weatherPreset").value = template.weatherPreset;
+    toast(`已套用「${$("scenarioTemplate").selectedOptions[0].textContent}」範本。`);
+  }
+
   function init() {
     bindEvents();
     updateLlmProvider();
+    loadLlmKey();
     updateRangeLabels();
     updateActionOptions();
     renderLibrary();

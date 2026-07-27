@@ -61,6 +61,17 @@
             隨機種子
             <input id="scenarioSeed" type="number" value="20260727" min="1">
           </label>
+          <label class="full">
+            課程情境範本
+            <select id="scenarioTemplate">
+              <option value="blockade">有限封控與商運壓力（預設）</option>
+              <option value="airdefense">多軸空情與分層防護</option>
+              <option value="logistics">港口延誤與後勤韌性</option>
+              <option value="grayzone">灰色地帶與資訊迷霧</option>
+              <option value="humanitarian">人道疏散與民事協調</option>
+              <option value="deescalation">危機降溫與外交窗口</option>
+            </select>
+          </label>
           <label>
             教學重點
             <select id="focus">
@@ -170,7 +181,7 @@
           <div>
             <p class="eyebrow">Optional local API call</p>
             <h3>LLM 輔助想定敘事</h3>
-            <p class="muted">依上方合成資源與課程限制產生敘事、目標與事件。API Key 只留在此頁記憶體，不寫入 localStorage 或匯出檔。</p>
+            <p class="muted">依上方合成資源與課程限制產生敘事、目標與事件。API Key 會保存在此瀏覽器的 localStorage，可隨時手動清除，不會寫入匯出檔。</p>
           </div>
           <span class="badge">需瀏覽器可連線 API</span>
         </div>
@@ -184,16 +195,18 @@
               <option value="cgu">CGU／相容 API</option>
             </select>
           </label>
-          <label>模型名稱<input id="llmModel" value="gemini-3.5-flash" autocomplete="off"></label>
-          <label>API Key<input id="llmApiKey" type="password" autocomplete="off" placeholder="只用於本次請求，不會儲存"></label>
-          <label id="llmEndpointWrap" hidden>相容 API Endpoint<input id="llmEndpoint" type="url" placeholder="https://…/v1/chat/completions" autocomplete="off"></label>
+          <label>模型名稱<input id="llmModel" list="llmModelOptions" value="gemini-3.5-flash" autocomplete="off"><datalist id="llmModelOptions"></datalist></label>
+          <label>思考力度<select id="llmReasoning"><option value="minimal">最小</option><option value="low" selected>低</option><option value="medium">中</option><option value="high">高</option></select></label>
+          <label>API Key<input id="llmApiKey" type="password" autocomplete="off" placeholder="會儲存在此瀏覽器，可手動清除"></label>
+          <label id="llmEndpointWrap" hidden>CGU API Endpoint<input id="llmEndpoint" type="url" value="https://air.cgu.edu.tw/cgullmapi/v1" placeholder="https://air.cgu.edu.tw/cgullmapi/v1" autocomplete="off"></label>
           <label class="full">額外敘事指示（選填）<textarea id="llmInstruction" rows="2" placeholder="例如：著重民事韌性與後勤取捨；不要描述真實地點或單位。"></textarea></label>
           <div class="full actions">
             <button type="button" id="generateWithLlmBtn" class="primary">以 LLM 生成想定</button>
+            <button type="button" id="clearLlmKeyBtn" class="secondary">清除已儲存 API Key</button>
             <span id="llmStatus" class="muted" aria-live="polite"></span>
           </div>
         </div>
-        <p class="footnote">Gemini 可使用 <code>gemini-3.5-flash</code> 或 <code>gemini-3.6-flash</code>（實際可用名稱依帳戶與 API 版本為準）。CGU 使用 OpenAI 相容 Chat Completions 格式。</p>
+        <p class="footnote">CGU 預設使用 <code>https://air.cgu.edu.tw/cgullmapi/v1</code>，系統會自動接上 <code>/responses</code>。CGU 可選 <code>gpt-5.4-mini</code>、<code>gpt-5.5</code>、<code>gpt-5.6</code> 與思考力度。API Key 保存在此瀏覽器的 localStorage，任何可存取同一瀏覽器資料的使用者皆可能讀取；請在共用裝置使用完後按「清除」。</p>
       </article>
 
       <div id="scenarioPreview" class="preview empty-state">

@@ -26,7 +26,8 @@
 - 匯入／匯出：JSON保存完整課程狀態，CSV匯出回合紀錄。
 - 本機保存：進度只存在瀏覽器 localStorage，除非主動匯出。
 - 合成資源基線：可設定雙方的航空架次、攔截彈、海上平台與補給批次；這些虛構數量會影響想定摘要、起始準備與回合裁決。
-- LLM 輔助想定：支援 Gemini、OpenAI、Anthropic Claude 與 CGU／OpenAI 相容 API，以當前合成資源和教師限制生成敘事、目標及事件構想。API Key 僅在單次瀏覽器請求使用，隨即清空且不會儲存或匯出。
+- LLM 輔助想定：支援 Gemini、OpenAI、Anthropic Claude 與長庚 CGU LLM API，以當前合成資源和教師限制生成敘事、目標及事件構想。CGU 預設端點為 `https://air.cgu.edu.tw/cgullmapi/v1`，可選 gpt-5.4-mini、gpt-5.5 或 gpt-5.6 與思考力度。
+- 課程情境範本：提供有限封控、多軸空情、港口後勤、灰色地帶、人道疏散與危機降溫等六種合成情境。
 
 ## 單機使用
 
@@ -59,7 +60,7 @@ Windows 也可雙擊 `start-local.bat`。
 
 不需要 Firebase、資料庫伺服器或 API Key。
 
-若要使用 LLM 輔助想定，才需自行在頁面輸入對應服務的 API Key。Gemini 的模型欄可填入帳戶可用的 `gemini-3.5-flash` 或 `gemini-3.6-flash`；實際模型名稱仍以該帳戶/API 版本提供者為準。
+若要使用 LLM 輔助想定，才需自行在頁面輸入對應服務的 API Key。系統會將 Key 儲存在目前瀏覽器的 localStorage，不會包含在想定匯出檔；共用電腦使用完畢請按頁面上的「清除已儲存 API Key」。Gemini 的模型欄可填入帳戶可用的 `gemini-3.5-flash` 或 `gemini-3.6-flash`；實際模型名稱仍以該帳戶/API 版本提供者為準。
 
 ## 專案結構
 
