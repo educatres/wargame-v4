@@ -86,6 +86,7 @@
     csis_blackout_2025: {
       name: "CSIS《燈火管制》（2025）：封鎖、護航與能源韌性",
       sourceLabel: "CSIS《燈火管制：中國封鎖台灣兵推》（2025）案例假設",
+      references: [{ title: "CSIS — Lights Out? Wargaming a Chinese Blockade of Taiwan", url: "https://www.csis.org/analysis/lights-out-wargaming-chinese-blockade-taiwan" }],
       focus: "logistics", difficulty: "advanced", turns: 20, hoursPerTurn: 12,
       uncertainty: 4, civilPressure: 5, amberSupport: "limited", weatherPreset: "variable",
       overview: "共軍以海警與海上民兵執法為由切斷航運，美日協調護航破封；推演核心是商運持續、能源配給與避免灰色地帶危機失控。",
@@ -102,6 +103,10 @@
     csis_mit_nuclear_2024: {
       name: "CSIS & MIT（2024）：傳統戰局與核升級風險",
       sourceLabel: "CSIS & MIT《台海衝突納入核武推演》（2024）案例假設",
+      references: [
+        { title: "CSIS — Confronting Armageddon", url: "https://www.csis.org/analysis/confronting-armageddon" },
+        { title: "MIT Security Studies Program — Flagship Games", url: "https://ssp.mit.edu/wargaming-lab/flagship-games" }
+      ],
       focus: "diplomacy", difficulty: "advanced", turns: 12, hoursPerTurn: 6,
       uncertainty: 5, civilPressure: 5, amberSupport: "limited", weatherPreset: "stable",
       overview: "傳統戰局對中方不利後，危機跨越核門檻；推演聚焦預警判讀、政治溝通、分散韌性與終止衝突，不處理核武目標或運用細節。",
@@ -117,6 +122,7 @@
     cnas_policy_war: {
       name: "美國國會 × CNAS：一週彈藥耗盡與全球經濟衝擊",
       sourceLabel: "美國國會與新美國安全中心（CNAS）政策級兵推案例假設",
+      references: [{ title: "CNAS — Bad Blood: The TTX for the House Select Committee on the CCP", url: "https://www.cnas.org/publications/congressional-testimony/bad-blood-ttx" }],
       focus: "joint", difficulty: "advanced", turns: 14, hoursPerTurn: 12,
       uncertainty: 4, civilPressure: 5, amberSupport: "limited", weatherPreset: "variable",
       overview: "政策級推演聚焦開戰後一週內遠程精準導引彈藥耗盡，以及航運、金融、能源與科技供應鏈引發的全球連鎖經濟衝擊。",
@@ -1761,7 +1767,7 @@
 
   function llmPrompt(formValues) {
     const baseline = generateScenario(formValues);
-    return `你是想定編輯器。只可使用下列「完全合成、虛構」資料，不能補入真實世界的部隊、武器型號、地點、座標、射程、性能、部署或目標資訊。請以繁體中文回傳嚴格 JSON，且不要使用 Markdown。\n\nJSON schema:\n{"overview":"120字內情境摘要","objectives":["3項"],"successCriteria":["3項"],"constraints":["3至5項"],"eventIdeas":["3項不涉及真實武器或地點的事件名稱"]}\n\n想定設定：${JSON.stringify({ name: baseline.name, focus: baseline.focusTitle, difficulty: baseline.difficultyLabel, turns: baseline.turns, hoursPerTurn: baseline.hoursPerTurn, uncertainty: baseline.uncertainty, civilPressure: baseline.civilPressure, amberSupport: baseline.amberSupport, weather: baseline.weatherPreset, resources: baseline.resources, strategicParameters: baseline.strategicParameters, teacherConstraints: formValues.teacherConstraints })}\n\n額外指示：${$("llmInstruction").value.trim() || "無"}\n\n敘事要強調資源保存、資訊不確定性、民事影響與升級控制；不得提出可執行的現實作戰建議。`;
+    return `你是想定編輯器。只可使用下列「完全合成、虛構」資料，不能補入真實世界的部隊、武器型號、地點、座標、射程、性能、部署或目標資訊。請以繁體中文回傳嚴格 JSON，且不要使用 Markdown。\n\nJSON schema:\n{"name":"40字內、明確對應所選情境範本的想定名稱","overview":"120字內情境摘要","objectives":["3項"],"successCriteria":["3項"],"constraints":["3至5項"],"eventIdeas":["3項不涉及真實武器或地點的事件名稱"]}\n\n所選情境範本：${JSON.stringify({ key: formValues.template, templateName: SCENARIO_TEMPLATES[formValues.template]?.name, templateDescription: SCENARIO_TEMPLATES[formValues.template]?.overview })}\n想定設定：${JSON.stringify({ name: baseline.name, focus: baseline.focusTitle, difficulty: baseline.difficultyLabel, turns: baseline.turns, hoursPerTurn: baseline.hoursPerTurn, uncertainty: baseline.uncertainty, civilPressure: baseline.civilPressure, amberSupport: baseline.amberSupport, weather: baseline.weatherPreset, resources: baseline.resources, strategicParameters: baseline.strategicParameters, teacherConstraints: formValues.teacherConstraints })}\n\n額外指示：${$("llmInstruction").value.trim() || "無"}\n\n名稱與敘事必須維持所選範本的核心主題，不得改成無關情境。敘事要強調資源保存、資訊不確定性、民事影響與升級控制；不得提出可執行的現實作戰建議。`;
   }
 
   function extractJson(text) {
@@ -1832,13 +1838,15 @@
       saveLlmSettings();
       const result = extractJson(await requestLlm(provider, $("llmModel").value.trim(), apiKey, llmPrompt(formValues), $("llmReasoning").value));
       const scenario = generateScenario(formValues);
+      scenario.name = String(result.name || scenario.name).replace(/[\r\n]+/g, " ").trim().slice(0, 100) || scenario.name;
       scenario.overview = String(result.overview || scenario.overview).slice(0, 500);
       scenario.objectives = cleanLlmList(result.objectives, scenario.objectives, 4);
       scenario.successCriteria = cleanLlmList(result.successCriteria, scenario.successCriteria, 4);
       scenario.constraints = [...scenario.constraints, ...cleanLlmList(result.constraints, [], 5)].slice(0, 7);
       scenario.llmNarrative = { provider: LLM_PRESETS[provider].label, model: $("llmModel").value.trim(), reasoning: $("llmReasoning").value, eventIdeas: cleanLlmList(result.eventIdeas, [], 4) };
+      $("scenarioName").value = scenario.name;
       beginScenario(scenario);
-      status.textContent = `已使用 ${scenario.llmNarrative.provider} 生成敘事；API Key 已保存於此瀏覽器，可手動清除。`;
+      status.textContent = `已使用 ${scenario.llmNarrative.provider} 生成名稱與敘事；API Key 已保存於此瀏覽器，可手動清除。`;
     } catch (error) {
       status.textContent = "生成失敗。";
       toast(`LLM 生成失敗：${error.message}`);
@@ -1858,6 +1866,7 @@
       beginScenario(generateScenario(readScenarioForm()));
     });
     $("loadDemoBtn").addEventListener("click", () => {
+      $("scenarioTemplate").value = "blockade";
       $("scenarioName").value = "海峽警戒與有限封控：72小時聯合決策演練";
       $("scenarioSeed").value = 20260727;
       $("focus").value = "joint";
@@ -1868,6 +1877,7 @@
       $("civilPressure").value = 3;
       $("amberSupport").value = "indirect";
       $("weatherPreset").value = "variable";
+      Object.entries(STRATEGIC_DEFAULTS).forEach(([key, value]) => { if ($(key)) $(key).value = value; });
       $("blueAircraft").value = 48;
       $("blueInterceptors").value = 160;
       $("blueVessels").value = 14;
@@ -1877,6 +1887,7 @@
       $("redVessels").value = 24;
       $("redLogistics").value = 84;
       updateRangeLabels();
+      renderTemplateInfo();
       beginScenario(generateScenario(readScenarioForm()));
     });
     $("uncertainty").addEventListener("input", updateRangeLabels);
@@ -1946,7 +1957,19 @@
     const parameters = { ...STRATEGIC_DEFAULTS, ...(template.parameters || {}) };
     Object.entries(parameters).forEach(([key, value]) => { if ($(key)) $(key).value = value; });
     updateRangeLabels();
+    renderTemplateInfo();
     toast(`已套用「${$("scenarioTemplate").selectedOptions[0].textContent}」範本。`);
+  }
+
+  function renderTemplateInfo() {
+    const template = SCENARIO_TEMPLATES[$("scenarioTemplate").value];
+    const container = $("scenarioTemplateInfo");
+    if (!template || !container) return;
+    const references = Array.isArray(template.references) ? template.references : [];
+    const sourceHtml = references.length
+      ? `<p class="template-sources"><strong>參考資料：</strong>${references.map(reference => `<a href="${escapeAttr(reference.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(reference.title)}</a>`).join(" · ")}</p>`
+      : "";
+    container.innerHTML = `<p><strong>範本簡介：</strong>${escapeHtml(template.overview)}</p>${sourceHtml}`;
   }
 
   function init() {
@@ -1954,6 +1977,7 @@
     updateLlmProvider();
     loadLlmSettings();
     updateRangeLabels();
+    renderTemplateInfo();
     updateActionOptions();
     renderLibrary();
     renderStorm();

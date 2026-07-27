@@ -6,10 +6,10 @@
   --border: #d6dde4;
   --primary: #174f78;
   --primary-2: #0f3e61;
-  --blue: #2e78a6;
-  --red: #9a4747;
-  --amber: #ffd400;
-  --neutral: #667482;
+  --blue: #007aff;
+  --red: #ff3b30;
+  --amber: #ffd60a;
+  --neutral: #8e8e93;
   --green-soft: #e7f3e9;
   --blue-soft: #e4f0f8;
   --red-soft: #f8e8e8;
@@ -90,6 +90,10 @@ main { width: min(1440px, 100%); margin: auto; padding: 1.2rem clamp(.8rem, 3vw,
 .resource-builder h3 { margin-bottom: .15rem; }
 .resource-grid { display: grid; grid-template-columns: repeat(4, minmax(130px, 1fr)); gap: .7rem; margin-top: .75rem; }
 .resource-grid label { display: grid; gap: .3rem; font-size: .88rem; font-weight: 700; color: #384858; }
+.template-info { padding: .8rem .9rem; border-left: 4px solid var(--primary); border-radius: .25rem .7rem .7rem .25rem; background: var(--blue-soft); }
+.template-info p { margin: 0; }
+.template-info .template-sources { margin-top: .35rem; font-size: .86rem; }
+.template-info a { font-weight: 700; }
 .llm-card { padding: 0; overflow: hidden; }
 .llm-card summary { display: flex; justify-content: space-between; align-items: center; gap: .8rem; padding: 1rem; cursor: pointer; font-weight: 900; color: var(--primary); }
 .llm-card summary small { color: var(--muted); font-weight: 600; }
