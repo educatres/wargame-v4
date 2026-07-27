@@ -2,7 +2,7 @@
   "use strict";
 
   const DATA = window.WARGAME_DATA;
-  const STORAGE_KEY = "taiwan-strait-scenario-generator-v1";
+  const STORAGE_KEY = "taiwan-strait-scenario-generator-v2";
   const LLM_SETTINGS_KEY = "taiwan-strait-scenario-generator-llm-v1";
 
   const ACTIONS = {
@@ -73,38 +73,38 @@
 
   const SCENARIO_TEMPLATES = {
     blockade: { name: "海峽警戒與有限封控：72小時聯合決策演練", focus: "joint", difficulty: "standard", turns: 12, amberSupport: "indirect", weatherPreset: "variable", overview: "有限封控、商運改道與資訊操作同時出現；各方須在不完整資訊下保存資源並避免危機升級。" },
-    airdefense: { name: "多軸空情與分層防護：48小時資源配置演練", focus: "airdefense", difficulty: "advanced", turns: 8, amberSupport: "indirect", weatherPreset: "variable", overview: "多方向空情與合成來襲目標造成警戒壓力，學生必須在預警、攔截存量與民事影響之間做取捨。" },
-    logistics: { name: "港口延誤與後勤韌性：96小時持續性演練", focus: "logistics", difficulty: "standard", turns: 16, amberSupport: "limited", weatherPreset: "adverse", overview: "港口作業、運輸節點與維修批次陸續受阻；課程重點是優先順序、替代路線與資源保存。" },
-    grayzone: { name: "灰色地帶與資訊迷霧：跨域判讀演練", focus: "intelligence", difficulty: "advanced", turns: 10, amberSupport: "indirect", weatherPreset: "stable", overview: "不明海空活動、訊息操作與模糊歸因事件交錯，學生需區分事實、推測與未知。" },
+    airdefense: { name: "多軸空情與分層防護：48小時資源配置演練", focus: "airdefense", difficulty: "advanced", turns: 8, amberSupport: "indirect", weatherPreset: "variable", overview: "多方向空情與合成來襲目標造成警戒壓力，必須在預警、攔截存量與民事影響之間做取捨。" },
+    logistics: { name: "港口延誤與後勤韌性：96小時持續性演練", focus: "logistics", difficulty: "standard", turns: 16, amberSupport: "limited", weatherPreset: "adverse", overview: "港口作業、運輸節點與維修批次陸續受阻；推演重點是優先順序、替代路線與資源保存。" },
+    grayzone: { name: "灰色地帶與資訊迷霧：跨域判讀演練", focus: "intelligence", difficulty: "advanced", turns: 10, amberSupport: "indirect", weatherPreset: "stable", overview: "不明海空活動、訊息操作與模糊歸因事件交錯，需區分事實、推測與未知。" },
     humanitarian: { name: "人道疏散與民事協調：危機韌性演練", focus: "civil", difficulty: "standard", turns: 10, amberSupport: "limited", weatherPreset: "variable", overview: "人道需求、商運延誤與公共訊息壓力升高；資源配置需兼顧防護、疏散與基本服務。" },
-    deescalation: { name: "危機降溫與外交窗口：升級控制演練", focus: "diplomacy", difficulty: "advanced", turns: 8, amberSupport: "indirect", weatherPreset: "stable", overview: "高風險互動後出現有限降溫窗口，學生需將資源使用、公開訊息與外交協調連成一致策略。" }
+    deescalation: { name: "危機降溫與外交窗口：升級控制演練", focus: "diplomacy", difficulty: "advanced", turns: 8, amberSupport: "indirect", weatherPreset: "stable", overview: "高風險互動後出現有限降溫窗口，需將資源使用、公開訊息與外交協調連成一致策略。" }
   };
 
   const STORM_STAGES = {
     systems: {
       title: "系統：建立可追溯的資產與支援網路",
-      text: "先定義模型中存在哪些實體、群組與網路，例如指揮節點、航空／海上兵力包、後勤群、民事協調群及外部支援。課堂版只使用抽象兵力包，不對應真實單位。",
-      question: "課堂問題：哪些系統若未被建模，會使研究結論產生系統性偏差？"
+      text: "先定義模型中存在哪些實體、群組與網路，例如指揮節點、航空／海上兵力包、後勤群、民事協調群及外部支援。本版本只使用抽象兵力包，不對應真實單位。",
+      question: "分析問題：哪些系統若未被建模，會使研究結論產生系統性偏差？"
     },
     capabilities: {
       title: "能力：把系統轉成可比較的功能",
       text: "能力不是單一武器規格，而是感測、指管、機動、生存、持續與任務效果等屬性。相同資產在不同後勤、環境與指揮條件下，能產生不同效果。",
-      question: "課堂問題：哪些能力應使用固定值，哪些應使用機率分布或區間？"
+      question: "分析問題：哪些能力應使用固定值，哪些應使用機率分布或區間？"
     },
     planning: {
       title: "計畫：把目的、方法與資源連成行動方案",
       text: "行動方案決定資產如何分配、何時投入、保留多少預備與如何回應情報。研究重點是比較方案取捨，而不是尋找唯一正確答案。",
-      question: "課堂問題：方案比較是否使用相同假設、相同種子與相同成功門檻？"
+      question: "分析問題：方案比較是否使用相同假設、相同種子與相同成功門檻？"
     },
     execution: {
       title: "執行：讓五種表徵持續交換狀態",
       text: "每次模擬重複中，情報形成、命令下達、資產行動、互動裁決、資源消耗與環境摩擦反覆更新，直到到達時間或停止條件。",
-      question: "課堂問題：哪些狀態更新具有延遲、回饋或累積效果？"
+      question: "分析問題：哪些狀態更新具有延遲、回饋或累積效果？"
     },
     impact: {
       title: "影響：以分布與多重指標解讀結果",
       text: "輸出不只包括任務效果，也包括剩餘準備、資源保留、民事風險與結果變異。多次重複可顯示平均、尾端風險及罕見失敗。",
-      question: "課堂問題：平均較高的方案，是否也可能具有更嚴重的低機率風險？"
+      question: "分析問題：平均較高的方案，是否也可能具有更嚴重的低機率風險？"
     }
   };
 
@@ -112,37 +112,37 @@
     c2: {
       title: "指揮管制 C2",
       subtitle: "命令、優先序、後勤與機動協調",
-      description: "接收情報與資產狀態，形成任務、要求與新命令。教學版以指管品質、決策延遲及備援能力表示。",
+      description: "接收情報與資產狀態，形成任務、要求與新命令。本版本以指管品質、決策延遲及備援能力表示。",
       data: ["指管品質指數", "命令延遲", "備援程度", "資源配置規則"],
-      classroom: "讓學生比較：提升指管品質，是否一定比增加資產更有效？"
+      classroom: "比較：提升指管品質，是否一定比增加資產更有效？"
     },
     assets: {
       title: "資產 Assets",
       subtitle: "執行任務、移動、感測並消耗資源",
       description: "代表航空、海上、陸上、支援與民事等合成兵力包。資產可處於可用、降級或失去任務能力狀態。",
       data: ["準備度", "任務效果", "機動能力", "後勤需求"],
-      classroom: "讓學生辨識：資產數量與可持續執行能力並不是同一件事。"
+      classroom: "辨識：資產數量與可持續執行能力並不是同一件事。"
     },
     intelligence: {
       title: "情報管理 Intelligence",
       subtitle: "來源、感知、信心與需求管理",
-      description: "將不完整觀測轉成可供決策使用的情勢圖像。教學版把ISR品質、來源可靠度、環境遮蔽與分析誤差分開。",
+      description: "將不完整觀測轉成可供決策使用的情勢圖像。本版本把ISR品質、來源可靠度、環境遮蔽與分析誤差分開。",
       data: ["ISR品質", "來源可靠度", "分析信心", "資訊時效"],
-      classroom: "讓學生說明：資訊更多是否必然使決策更好？錯誤信心有何影響？"
+      classroom: "說明：資訊更多是否必然使決策更好？錯誤信心有何影響？"
     },
     interactions: {
       title: "互動管理 Interactions",
       subtitle: "偵測、交互作用、消耗與損害",
-      description: "管理不同資產之間的交互作用及狀態變化。教學版不使用真實射擊表，而以抽象摩擦、壓力與效果函數裁決。",
+      description: "管理不同資產之間的交互作用及狀態變化。本版本不使用真實射擊表，而以抽象摩擦、壓力與效果函數裁決。",
       data: ["交互作用條件", "效果機率", "消耗規則", "損害與恢復"],
-      classroom: "讓學生檢查：模型是否錯把相關失敗當成彼此獨立？"
+      classroom: "檢查：模型是否錯把相關失敗當成彼此獨立？"
     },
     environment: {
       title: "環境 Environment",
       subtitle: "地形、天候、時間、交通與政治條件",
-      description: "環境會限制感測、機動、持續性與民事活動。課堂版使用概略區域和1至5級嚴苛度，不含精確座標。",
+      description: "環境會限制感測、機動、持續性與民事活動。本版本使用概略區域和1至5級嚴苛度，不含精確座標。",
       data: ["天候／海象", "能見度", "交通條件", "民事與政治約束"],
-      classroom: "讓學生比較：環境是外生條件，還是會被各方行動進一步改變？"
+      classroom: "比較：環境是外生條件，還是會被各方行動進一步改變？"
     }
   };
 
@@ -369,7 +369,7 @@
 
   function readScenarioForm() {
     return {
-      name: $("scenarioName").value.trim() || "未命名課程想定",
+      name: $("scenarioName").value.trim() || "未命名想定",
       seed: Number($("scenarioSeed").value) || Date.now(),
       focus: $("focus").value,
       template: $("scenarioTemplate").value,
@@ -402,8 +402,15 @@
   function renderScenario() {
     const container = $("scenarioPreview");
     if (!state.scenario) {
-      container.className = "preview empty-state";
-      container.textContent = "尚未生成想定。調整左側參數後按下「生成想定」。";
+      container.className = "preview";
+      container.innerHTML = `
+        <div class="preview-summary preview-blank"><h3>想定摘要</h3><div class="empty-field"></div></div>
+        <div class="preview-grid">
+          <article class="card"><h3>目標</h3><div class="empty-field"></div></article>
+          <article class="card"><h3>成功條件</h3><div class="empty-field"></div></article>
+          <article class="card"><h3>限制與規則</h3><div class="empty-field"></div></article>
+        </div>
+        <article class="card" style="margin-top:1rem"><h3>合成資源基線</h3><div class="empty-field"></div></article>`;
       return;
     }
     const s = state.scenario;
@@ -428,7 +435,7 @@
       </div>
       <div class="preview-grid">
         <article class="card">
-          <h3>學習目標</h3>
+          <h3>目標</h3>
           <ul class="compact-list">${s.objectives.map(v => `<li>${escapeHtml(v)}</li>`).join("")}</ul>
         </article>
         <article class="card">
@@ -441,7 +448,7 @@
         </article>
       </div>
       <article class="card" style="margin-top:1rem">
-        <div class="subheading"><h3>本想定合成資源基線</h3><span class="muted">只用於課堂比較與隨機模擬</span></div>
+        <div class="subheading"><h3>本想定合成資源基線</h3><span class="muted">只用於方案比較與隨機模擬</span></div>
         <div class="preview-grid">
           <div><strong>藍方</strong><p class="muted">航空架次 ${s.resources.blueAircraft} · 攔截彈 ${s.resources.blueInterceptors}<br>巡防平台 ${s.resources.blueVessels} · 補給批次 ${s.resources.blueLogistics}</p></div>
           <div><strong>紅方</strong><p class="muted">航空架次 ${s.resources.redAircraft} · 合成來襲目標 ${s.resources.redIncoming}<br>海上平台 ${s.resources.redVessels} · 補給批次 ${s.resources.redLogistics}</p></div>
@@ -583,7 +590,7 @@
         <strong>${escapeHtml(i.report_type)} · ${zoneName(i.zone_id)}</strong>
         <p>${escapeHtml(i.report_text)}</p>
         <small>來源 ${escapeHtml(i.source_reliability)} · 信心 ${i.confidence_pct}%</small>
-      </div>`).join("") : `<p class="muted">本回合沒有新增情報；學生需判斷資訊缺口。</p>`;
+      </div>`).join("") : `<p class="muted">本回合沒有新增情報；需判斷資訊缺口。</p>`;
 
     const weather = currentWeather();
     const worst = [...weather].sort((a, b) => Number(b.sea_state_1_5) - Number(a.sea_state_1_5))[0];
@@ -602,7 +609,7 @@
         <strong>${escapeHtml(event.event_name)}</strong>
         <p>${escapeHtml(event.description)}</p>
         <small>${escapeHtml(event.category)} · ${zoneName(event.zone_id)}</small>
-      </div>` : `<p class="muted">白方可視課堂狀況臨時加入事件。</p>`;
+      </div>` : `<p class="muted">白方可視推演狀況臨時加入事件。</p>`;
   }
 
   function submitOrder(event) {
@@ -647,7 +654,7 @@
     const zones = DATA.zones.filter(z => z.zone_id !== "Z-REAR" || missingActors.includes("AMBER")).map(z => ({ id: z.zone_id, name: z.zone_name, domain: z.domain }));
     const event = state.scenario.events.find(e => Number(e.trigger_turn) === state.currentTurn);
     const weather = currentWeather().map(w => ({ zone: w.zone_id, sea: w.sea_state_1_5, visibility: w.visibility_1_5 }));
-    return `你是教學兵推的回合助理。只能使用下列完全合成、虛構的課堂資料；不得補入真實部隊、武器型號、座標、部署、射程、目標或可執行的現實作戰建議。\n\n請只回傳嚴格 JSON：{"orders":[{"actor":"BLUE|RED|AMBER","action":"必須從允許動作選一項","zone":"必須從允許區域選一項","resource":5到35的整數,"rationale":"繁體中文、80字內，明確說明如何根據資源、準備度、情報、事件或天候作取捨"}]}\n\n必須補齊的角色：${JSON.stringify(missingActors)}\n允許動作：${JSON.stringify(availableActions)}\n允許區域：${JSON.stringify(zones)}\n當前狀態：${JSON.stringify({ turn: state.currentTurn, status: state.status, resources: state.scenario.resources, currentOrders: state.orders[state.currentTurn], event: event ? { name: event.event_name, category: event.category, zone: event.zone_id } : null, weather })}\n\n每個缺少角色剛好一項命令；理由必須可供教師與學生檢視。`;
+    return `你是兵推回合助理。只能使用下列完全合成、虛構的模擬資料；不得補入真實部隊、武器型號、座標、部署、射程、目標或可執行的現實作戰建議。\n\n請只回傳嚴格 JSON：{"orders":[{"actor":"BLUE|RED|AMBER","action":"必須從允許動作選一項","zone":"必須從允許區域選一項","resource":5到35的整數,"rationale":"繁體中文、80字內，明確說明如何根據資源、準備度、情報、事件或天候作取捨"}]}\n\n必須補齊的角色：${JSON.stringify(missingActors)}\n允許動作：${JSON.stringify(availableActions)}\n允許區域：${JSON.stringify(zones)}\n當前狀態：${JSON.stringify({ turn: state.currentTurn, status: state.status, resources: state.scenario.resources, currentOrders: state.orders[state.currentTurn], event: event ? { name: event.event_name, category: event.category, zone: event.zone_id } : null, weather })}\n\n每個缺少角色剛好一項命令；理由必須清楚呈現。`;
   }
 
   function applyAiOrders(result, missingActors) {
@@ -803,7 +810,7 @@
     saveState(false);
     renderSimulation();
     renderAAR();
-    toast(state.currentTurn > state.scenario.turns ? "推演完成，可進行課後檢討。" : "本回合已結算。");
+    toast(state.currentTurn > state.scenario.turns ? "推演完成，可進行事後檢討。" : "本回合已結算。");
   }
 
   function renderNarrative() {
@@ -839,7 +846,7 @@
     const efficiency = atLeastOne / shots;
 
     $("labResults").innerHTML = `
-      <article class="metric blue"><small>修正後單次機率</small><strong>${percent(adjusted)}</strong><small>僅為合成教學值</small></article>
+      <article class="metric blue"><small>修正後單次機率</small><strong>${percent(adjusted)}</strong><small>僅為合成值</small></article>
       <article class="metric blue"><small>至少一次成功</small><strong>${percent(atLeastOne)}</strong><small>假設各次近似獨立</small></article>
       <article class="metric neutral"><small>期望剩餘目標</small><strong>${round1(residual)}</strong><small>用於方案比較</small></article>
       <article class="metric amber"><small>每次投入效率</small><strong>${percent(efficiency)}</strong><small>增加投入存在邊際效益遞減</small></article>`;
@@ -941,7 +948,7 @@
             <tbody>${rows.map(row => `<tr class="${rowClass}">${row.map(cell => `<td>${cell}</td>`).join("")}</tr>`).join("")}</tbody>
           </table>
         </div>
-        <p class="footnote">共 ${rows.length} 筆。公開來源僅作為背景與來源目錄；合成資料可由教師修改。</p>
+        <p class="footnote">共 ${rows.length} 筆。公開來源僅作為背景與來源目錄；合成資料可自行修改。</p>
       </div>`;
   }
 
@@ -1231,7 +1238,7 @@
       <div class="representation-detail-grid">
         <div><h3>模型責任</h3><p>${escapeHtml(item.description)}</p></div>
         <div><h3>示範資料</h3><ul class="compact-list">${item.data.map(value => `<li>${escapeHtml(value)}</li>`).join("")}</ul></div>
-        <div><h3>教學提問</h3><p>${escapeHtml(item.classroom)}</p></div>
+        <div><h3>分析提問</h3><p>${escapeHtml(item.classroom)}</p></div>
       </div>`;
   }
 
@@ -1453,7 +1460,7 @@
       try {
         const payload = JSON.parse(reader.result);
         if (!payload.scenario || payload.safetyClass !== "EDUCATIONAL_SYNTHETIC") {
-          throw new Error("不是本系統的教育合成資料格式");
+          throw new Error("不是本系統的合成資料格式");
         }
         state.scenario = ensureScenarioResources(payload.scenario);
         state.currentTurn = payload.currentTurn || 1;
@@ -1520,36 +1527,54 @@
     cgu: { model: "gpt-5.4-mini", label: "長庚 CGU LLM API", endpoint: "https://air.cgu.edu.tw/cgullmapi/v1", models: ["gpt-5.4-mini", "gpt-5.5", "gpt-5.6"] }
   };
 
-  function updateLlmProvider() {
+  function updateLlmProvider(preserveValues = false) {
     const provider = $("llmProvider").value;
     const preset = LLM_PRESETS[provider];
     $("llmEndpointWrap").hidden = provider !== "cgu";
-    if (provider === "cgu") $("llmEndpoint").value = preset.endpoint;
-    $("llmModel").value = preset.model;
+    if (!preserveValues) {
+      if (provider === "cgu") $("llmEndpoint").value = preset.endpoint;
+      $("llmModel").value = preset.model;
+    }
     $("llmModelOptions").innerHTML = preset.models.map(model => `<option value="${escapeAttr(model)}"></option>`).join("");
   }
 
-  function saveLlmKey() {
-    try { localStorage.setItem(LLM_SETTINGS_KEY, JSON.stringify({ apiKey: $("llmApiKey").value })); } catch { toast("無法寫入瀏覽器 localStorage。") }
+  function saveLlmSettings() {
+    const settings = {
+      provider: $("llmProvider").value,
+      model: $("llmModel").value,
+      reasoning: $("llmReasoning").value,
+      apiKey: $("llmApiKey").value,
+      endpoint: $("llmEndpoint").value,
+      instruction: $("llmInstruction").value,
+      panelOpen: $("llmPanel").open
+    };
+    try { localStorage.setItem(LLM_SETTINGS_KEY, JSON.stringify(settings)); } catch { toast("無法寫入瀏覽器 localStorage。") }
   }
 
-  function loadLlmKey() {
+  function loadLlmSettings() {
     try {
       const saved = JSON.parse(localStorage.getItem(LLM_SETTINGS_KEY) || "{}");
+      if (saved.provider && LLM_PRESETS[saved.provider]) $("llmProvider").value = saved.provider;
+      updateLlmProvider(true);
+      if (saved.model) $("llmModel").value = saved.model;
+      if (["minimal", "low", "medium", "high"].includes(saved.reasoning)) $("llmReasoning").value = saved.reasoning;
       if (saved.apiKey) $("llmApiKey").value = saved.apiKey;
+      if (saved.endpoint) $("llmEndpoint").value = saved.endpoint;
+      if (typeof saved.instruction === "string") $("llmInstruction").value = saved.instruction;
+      $("llmPanel").open = saved.panelOpen === true;
     } catch { /* Ignore malformed or unavailable browser storage. */ }
   }
 
   function clearLlmKey() {
-    try { localStorage.removeItem(LLM_SETTINGS_KEY); } catch { /* Best-effort removal. */ }
     $("llmApiKey").value = "";
+    saveLlmSettings();
     $("llmStatus").textContent = "已清除儲存在此瀏覽器的 API Key。";
     toast("已清除 API Key。");
   }
 
   function llmPrompt(formValues) {
     const baseline = generateScenario(formValues);
-    return `你是課程想定編輯器。只可使用下列「完全合成、虛構」資料，不能補入真實世界的部隊、武器型號、地點、座標、射程、性能、部署或目標資訊。請以繁體中文回傳嚴格 JSON，且不要使用 Markdown。\n\nJSON schema:\n{"overview":"120字內情境摘要","objectives":["3項"],"successCriteria":["3項"],"constraints":["3至5項"],"eventIdeas":["3項不涉及真實武器或地點的事件名稱"]}\n\n課程設定：${JSON.stringify({ name: baseline.name, focus: baseline.focusTitle, difficulty: baseline.difficultyLabel, turns: baseline.turns, hoursPerTurn: baseline.hoursPerTurn, uncertainty: baseline.uncertainty, civilPressure: baseline.civilPressure, amberSupport: baseline.amberSupport, weather: baseline.weatherPreset, resources: baseline.resources, teacherConstraints: formValues.teacherConstraints })}\n\n額外教師指示：${$("llmInstruction").value.trim() || "無"}\n\n敘事要強調資源保存、資訊不確定性、民事影響與升級控制；不得提出可執行的現實作戰建議。`;
+    return `你是想定編輯器。只可使用下列「完全合成、虛構」資料，不能補入真實世界的部隊、武器型號、地點、座標、射程、性能、部署或目標資訊。請以繁體中文回傳嚴格 JSON，且不要使用 Markdown。\n\nJSON schema:\n{"overview":"120字內情境摘要","objectives":["3項"],"successCriteria":["3項"],"constraints":["3至5項"],"eventIdeas":["3項不涉及真實武器或地點的事件名稱"]}\n\n想定設定：${JSON.stringify({ name: baseline.name, focus: baseline.focusTitle, difficulty: baseline.difficultyLabel, turns: baseline.turns, hoursPerTurn: baseline.hoursPerTurn, uncertainty: baseline.uncertainty, civilPressure: baseline.civilPressure, amberSupport: baseline.amberSupport, weather: baseline.weatherPreset, resources: baseline.resources, teacherConstraints: formValues.teacherConstraints })}\n\n額外指示：${$("llmInstruction").value.trim() || "無"}\n\n敘事要強調資源保存、資訊不確定性、民事影響與升級控制；不得提出可執行的現實作戰建議。`;
   }
 
   function extractJson(text) {
@@ -1617,7 +1642,7 @@
     button.disabled = true;
     status.textContent = `正在向 ${LLM_PRESETS[provider].label} 請求合成想定…`;
     try {
-      saveLlmKey();
+      saveLlmSettings();
       const result = extractJson(await requestLlm(provider, $("llmModel").value.trim(), apiKey, llmPrompt(formValues), $("llmReasoning").value));
       const scenario = generateScenario(formValues);
       scenario.overview = String(result.overview || scenario.overview).slice(0, 500);
@@ -1670,8 +1695,13 @@
     $("uncertainty").addEventListener("input", updateRangeLabels);
     $("civilPressure").addEventListener("input", updateRangeLabels);
     $("scenarioTemplate").addEventListener("change", applyScenarioTemplate);
-    $("llmProvider").addEventListener("change", updateLlmProvider);
-    $("llmApiKey").addEventListener("input", saveLlmKey);
+    $("llmProvider").addEventListener("change", () => { updateLlmProvider(false); saveLlmSettings(); });
+    $("llmModel").addEventListener("input", saveLlmSettings);
+    $("llmReasoning").addEventListener("change", saveLlmSettings);
+    $("llmApiKey").addEventListener("input", saveLlmSettings);
+    $("llmEndpoint").addEventListener("input", saveLlmSettings);
+    $("llmInstruction").addEventListener("input", saveLlmSettings);
+    $("llmPanel").addEventListener("toggle", saveLlmSettings);
     $("generateWithLlmBtn").addEventListener("click", generateWithLlm);
     $("clearLlmKeyBtn").addEventListener("click", clearLlmKey);
     $("orderActor").addEventListener("change", updateActionOptions);
@@ -1726,13 +1756,15 @@
   function init() {
     bindEvents();
     updateLlmProvider();
-    loadLlmKey();
+    loadLlmSettings();
     updateRangeLabels();
     updateActionOptions();
     renderLibrary();
     renderStorm();
     if (!loadState()) {
-      beginScenario(generateScenario(readScenarioForm()));
+      renderScenario();
+      renderSimulation();
+      renderAAR();
     }
   }
 

@@ -1,12 +1,12 @@
-# STORM 作戰研究教學實驗室
+# STORM 作戰研究分析實驗室
 
 ## 名稱
 STORM：Synthetic Theater Operations Research Model。
 
 公開文獻將其描述為戰役層級、資料驅動且具隨機性的分析模型。本專案建立的是 **STORM-inspired educational model**，用於教授建模模擬、作戰研究與實驗設計，不是正式STORM。
 
-## 學習目標
-學生完成本單元後，應能：
+## 分析目標
+使用者完成本單元後，應能：
 1. 說明戰役分析模型的系統、能力、計畫、執行與影響鏈結。
 2. 說明C2、Assets、Intelligence、Interactions及Environment的責任。
 3. 區分單次模擬結果、結果分布與平均值估計。
@@ -17,13 +17,13 @@ STORM：Synthetic Theater Operations Research Model。
 
 ## 互動模組
 ### 戰役分析流程
-點選五個階段查看模型責任及課堂問題。
+點選五個階段查看模型責任及模擬問題。
 
 ### 五種表徵
 每一表徵包含：
 - 模型責任
 - 示範資料
-- 教學提問
+- 分析提問
 
 ### 批次實驗
 可設定：
@@ -54,13 +54,13 @@ STORM：Synthetic Theater Operations Research Model。
 
 系統計算A、B、C、AB、AC、BC及ABC效果。
 
-## 教師示範建議
+## 管理者示範建議
 1. 固定種子，先比較COA。
 2. 更換種子，觀察方案排序是否穩定。
 3. 將重複次數從30改成300，觀察平均值區間。
 4. 提高成功門檻，討論成功定義如何改變結論。
 5. 提高民事暴露，討論多準則決策。
-6. 執行DOE後，讓學生設計下一輪實驗。
+6. 執行DOE後，讓使用者設計下一輪實驗。
 
 ## 公開參考
 - Naval Postgraduate School thesis: Improving the Analysis Capabilities of STORM.

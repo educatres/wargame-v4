@@ -4,17 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
-  <meta name="description" content="臺海衝突課程用想定生成與回合推演系統。所有作戰參數均為合成資料。">
-  <title>臺海課程想定生成與兵推系統</title>
+  <meta name="description" content="臺海衝突想定生成與回合推演系統。所有作戰參數均為合成資料。">
+  <title>臺海想定生成</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <header class="topbar">
     <div>
-      <p class="eyebrow">教育模擬 · 離線執行 · 合成資料</p>
-      <h1>臺海課程想定生成與兵推系統</h1>
-      <p class="subtitle">用於情勢判斷、資源配置、情報不確定性、危機管理與課後檢討。</p>
+      <p class="eyebrow">離線執行 · 合成資料</p>
+      <h1>臺海想定生成</h1>
+      <p class="subtitle">用於情勢判斷、資源配置、情報不確定性、危機管理與事後檢討。</p>
     </div>
     <div class="header-actions">
       <button id="saveBtn" class="secondary">儲存進度</button>
@@ -27,7 +27,7 @@
   </header>
 
   <aside class="safety-banner" role="note">
-    <strong>安全與教學界線：</strong>
+    <strong>安全界線：</strong>
     本系統不含精確軍事座標、真實單位部署、現役庫存、弱點、射擊表或可靠的實戰命中／攔截率。
     所有兵力、效能、損失及事件結果均為合成資料，不得用於真實作戰規劃。
   </aside>
@@ -36,9 +36,9 @@
     <button class="tab active" data-tab="builder">一、想定生成</button>
     <button class="tab" data-tab="simulation">二、回合推演</button>
     <button class="tab" data-tab="storm">三、STORM研究實驗室</button>
-    <button class="tab" data-tab="aar">四、課後檢討</button>
+    <button class="tab" data-tab="aar">四、事後檢討</button>
     <button class="tab" data-tab="library">五、資料庫</button>
-    <button class="tab" data-tab="guide">六、教學指引</button>
+    <button class="tab" data-tab="guide">六、指引</button>
   </nav>
 
   <main>
@@ -46,23 +46,15 @@
       <div class="section-heading">
         <div>
           <p class="eyebrow">Scenario Builder</p>
-          <h2>建立課程想定</h2>
+          <h2>建立想定</h2>
         </div>
         <span class="badge">完全離線</span>
       </div>
 
       <div class="two-column">
         <form id="scenarioForm" class="card form-grid">
-          <label>
-            想定名稱
-            <input id="scenarioName" value="海峽警戒與有限封控：72小時聯合決策演練">
-          </label>
-          <label>
-            隨機種子
-            <input id="scenarioSeed" type="number" value="20260727" min="1">
-          </label>
           <label class="full">
-            課程情境範本
+            情境範本
             <select id="scenarioTemplate">
               <option value="blockade">有限封控與商運壓力（預設）</option>
               <option value="airdefense">多軸空情與分層防護</option>
@@ -73,7 +65,15 @@
             </select>
           </label>
           <label>
-            教學重點
+            想定名稱
+            <input id="scenarioName" value="海峽警戒與有限封控：72小時聯合決策演練">
+          </label>
+          <label>
+            隨機種子
+            <input id="scenarioSeed" type="number" value="20260727" min="1">
+          </label>
+          <label>
+            推演重點
             <select id="focus">
               <option value="joint">聯合決策與整體情勢</option>
               <option value="airdefense">防空資源與預警</option>
@@ -133,7 +133,7 @@
             <div class="subheading">
               <div>
                 <h3>合成資源清單</h3>
-                <p class="muted">數量均為本教學想定的虛構起始存量；不對應真實編制、部署或性能。</p>
+                <p class="muted">數量均為本想定的虛構起始存量；不對應真實編制、部署或性能。</p>
               </div>
               <span class="badge">可影響生成與推演</span>
             </div>
@@ -149,7 +149,7 @@
             </div>
           </div>
           <label class="full">
-            教師補充限制
+            補充限制
             <textarea id="teacherConstraints" rows="3" placeholder="例如：避免升高衝突；不得以單純戰果作為唯一評分。">避免升高衝突；需保留後續回合資源；納入商船、人道與資訊環境。</textarea>
           </label>
           <div class="full actions">
@@ -162,56 +162,43 @@
           <article class="card">
             <h3>生成器設計</h3>
             <ol class="compact-list">
-              <li>依學習目標選擇任務、限制與評量重點。</li>
+              <li>依目標選擇任務、限制與評量重點。</li>
               <li>使用抽象區域、能力指數及合成兵力包。</li>
               <li>配置情報落差、天候、民事與外交事件。</li>
               <li>建立每回合事件排程與成功條件。</li>
-              <li>保留教師人工修改與白方裁決權。</li>
+              <li>保留人工修改與白方裁決權。</li>
             </ol>
           </article>
           <article class="callout">
             <h3>不採用真實武器勝負查表</h3>
             <p>系統使用「能力、準備、感測、後勤、指揮、環境」等抽象指數，輸出決策後果及不確定性，而非宣稱某武器必定擊敗另一武器。</p>
           </article>
+          <details id="llmPanel" class="card llm-card">
+            <summary><span>LLM 輔助想定敘事</span><small>點選展開／收合</small></summary>
+            <div class="llm-card-body">
+              <div class="subheading">
+                <div><p class="muted">依合成資源與限制產生敘事、目標與事件。設定會保存在此瀏覽器，可隨時清除 API Key。</p></div>
+                <span class="badge">需瀏覽器可連線 API</span>
+              </div>
+              <div class="form-grid">
+                <label>供應商<select id="llmProvider"><option value="gemini">Google Gemini</option><option value="openai">OpenAI</option><option value="claude">Anthropic Claude</option><option value="cgu">CGU／相容 API</option></select></label>
+                <label>模型名稱<input id="llmModel" list="llmModelOptions" value="gemini-3.5-flash" autocomplete="off"><datalist id="llmModelOptions"></datalist></label>
+                <label>思考力度<select id="llmReasoning"><option value="minimal">最小</option><option value="low" selected>低</option><option value="medium">中</option><option value="high">高</option></select></label>
+                <label>API Key<input id="llmApiKey" type="password" autocomplete="off" placeholder="會儲存在此瀏覽器，可手動清除"></label>
+                <label id="llmEndpointWrap" hidden>CGU API Endpoint<input id="llmEndpoint" type="url" value="https://air.cgu.edu.tw/cgullmapi/v1" placeholder="https://air.cgu.edu.tw/cgullmapi/v1" autocomplete="off"></label>
+                <label class="full">額外敘事指示（選填）<textarea id="llmInstruction" rows="2" placeholder="例如：著重民事韌性與後勤取捨；不要描述真實地點或單位。"></textarea></label>
+                <div class="full actions">
+                  <button type="button" id="generateWithLlmBtn" class="primary">以 LLM 生成想定</button>
+                  <button type="button" id="clearLlmKeyBtn" class="secondary">清除已儲存 API Key</button>
+                  <span id="llmStatus" class="muted" aria-live="polite"></span>
+                </div>
+              </div>
+            </div>
+          </details>
         </div>
       </div>
 
-      <article class="card llm-card">
-        <div class="subheading">
-          <div>
-            <p class="eyebrow">Optional local API call</p>
-            <h3>LLM 輔助想定敘事</h3>
-            <p class="muted">依上方合成資源與課程限制產生敘事、目標與事件。API Key 會保存在此瀏覽器的 localStorage，可隨時手動清除，不會寫入匯出檔。</p>
-          </div>
-          <span class="badge">需瀏覽器可連線 API</span>
-        </div>
-        <div class="form-grid">
-          <label>
-            供應商
-            <select id="llmProvider">
-              <option value="gemini">Google Gemini</option>
-              <option value="openai">OpenAI</option>
-              <option value="claude">Anthropic Claude</option>
-              <option value="cgu">CGU／相容 API</option>
-            </select>
-          </label>
-          <label>模型名稱<input id="llmModel" list="llmModelOptions" value="gemini-3.5-flash" autocomplete="off"><datalist id="llmModelOptions"></datalist></label>
-          <label>思考力度<select id="llmReasoning"><option value="minimal">最小</option><option value="low" selected>低</option><option value="medium">中</option><option value="high">高</option></select></label>
-          <label>API Key<input id="llmApiKey" type="password" autocomplete="off" placeholder="會儲存在此瀏覽器，可手動清除"></label>
-          <label id="llmEndpointWrap" hidden>CGU API Endpoint<input id="llmEndpoint" type="url" value="https://air.cgu.edu.tw/cgullmapi/v1" placeholder="https://air.cgu.edu.tw/cgullmapi/v1" autocomplete="off"></label>
-          <label class="full">額外敘事指示（選填）<textarea id="llmInstruction" rows="2" placeholder="例如：著重民事韌性與後勤取捨；不要描述真實地點或單位。"></textarea></label>
-          <div class="full actions">
-            <button type="button" id="generateWithLlmBtn" class="primary">以 LLM 生成想定</button>
-            <button type="button" id="clearLlmKeyBtn" class="secondary">清除已儲存 API Key</button>
-            <span id="llmStatus" class="muted" aria-live="polite"></span>
-          </div>
-        </div>
-        <p class="footnote">CGU 預設使用 <code>https://air.cgu.edu.tw/cgullmapi/v1</code>，系統會自動接上 <code>/responses</code>。CGU 可選 <code>gpt-5.4-mini</code>、<code>gpt-5.5</code>、<code>gpt-5.6</code> 與思考力度。API Key 保存在此瀏覽器的 localStorage，任何可存取同一瀏覽器資料的使用者皆可能讀取；請在共用裝置使用完後按「清除」。</p>
-      </article>
-
-      <div id="scenarioPreview" class="preview empty-state">
-        尚未生成想定。調整左側參數後按下「生成想定」。
-      </div>
+      <div id="scenarioPreview" class="preview"></div>
     </section>
 
     <section id="simulation" class="panel">
@@ -275,7 +262,7 @@
             </label>
             <label class="full">
               決策理由
-              <textarea id="orderRationale" rows="3" placeholder="學生需說明目標、假設、風險與保留方案。"></textarea>
+              <textarea id="orderRationale" rows="3" placeholder="請說明目標、假設、風險與保留方案。"></textarea>
             </label>
             <div class="full actions">
               <button type="submit" class="primary">提交／更新命令</button>
@@ -311,7 +298,7 @@
         <article class="card intercept-card">
           <div class="subheading">
             <div>
-              <h3>攔截資源配置教學實驗</h3>
+              <h3>攔截資源配置實驗</h3>
               <p class="muted">僅用合成機率比較資源配置，不代表真實系統。</p>
             </div>
           </div>
@@ -335,15 +322,15 @@
       <div class="section-heading">
         <div>
           <p class="eyebrow">STORM-inspired Campaign Analysis Lab</p>
-          <h2>STORM 合成化戰區作戰研究模式：教學實驗室</h2>
+          <h2>STORM 合成化戰區作戰研究模式：實驗室</h2>
           <p class="muted">本模組採用公開文獻中的分析概念重新設計，並非美軍正式 STORM 軟體或其演算法重製。</p>
         </div>
         <span class="badge">模型透明 · 批次重複 · 因子實驗</span>
       </div>
 
       <article class="callout storm-disclaimer">
-        <h3>課堂定位</h3>
-        <p>STORM 是戰役層級、資料驅動且具隨機性的分析思維。本教學版把大型模型縮成五種表徵、合成參數與可解釋的統計實驗，讓學生練習「先提出問題，再設計實驗，最後解讀分布」，而不是用單次結果預測真實戰爭。</p>
+        <h3>定位</h3>
+        <p>STORM 是戰役層級、資料驅動且具隨機性的分析思維。本版本把大型模型縮成五種表徵、合成參數與可解釋的統計實驗，用於「先提出問題，再設計實驗，最後解讀分布」，而不是用單次結果預測真實戰爭。</p>
       </article>
 
       <div class="storm-flow card" aria-label="STORM戰役分析流程">
@@ -364,7 +351,7 @@
           <p class="eyebrow">Five Representations</p>
           <h3>五種模型表徵</h3>
         </div>
-        <span class="muted">點選卡片查看資料、狀態與課堂問題</span>
+        <span class="muted">點選卡片查看資料、狀態與分析問題</span>
       </div>
       <div id="stormRepresentations" class="representation-grid"></div>
       <article id="stormRepresentationDetail" class="card representation-detail"></article>
@@ -390,7 +377,7 @@
           <label>
             重複次數
             <select id="stormReplications">
-              <option value="30">30 次：課堂快速示範</option>
+              <option value="30">30 次：快速示範</option>
               <option value="100" selected>100 次：一般分析</option>
               <option value="300">300 次：較穩定分布</option>
               <option value="500">500 次：進階比較</option>
@@ -465,7 +452,7 @@
             <strong>概念式</strong>
             <code>影響 = f(系統、能力、計畫、互動、環境、隨機性)</code>
           </div>
-          <p class="footnote">所有係數為教學合成值；教師可用相同種子重現結果，或更換種子討論不確定性。</p>
+          <p class="footnote">所有係數皆為合成值；可用相同種子重現結果，或更換種子討論不確定性。</p>
         </article>
       </div>
 
@@ -524,13 +511,13 @@
       </div>
       <div class="two-column">
         <article class="card">
-          <p>此教學實驗同時改變三項因素的高低水準：</p>
+          <p>此實驗同時改變三項因素的高低水準：</p>
           <ul class="compact-list">
             <li>A：C2 品質（基準 ±10）</li>
             <li>B：ISR 品質（基準 ±10）</li>
             <li>C：後勤持續性（基準 ±10）</li>
           </ul>
-          <p>八個組合會使用相同的其他條件，各自執行多次重複。學生可比較「主效應」，並討論是否可能存在交互作用。</p>
+          <p>八個組合會使用相同的其他條件，各自執行多次重複，可比較「主效應」並討論是否可能存在交互作用。</p>
         </article>
         <article id="stormDoeSummary" class="card">
           <p class="muted">尚未執行因子實驗。</p>
@@ -547,7 +534,7 @@
 
       <article class="card storm-sources">
         <h3>公開概念來源</h3>
-        <p>本課堂模組參考公開學術資料所描述的戰役分析、五種表徵、隨機重複與實驗設計概念。它沒有使用或重製正式 STORM 的程式、資料庫或受限情境。</p>
+        <p>本模組參考公開學術資料所描述的戰役分析、五種表徵、隨機重複與實驗設計概念。它沒有使用或重製正式 STORM 的程式、資料庫或受限情境。</p>
         <ul class="compact-list">
           <li><a href="https://nps.edu/web/research/-/applying-design-of-experiments-doe-to-improve-synthetic-theater-operations-research-model-storm-data-2021" target="_blank" rel="noopener">Naval Postgraduate School：Applying Design of Experiments to STORM</a></li>
           <li><a href="https://upload.wikimedia.org/wikipedia/commons/4/49/Improving_the_analysis_capabilities_of_the_Synthetic_Theater_Operations_Research_Model_%28STORM%29_%28IA_improvingnalysis1094543878%29.pdf" target="_blank" rel="noopener">NPS Thesis：Improving the Analysis Capabilities of STORM</a></li>
@@ -560,7 +547,7 @@
       <div class="section-heading">
         <div>
           <p class="eyebrow">After Action Review</p>
-          <h2>課後檢討與學習分析</h2>
+          <h2>事後檢討與分析</h2>
         </div>
         <div class="header-actions">
           <button id="exportCsvBtn" class="secondary">匯出回合 CSV</button>
@@ -576,7 +563,7 @@
             <div id="aarInsights"></div>
           </article>
           <article class="card">
-            <h3>學生反思題</h3>
+            <h3>反思題</h3>
             <ol class="compact-list">
               <li>當時最重要的假設是什麼？後來是否成立？</li>
               <li>哪一項情報最影響決策？其可信度是否足夠？</li>
@@ -612,7 +599,7 @@
       </div>
       <div class="library-notice">
         <strong>藍底：</strong>真實公開來源目錄與少量公告樣本；
-        <strong>綠底：</strong>課程用合成資料。
+        <strong>綠底：</strong>合成資料。
       </div>
       <div class="library-tabs">
         <button class="mini-tab active" data-library="sources">公開來源</button>
@@ -627,15 +614,15 @@
       <div class="section-heading">
         <div>
           <p class="eyebrow">Teaching Guide</p>
-          <h2>建議上課流程</h2>
+          <h2>建議流程</h2>
         </div>
       </div>
       <div class="timeline-guide">
-        <article><span>1</span><div><h3>情境簡報</h3><p>教師發布任務、限制、角色及各組不同版本的初始情報。</p></div></article>
-        <article><span>2</span><div><h3>任務分析</h3><p>學生區分已知事實、推測與未知，提出最可能及最危險的對手行動。</p></div></article>
+        <article><span>1</span><div><h3>情境簡報</h3><p>發布任務、限制、角色及不同版本的初始情報。</p></div></article>
+        <article><span>2</span><div><h3>任務分析</h3><p>區分已知事實、推測與未知，提出最可能及最危險的對手行動。</p></div></article>
         <article><span>3</span><div><h3>行動方案</h3><p>至少提出兩個方案，比較資源、後勤、民事與升級風險。</p></div></article>
         <article><span>4</span><div><h3>回合推演</h3><p>提交命令、接收新情報、由規則引擎與白方共同裁決。</p></div></article>
-        <article><span>5</span><div><h3>課後檢討</h3><p>回放決策歷程，討論錯誤假設、機會成本及替代方案。</p></div></article>
+        <article><span>5</span><div><h3>事後檢討</h3><p>回放決策歷程，討論錯誤假設、機會成本及替代方案。</p></div></article>
       </div>
       <div class="two-column">
         <article class="card">
@@ -646,11 +633,11 @@
             <li>資源、後勤及時間管理：20%</li>
             <li>紅隊思維與應變能力：15%</li>
             <li>民事、法律及升級風險：15%</li>
-            <li>課後反思與證據使用：10%</li>
+            <li>事後反思與證據使用：10%</li>
           </ul>
         </article>
         <article class="card">
-          <h3>適用課程</h3>
+          <h3>適用領域</h3>
           <ul class="compact-list">
             <li>國家安全與戰略研究</li>
             <li>聯合作戰與指參作業</li>
@@ -665,7 +652,7 @@
   </main>
 
   <footer>
-    <span>版本 2.0 · STORM教學實驗室 · 純 HTML/CSS/JavaScript · 可部署 GitHub Pages</span>
+    <span>版本 2.0 · STORM實驗室 · 純 HTML/CSS/JavaScript · 可部署 GitHub Pages</span>
     <span>資料只儲存在使用者瀏覽器，除非主動匯出。</span>
   </footer>
 

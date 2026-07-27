@@ -90,8 +90,11 @@ main { width: min(1440px, 100%); margin: auto; padding: 1.2rem clamp(.8rem, 3vw,
 .resource-builder h3 { margin-bottom: .15rem; }
 .resource-grid { display: grid; grid-template-columns: repeat(4, minmax(130px, 1fr)); gap: .7rem; margin-top: .75rem; }
 .resource-grid label { display: grid; gap: .3rem; font-size: .88rem; font-weight: 700; color: #384858; }
-.llm-card { margin-top: 1rem; }
-.llm-card h3 { margin-bottom: .2rem; }
+.llm-card { padding: 0; overflow: hidden; }
+.llm-card summary { display: flex; justify-content: space-between; align-items: center; gap: .8rem; padding: 1rem; cursor: pointer; font-weight: 900; color: var(--primary); }
+.llm-card summary small { color: var(--muted); font-weight: 600; }
+.llm-card[open] summary { border-bottom: 1px solid var(--border); background: var(--blue-soft); }
+.llm-card-body { padding: 1rem; }
 .full { grid-column: 1 / -1; }
 input, select, textarea {
   width: 100%; border: 1px solid var(--border); border-radius: .65rem;
@@ -121,6 +124,8 @@ output { color: var(--primary); font-weight: 800; }
 .compact-list li + li { margin-top: .45rem; }
 
 .preview { margin-top: 1rem; }
+.preview-blank { background: #f7f9fb; }
+.empty-field { min-height: 3.25rem; border: 1px dashed var(--border); border-radius: .65rem; background: rgba(255,255,255,.55); }
 .preview-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; }
 .preview h3 { margin-top: .2rem; }
 .preview-summary { margin-bottom: 1rem; padding: 1rem; background: var(--blue-soft); border-radius: .9rem; }
