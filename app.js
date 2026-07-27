@@ -1345,7 +1345,12 @@
 
   function formatOrder(order) {
     if (!order) return "—";
-    return `<strong>${escapeHtml(order.action)}</strong><br><small>${zoneName(order.zone)} · 資源 ${order.resource}</small>`;
+    const primary = orderPrimary(order);
+    const supports = orderSupports(order);
+    const supportText = supports.length
+      ? `<br><small>支援：${supports.map(item => escapeHtml(item.action)).join("；")}</small>`
+      : "";
+    return `<strong>主：${escapeHtml(primary.action)}</strong><br><small>${zoneName(primary.zone)} · 資源 ${orderTotalResource(order)}/${ORDER_BUDGET}</small>${supportText}`;
   }
 
   function renderLibrary() {
