@@ -123,7 +123,10 @@ data/demo-data.js
   ├─ 合成角色與區域
   ├─ 合成兵力及能力
   ├─ 合成天候與情報
-  └─ 事件卡
+  ├─ 事件卡
+  ├─ 情境範本與全部介面設定目錄
+  ├─ 合成資源與回合行動目錄
+  └─ LLM供應商、模型與Endpoint預設值
 
 app.js
   ├─ ScenarioGenerator
@@ -135,8 +138,9 @@ app.js
 
 ## 5. 資料儲存
 
-第一版：
+目前版本：
 - 內建資料：JavaScript物件。
+- 可攜式資料庫：SQLite與Excel，內容與目前介面設定同步。
 - 使用者進度：localStorage。
 - 可攜式檔案：JSON。
 - 分析資料：CSV。

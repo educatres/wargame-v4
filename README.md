@@ -84,6 +84,8 @@ start-local.command
 LICENSE
 ```
 
+`data/demo-data.js`、SQLite與Excel目前同步保存9種情境範本、62個介面設定、11項合成資源、26項回合行動及4個LLM供應商預設值。API Key不會寫入任何資料庫檔案。
+
 ## 資料與安全界線
 
 - 公開來源目錄與少量國防部公告樣本屬真實公開資料。
