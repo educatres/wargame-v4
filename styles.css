@@ -86,6 +86,12 @@ main { width: min(1440px, 100%); margin: auto; padding: 1.2rem clamp(.8rem, 3vw,
 
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .9rem; }
 .form-grid label, .lab-grid label { display: grid; gap: .35rem; font-weight: 700; color: #384858; }
+.resource-builder { padding: .9rem; border: 1px solid #c9d9e5; border-radius: .8rem; background: #f7fbfe; }
+.resource-builder h3 { margin-bottom: .15rem; }
+.resource-grid { display: grid; grid-template-columns: repeat(4, minmax(130px, 1fr)); gap: .7rem; margin-top: .75rem; }
+.resource-grid label { display: grid; gap: .3rem; font-size: .88rem; font-weight: 700; color: #384858; }
+.llm-card { margin-top: 1rem; }
+.llm-card h3 { margin-bottom: .2rem; }
 .full { grid-column: 1 / -1; }
 input, select, textarea {
   width: 100%; border: 1px solid var(--border); border-radius: .65rem;
@@ -199,10 +205,12 @@ footer {
   .two-column, .simulation-layout, .three-column { grid-template-columns: 1fr; }
   .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .preview-grid { grid-template-columns: 1fr; }
+  .resource-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 620px) {
   main { padding-left: .65rem; padding-right: .65rem; }
   .form-grid, .lab-grid, .metric-grid { grid-template-columns: 1fr; }
+  .resource-grid { grid-template-columns: 1fr; }
   .zone-map { min-height: 460px; }
   .header-actions, .actions { width: 100%; }
   .header-actions > *, .actions > * { flex: 1; text-align: center; }

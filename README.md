@@ -25,6 +25,8 @@
 - 課後檢討：自動建立決策時間線、主要風險及反思題。
 - 匯入／匯出：JSON保存完整課程狀態，CSV匯出回合紀錄。
 - 本機保存：進度只存在瀏覽器 localStorage，除非主動匯出。
+- 合成資源基線：可設定雙方的航空架次、攔截彈、海上平台與補給批次；這些虛構數量會影響想定摘要、起始準備與回合裁決。
+- LLM 輔助想定：支援 Gemini、OpenAI、Anthropic Claude 與 CGU／OpenAI 相容 API，以當前合成資源和教師限制生成敘事、目標及事件構想。API Key 僅在單次瀏覽器請求使用，隨即清空且不會儲存或匯出。
 
 ## 單機使用
 
@@ -56,6 +58,8 @@ Windows 也可雙擊 `start-local.bat`。
 6. 儲存後等待 GitHub Pages 網址產生。
 
 不需要 Firebase、資料庫伺服器或 API Key。
+
+若要使用 LLM 輔助想定，才需自行在頁面輸入對應服務的 API Key。Gemini 的模型欄可填入帳戶可用的 `gemini-3.5-flash` 或 `gemini-3.6-flash`；實際模型名稱仍以該帳戶/API 版本提供者為準。
 
 ## 專案結構
 

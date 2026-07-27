@@ -242,9 +242,10 @@
 
   function initialStatus(scenario) {
     const amberEnabled = scenario.amberSupport !== "none";
+    const resourceBalance = scenario.resourceBalance || { blue: 0, red: 0 };
     return {
       BLUE: {
-        readiness: round1(averageForActor("BLUE", "readiness")),
+        readiness: round1(clamp(averageForActor("BLUE", "readiness") + resourceBalance.blue * 0.12)),
         sustainment: round1(averageForActor("BLUE", "sustainment")),
         command: round1(averageForActor("BLUE", "command_quality")),
         intel: 64 - scenario.uncertainty * 3,
@@ -252,7 +253,7 @@
         civilianRisk: 25 + scenario.civilPressure * 5
       },
       RED: {
-        readiness: round1(averageForActor("RED", "readiness")),
+        readiness: round1(clamp(averageForActor("RED", "readiness") + resourceBalance.red * 0.12)),
         sustainment: round1(averageForActor("RED", "sustainment")),
         command: round1(averageForActor("RED", "command_quality")),
         intel: 68 - scenario.uncertainty * 2,
@@ -268,6 +269,28 @@
         civilianRisk: 0
       }
     };
+  }
+
+  function readResourceInventory() {
+    const number = (id, max) => clamp(Number($(id).value) || 0, 0, max);
+    return {
+      blueAircraft: number("blueAircraft", 240), blueInterceptors: number("blueInterceptors", 600),
+      blueVessels: number("blueVessels", 80), blueLogistics: number("blueLogistics", 240),
+      redAircraft: number("redAircraft", 360), redIncoming: number("redIncoming", 600),
+      redVessels: number("redVessels", 100), redLogistics: number("redLogistics", 240)
+    };
+  }
+
+  function calculateResourceBalance(resources) {
+    const blue = ((resources.blueAircraft / 48) + (resources.blueInterceptors / 160) + (resources.blueVessels / 14) + (resources.blueLogistics / 72)) * 5 - 20;
+    const red = ((resources.redAircraft / 96) + (resources.redIncoming / 180) + (resources.redVessels / 24) + (resources.redLogistics / 84)) * 5 - 20;
+    return { blue: round1(clamp(blue, -15, 15)), red: round1(clamp(red, -15, 15)) };
+  }
+
+  function ensureScenarioResources(scenario) {
+    if (!scenario.resources) scenario.resources = readResourceInventory();
+    scenario.resourceBalance ||= calculateResourceBalance(scenario.resources);
+    return scenario;
   }
 
   function generateScenario(formValues) {
@@ -320,6 +343,8 @@
       civilPressure: formValues.civilPressure,
       amberSupport: formValues.amberSupport,
       weatherPreset: formValues.weatherPreset,
+      resources: formValues.resources,
+      resourceBalance: calculateResourceBalance(formValues.resources),
       overview: pick(overviewTemplates, rng),
       objectives: focus.objectives,
       successCriteria: focus.success,
@@ -343,12 +368,13 @@
       civilPressure: Number($("civilPressure").value),
       amberSupport: $("amberSupport").value,
       weatherPreset: $("weatherPreset").value,
+      resources: readResourceInventory(),
       teacherConstraints: $("teacherConstraints").value.trim()
     };
   }
 
   function beginScenario(scenario) {
-    state.scenario = scenario;
+    state.scenario = ensureScenarioResources(scenario);
     state.currentTurn = 1;
     state.status = initialStatus(scenario);
     state.orders = {};
@@ -402,6 +428,14 @@
           <ul class="compact-list">${s.constraints.map(v => `<li>${escapeHtml(v)}</li>`).join("")}</ul>
         </article>
       </div>
+      <article class="card" style="margin-top:1rem">
+        <div class="subheading"><h3>本想定合成資源基線</h3><span class="muted">只用於課堂比較與隨機模擬</span></div>
+        <div class="preview-grid">
+          <div><strong>藍方</strong><p class="muted">航空架次 ${s.resources.blueAircraft} · 攔截彈 ${s.resources.blueInterceptors}<br>巡防平台 ${s.resources.blueVessels} · 補給批次 ${s.resources.blueLogistics}</p></div>
+          <div><strong>紅方</strong><p class="muted">航空架次 ${s.resources.redAircraft} · 合成來襲目標 ${s.resources.redIncoming}<br>海上平台 ${s.resources.redVessels} · 補給批次 ${s.resources.redLogistics}</p></div>
+          <div><strong>資源壓力</strong><p class="muted">藍方資源修正 ${s.resourceBalance.blue >= 0 ? "+" : ""}${s.resourceBalance.blue}<br>紅方資源修正 ${s.resourceBalance.red >= 0 ? "+" : ""}${s.resourceBalance.red}</p></div>
+        </div>
+      </article>
       <div class="actions" style="margin-top:1rem">
         <button class="primary" id="goSimulationBtn">開始回合推演</button>
         <button class="secondary" id="regenerateEventsBtn">以相同設定重抽事件</button>
@@ -617,7 +651,8 @@
     const command = status.command * 0.16;
     const sustain = status.sustainment * 0.12;
     const riskBonus = (order.resource > 25 ? 4 : 0);
-    return effort + readiness + command + sustain + riskBonus + (rng() - 0.5) * 14;
+    const resourceModifier = state.scenario?.resourceBalance?.[order.actor.toLowerCase()] || 0;
+    return effort + readiness + command + sustain + riskBonus + resourceModifier + (rng() - 0.5) * 14;
   }
 
   function applyOwnAction(actor, order) {
@@ -1304,6 +1339,7 @@
       const parsed = JSON.parse(raw);
       if (!parsed.scenario) return false;
       Object.assign(state, parsed);
+      ensureScenarioResources(state.scenario);
       state.storm ||= { activeStage: "systems", activeRepresentation: "c2", lastExperiment: null, comparison: [], doe: null };
       renderScenario();
       renderSimulation();
@@ -1364,7 +1400,7 @@
         if (!payload.scenario || payload.safetyClass !== "EDUCATIONAL_SYNTHETIC") {
           throw new Error("不是本系統的教育合成資料格式");
         }
-        state.scenario = payload.scenario;
+        state.scenario = ensureScenarioResources(payload.scenario);
         state.currentTurn = payload.currentTurn || 1;
         state.status = payload.status || initialStatus(payload.scenario);
         state.orders = payload.orders || {};
@@ -1422,6 +1458,94 @@
     return `${Math.round(v * 1000) / 10}%`;
   }
 
+  const LLM_PRESETS = {
+    gemini: { model: "gemini-3.5-flash", label: "Gemini" },
+    openai: { model: "gpt-4.1-mini", label: "OpenAI" },
+    claude: { model: "claude-sonnet-4-20250514", label: "Claude" },
+    cgu: { model: "gpt-4o-mini", label: "CGU／相容 API" }
+  };
+
+  function updateLlmProvider() {
+    const provider = $("llmProvider").value;
+    $("llmEndpointWrap").hidden = provider !== "cgu";
+    $("llmModel").value = LLM_PRESETS[provider].model;
+  }
+
+  function llmPrompt(formValues) {
+    const baseline = generateScenario(formValues);
+    return `你是課程想定編輯器。只可使用下列「完全合成、虛構」資料，不能補入真實世界的部隊、武器型號、地點、座標、射程、性能、部署或目標資訊。請以繁體中文回傳嚴格 JSON，且不要使用 Markdown。\n\nJSON schema:\n{"overview":"120字內情境摘要","objectives":["3項"],"successCriteria":["3項"],"constraints":["3至5項"],"eventIdeas":["3項不涉及真實武器或地點的事件名稱"]}\n\n課程設定：${JSON.stringify({ name: baseline.name, focus: baseline.focusTitle, difficulty: baseline.difficultyLabel, turns: baseline.turns, hoursPerTurn: baseline.hoursPerTurn, uncertainty: baseline.uncertainty, civilPressure: baseline.civilPressure, amberSupport: baseline.amberSupport, weather: baseline.weatherPreset, resources: baseline.resources, teacherConstraints: formValues.teacherConstraints })}\n\n額外教師指示：${$("llmInstruction").value.trim() || "無"}\n\n敘事要強調資源保存、資訊不確定性、民事影響與升級控制；不得提出可執行的現實作戰建議。`;
+  }
+
+  function extractJson(text) {
+    const clean = String(text || "").trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+    const start = clean.indexOf("{");
+    const end = clean.lastIndexOf("}");
+    if (start < 0 || end < start) throw new Error("API 未回傳 JSON 物件");
+    return JSON.parse(clean.slice(start, end + 1));
+  }
+
+  async function requestLlm(provider, model, apiKey, prompt) {
+    if (provider === "gemini") {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+      const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: 0.7 } }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error?.message || `Gemini HTTP ${response.status}`);
+      return data?.candidates?.[0]?.content?.parts?.map(part => part.text || "").join("") || "";
+    }
+    if (provider === "openai") {
+      const response = await fetch("https://api.openai.com/v1/responses", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` }, body: JSON.stringify({ model, input: prompt, text: { format: { type: "json_object" } } }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error?.message || `OpenAI HTTP ${response.status}`);
+      return data.output_text || data.output?.flatMap(item => item.content || []).map(part => part.text || "").join("") || "";
+    }
+    if (provider === "claude") {
+      const response = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" }, body: JSON.stringify({ model, max_tokens: 1200, temperature: 0.7, messages: [{ role: "user", content: prompt }] }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error?.message || `Claude HTTP ${response.status}`);
+      return data.content?.map(part => part.text || "").join("") || "";
+    }
+    const endpoint = $("llmEndpoint").value.trim();
+    if (!/^https:\/\//i.test(endpoint)) throw new Error("請輸入 CGU／相容 API 的 HTTPS Endpoint");
+    const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` }, body: JSON.stringify({ model, messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, temperature: 0.7 }) });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data?.error?.message || `相容 API HTTP ${response.status}`);
+    return data.choices?.[0]?.message?.content || "";
+  }
+
+  function cleanLlmList(value, fallback, max) {
+    if (!Array.isArray(value)) return fallback;
+    const cleaned = value.map(item => String(item || "").replace(/[\r\n]+/g, " ").trim()).filter(Boolean).slice(0, max);
+    return cleaned.length ? cleaned : fallback;
+  }
+
+  async function generateWithLlm() {
+    const apiKey = $("llmApiKey").value.trim();
+    if (!apiKey) return toast("請輸入 API Key；系統不會儲存它。");
+    const provider = $("llmProvider").value;
+    const button = $("generateWithLlmBtn");
+    const status = $("llmStatus");
+    const formValues = readScenarioForm();
+    button.disabled = true;
+    status.textContent = `正在向 ${LLM_PRESETS[provider].label} 請求合成想定…`;
+    try {
+      const result = extractJson(await requestLlm(provider, $("llmModel").value.trim(), apiKey, llmPrompt(formValues)));
+      const scenario = generateScenario(formValues);
+      scenario.overview = String(result.overview || scenario.overview).slice(0, 500);
+      scenario.objectives = cleanLlmList(result.objectives, scenario.objectives, 4);
+      scenario.successCriteria = cleanLlmList(result.successCriteria, scenario.successCriteria, 4);
+      scenario.constraints = [...scenario.constraints, ...cleanLlmList(result.constraints, [], 5)].slice(0, 7);
+      scenario.llmNarrative = { provider: LLM_PRESETS[provider].label, model: $("llmModel").value.trim(), eventIdeas: cleanLlmList(result.eventIdeas, [], 4) };
+      beginScenario(scenario);
+      status.textContent = `已使用 ${scenario.llmNarrative.provider} 生成敘事；API Key 未保存。`;
+    } catch (error) {
+      status.textContent = "生成失敗。";
+      toast(`LLM 生成失敗：${error.message}`);
+    } finally {
+      $("llmApiKey").value = "";
+      button.disabled = false;
+    }
+  }
+
   function bindEvents() {
     document.querySelectorAll(".tab").forEach(btn => btn.addEventListener("click", () => setTab(btn.dataset.tab)));
     document.querySelectorAll(".mini-tab").forEach(btn => btn.addEventListener("click", () => {
@@ -1445,11 +1569,21 @@
       $("civilPressure").value = 3;
       $("amberSupport").value = "indirect";
       $("weatherPreset").value = "variable";
+      $("blueAircraft").value = 48;
+      $("blueInterceptors").value = 160;
+      $("blueVessels").value = 14;
+      $("blueLogistics").value = 72;
+      $("redAircraft").value = 96;
+      $("redIncoming").value = 180;
+      $("redVessels").value = 24;
+      $("redLogistics").value = 84;
       updateRangeLabels();
       beginScenario(generateScenario(readScenarioForm()));
     });
     $("uncertainty").addEventListener("input", updateRangeLabels);
     $("civilPressure").addEventListener("input", updateRangeLabels);
+    $("llmProvider").addEventListener("change", updateLlmProvider);
+    $("generateWithLlmBtn").addEventListener("click", generateWithLlm);
     $("orderActor").addEventListener("change", updateActionOptions);
     $("orderForm").addEventListener("submit", submitOrder);
     $("autoOrdersBtn").addEventListener("click", autoFillOrders);
@@ -1489,6 +1623,7 @@
 
   function init() {
     bindEvents();
+    updateLlmProvider();
     updateRangeLabels();
     updateActionOptions();
     renderLibrary();

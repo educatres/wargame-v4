@@ -118,6 +118,25 @@
               <option value="adverse">不利</option>
             </select>
           </label>
+          <div class="full resource-builder">
+            <div class="subheading">
+              <div>
+                <h3>合成資源清單</h3>
+                <p class="muted">數量均為本教學想定的虛構起始存量；不對應真實編制、部署或性能。</p>
+              </div>
+              <span class="badge">可影響生成與推演</span>
+            </div>
+            <div class="resource-grid">
+              <label>藍方可用航空架次<input id="blueAircraft" type="number" min="0" max="240" value="48"></label>
+              <label>藍方攔截彈庫存<input id="blueInterceptors" type="number" min="0" max="600" value="160"></label>
+              <label>藍方海上巡防平台<input id="blueVessels" type="number" min="0" max="80" value="14"></label>
+              <label>藍方後勤補給批次<input id="blueLogistics" type="number" min="0" max="240" value="72"></label>
+              <label>紅方航空架次<input id="redAircraft" type="number" min="0" max="360" value="96"></label>
+              <label>紅方合成來襲目標<input id="redIncoming" type="number" min="0" max="600" value="180"></label>
+              <label>紅方海上平台<input id="redVessels" type="number" min="0" max="100" value="24"></label>
+              <label>紅方後勤補給批次<input id="redLogistics" type="number" min="0" max="240" value="84"></label>
+            </div>
+          </div>
           <label class="full">
             教師補充限制
             <textarea id="teacherConstraints" rows="3" placeholder="例如：避免升高衝突；不得以單純戰果作為唯一評分。">避免升高衝突；需保留後續回合資源；納入商船、人道與資訊環境。</textarea>
@@ -145,6 +164,37 @@
           </article>
         </div>
       </div>
+
+      <article class="card llm-card">
+        <div class="subheading">
+          <div>
+            <p class="eyebrow">Optional local API call</p>
+            <h3>LLM 輔助想定敘事</h3>
+            <p class="muted">依上方合成資源與課程限制產生敘事、目標與事件。API Key 只留在此頁記憶體，不寫入 localStorage 或匯出檔。</p>
+          </div>
+          <span class="badge">需瀏覽器可連線 API</span>
+        </div>
+        <div class="form-grid">
+          <label>
+            供應商
+            <select id="llmProvider">
+              <option value="gemini">Google Gemini</option>
+              <option value="openai">OpenAI</option>
+              <option value="claude">Anthropic Claude</option>
+              <option value="cgu">CGU／相容 API</option>
+            </select>
+          </label>
+          <label>模型名稱<input id="llmModel" value="gemini-3.5-flash" autocomplete="off"></label>
+          <label>API Key<input id="llmApiKey" type="password" autocomplete="off" placeholder="只用於本次請求，不會儲存"></label>
+          <label id="llmEndpointWrap" hidden>相容 API Endpoint<input id="llmEndpoint" type="url" placeholder="https://…/v1/chat/completions" autocomplete="off"></label>
+          <label class="full">額外敘事指示（選填）<textarea id="llmInstruction" rows="2" placeholder="例如：著重民事韌性與後勤取捨；不要描述真實地點或單位。"></textarea></label>
+          <div class="full actions">
+            <button type="button" id="generateWithLlmBtn" class="primary">以 LLM 生成想定</button>
+            <span id="llmStatus" class="muted" aria-live="polite"></span>
+          </div>
+        </div>
+        <p class="footnote">Gemini 可使用 <code>gemini-3.5-flash</code> 或 <code>gemini-3.6-flash</code>（實際可用名稱依帳戶與 API 版本為準）。CGU 使用 OpenAI 相容 Chat Completions 格式。</p>
+      </article>
 
       <div id="scenarioPreview" class="preview empty-state">
         尚未生成想定。調整左側參數後按下「生成想定」。
