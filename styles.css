@@ -418,6 +418,7 @@ table { width: 100%; border-collapse: collapse; min-width: 860px; }
 th, td { text-align: left; padding: .7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
 th { background: #edf3f7; position: sticky; top: 0; }
 .decision-timeline-table { min-width: 1780px; }
+.aar-timeline-card { min-width: 0; }
 .decision-timeline-table > thead > tr > th:nth-child(1) { width: 72px; }
 .decision-timeline-table > thead > tr > th:nth-child(2) { width: 190px; }
 .decision-timeline-table > thead > tr > th:nth-child(3) { width: 820px; }
@@ -501,6 +502,15 @@ th { background: #edf3f7; position: sticky; top: 0; }
 }
 .timeline-guide h3 { margin-bottom: .15rem; }
 .timeline-guide p { margin: 0; color: var(--muted); }
+
+@media (min-width: 1180px) {
+  .aar-timeline-card {
+    width: calc(100vw - clamp(1.5rem, 3vw, 3rem));
+    margin-right: 0;
+    margin-left: 50%;
+    transform: translateX(-50%);
+  }
+}
 
 footer {
   display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
@@ -671,6 +681,7 @@ footer {
   body { background: white; }
   main { max-width: none; padding: 0; }
   .card, .metric { box-shadow: none; break-inside: avoid; }
+  .aar-timeline-card { width: auto; margin: 0; transform: none; }
   .decision-timeline-table { min-width: 0; font-size: 7pt; }
   .faction-count-cell { min-width: 0; }
   .faction-count-grid { grid-template-columns: 1fr; }
