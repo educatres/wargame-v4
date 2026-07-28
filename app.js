@@ -191,30 +191,51 @@
   };
 
   const INVENTORY_BASELINES = {
-    aviation: 70,
-    airDefense: 180,
-    longRange: 90,
-    maritime: 24,
-    subsurface: 14,
-    isr: 100,
-    communications: 32,
-    logistics: 90,
+    aviation: 120,
+    airDefense: 150,
+    longRange: 125,
+    maritime: 70,
+    subsurface: 42,
+    isr: 55,
+    communications: 42,
+    logistics: 105,
     energy: 100
   };
 
   const INVENTORY_TEMPLATE = [
-    ["BLUE", "B-AIR-ALPHA", "aviation", 72, 82, 22, 8, 2, 12, 3, 86, "合成航空任務批次"],
-    ["BLUE", "B-AD-BRAVO", "airDefense", 210, 88, 30, 18, 1, 40, 4, 90, "合成防護資源"],
-    ["BLUE", "B-SEA-CHARLIE", "maritime", 20, 76, 25, 2, 1, 3, 5, 84, "合成海上任務包"],
-    ["BLUE", "B-ISR-DELTA", "isr", 140, 80, 15, 10, 4, 20, 2, 82, "無人載具與感測批次"],
-    ["BLUE", "B-C2-ECHO", "communications", 36, 92, 20, 3, 1, 6, 3, 91, "備援通訊節點"],
-    ["BLUE", "B-LOG-FOXTROT", "logistics", 96, 78, 25, 9, 5, 18, 2, 88, "補給與維修批次"],
-    ["RED", "R-AIR-ALPHA", "aviation", 128, 84, 18, 12, 3, 24, 3, 87, "合成航空任務批次"],
-    ["RED", "R-LR-BRAVO", "longRange", 160, 82, 28, 16, 1, 30, 4, 86, "抽象遠程資源"],
-    ["RED", "R-SEA-CHARLIE", "maritime", 34, 79, 20, 3, 1, 6, 3, 84, "合成海上任務包"],
-    ["RED", "R-LOG-DELTA", "logistics", 116, 81, 20, 10, 5, 22, 2, 89, "補給與維修批次"],
-    ["AMBER", "A-ISR-ALPHA", "isr", 90, 86, 25, 8, 3, 18, 3, 92, "外部情報支援批次"],
-    ["AMBER", "A-LOG-BRAVO", "logistics", 72, 80, 30, 7, 4, 16, 4, 90, "外部後勤支援批次"]
+    ["BLUE", "F-16V「Viper／毒蛇」", "aviation", 42, 84, 24, 5, 2, 6, 4, 89, "多用途航空任務；參數為遊戲平衡值"],
+    ["BLUE", "IDF／F-CK-1「經國號」", "aviation", 34, 80, 22, 4, 2, 5, 3, 86, "航空攔截任務；參數為遊戲平衡值"],
+    ["BLUE", "Mirage 2000-5「幻象2000-5」", "aviation", 20, 76, 28, 4, 1, 3, 5, 85, "空優攔截任務；參數為遊戲平衡值"],
+    ["BLUE", "C-130H「力士型運輸機」", "logistics", 20, 78, 30, 3, 2, 4, 4, 88, "空運與補給支援；參數為遊戲平衡值"],
+    ["BLUE", "E-2K「鷹眼預警機」", "isr", 12, 82, 35, 2, 1, 2, 5, 90, "空中預警與感測；參數為遊戲平衡值"],
+    ["BLUE", "P-3C「獵戶座反潛巡邏機」", "subsurface", 16, 77, 30, 3, 1, 3, 4, 87, "海上巡邏與水下警戒；參數為遊戲平衡值"],
+    ["BLUE", "雄風三型超音速反艦飛彈", "maritime", 48, 88, 32, 6, 1, 8, 5, 91, "海上拒止資源；參數為遊戲平衡值"],
+    ["BLUE", "天劍二型空對空飛彈／TC-2", "airDefense", 68, 86, 28, 8, 1, 12, 4, 89, "空中攔截資源；參數為遊戲平衡值"],
+    ["BLUE", "天弓三型防空飛彈", "airDefense", 54, 90, 35, 7, 1, 10, 5, 92, "區域防空資源；參數為遊戲平衡值"],
+    ["BLUE", "萬劍飛彈", "longRange", 30, 82, 35, 5, 1, 6, 6, 88, "遠程火力資源；參數為遊戲平衡值"],
+    ["BLUE", "雷霆2000多管火箭系統", "longRange", 36, 84, 25, 5, 2, 8, 3, 90, "地面火力支援；參數為遊戲平衡值"],
+    ["RED", "殲-20戰鬥機／J-20", "aviation", 32, 84, 28, 5, 2, 6, 5, 90, "先進航空任務；參數為遊戲平衡值"],
+    ["RED", "殲-16戰鬥機／J-16", "aviation", 52, 82, 20, 6, 2, 9, 4, 88, "多用途航空任務；參數為遊戲平衡值"],
+    ["RED", "殲-10C戰鬥機／J-10C", "aviation", 58, 80, 18, 6, 3, 10, 3, 87, "航空攔截任務；參數為遊戲平衡值"],
+    ["RED", "轟-6K轟炸機／H-6K", "longRange", 24, 76, 35, 5, 1, 4, 6, 86, "遠程航空任務；參數為遊戲平衡值"],
+    ["RED", "空警-500預警機／KJ-500", "isr", 18, 84, 32, 2, 1, 3, 5, 91, "空中預警與感測；參數為遊戲平衡值"],
+    ["RED", "運-20運輸機／Y-20", "logistics", 24, 79, 26, 3, 2, 5, 4, 88, "空運與補給支援；參數為遊戲平衡值"],
+    ["RED", "055型導彈驅逐艦", "maritime", 16, 82, 30, 3, 1, 3, 6, 90, "大型水面艦任務；參數為遊戲平衡值"],
+    ["RED", "052D型導彈驅逐艦", "maritime", 28, 81, 24, 4, 1, 5, 4, 88, "水面護航任務；參數為遊戲平衡值"],
+    ["RED", "075型兩棲攻擊艦", "maritime", 12, 75, 38, 3, 1, 2, 7, 86, "兩棲支援任務；參數為遊戲平衡值"],
+    ["RED", "東風-17常規導彈／DF-17", "longRange", 56, 85, 30, 7, 1, 10, 5, 90, "遠程火力資源；參數為遊戲平衡值"],
+    ["RED", "東風-26型導彈／DF-26", "longRange", 44, 83, 38, 7, 1, 8, 7, 89, "戰略火力敘事標籤；參數為遊戲平衡值"],
+    ["AMBER", "F-35A Lightning II「閃電II」", "aviation", 36, 86, 30, 5, 2, 6, 5, 92, "先進航空支援；參數為遊戲平衡值"],
+    ["AMBER", "F/A-18E/F Super Hornet「超級大黃蜂」", "aviation", 48, 83, 24, 6, 2, 8, 4, 90, "艦載航空支援；參數為遊戲平衡值"],
+    ["AMBER", "E-2D Advanced Hawkeye", "isr", 14, 88, 38, 2, 1, 2, 5, 93, "空中預警支援；參數為遊戲平衡值"],
+    ["AMBER", "P-8A Poseidon「海神」", "subsurface", 20, 84, 30, 3, 1, 4, 4, 91, "海上巡邏與水下警戒；參數為遊戲平衡值"],
+    ["AMBER", "KC-46A Pegasus「飛馬」", "logistics", 18, 80, 34, 3, 2, 4, 5, 89, "空中加油支援；參數為遊戲平衡值"],
+    ["AMBER", "C-17 Globemaster III", "logistics", 16, 82, 32, 3, 2, 4, 5, 91, "戰略空運支援；參數為遊戲平衡值"],
+    ["AMBER", "Arleigh Burke級導彈驅逐艦", "maritime", 24, 86, 32, 4, 1, 4, 5, 92, "艦隊護航支援；參數為遊戲平衡值"],
+    ["AMBER", "Virginia級攻擊核潛艦", "subsurface", 14, 88, 40, 3, 1, 2, 7, 93, "水下警戒支援；參數為遊戲平衡值"],
+    ["AMBER", "SM-6標準六型飛彈", "airDefense", 72, 89, 36, 8, 1, 12, 6, 93, "艦隊防空資源；參數為遊戲平衡值"],
+    ["AMBER", "Tomahawk「戰斧」巡弋飛彈", "longRange", 44, 86, 38, 6, 1, 8, 7, 91, "遠程火力資源；參數為遊戲平衡值"],
+    ["AMBER", "Starlink商用衛星通訊支援", "communications", 32, 90, 22, 3, 2, 6, 3, 92, "備援通訊節點；參數為遊戲平衡值"]
   ];
 
   const STORM_STAGES = {
@@ -367,6 +388,39 @@
     humanitarian: "十字符號／人道支援",
     disperse: "分岔箭頭／分散部署"
   };
+  const OPERATION_EQUIPMENT_LABELS = {
+    BLUE: {
+      aviation: ["F-16V「毒蛇」", "F-CK-1「經國號」", "Mirage 2000-5"],
+      airdefense: ["天劍二型／TC-2", "天弓三型"],
+      maritime: ["雄風三型"],
+      subsurface: ["P-3C「獵戶座」"],
+      longrange: ["萬劍飛彈", "雷霆2000"],
+      intelligence: ["E-2K「鷹眼」", "P-3C「獵戶座」"],
+      drone: ["E-2K「鷹眼」"],
+      logistics: ["C-130H「力士」"]
+    },
+    RED: {
+      aviation: ["殲-20／J-20", "殲-16／J-16", "殲-10C／J-10C"],
+      maritime: ["055型驅逐艦", "052D型驅逐艦", "075型兩棲攻擊艦"],
+      longrange: ["東風-17／DF-17", "東風-26／DF-26", "轟-6K／H-6K"],
+      intelligence: ["空警-500／KJ-500"],
+      drone: ["空警-500／KJ-500"],
+      logistics: ["運-20／Y-20"]
+    },
+    AMBER: {
+      aviation: ["F-35A「閃電II」", "F/A-18E/F「超級大黃蜂」"],
+      airdefense: ["SM-6標準六型"],
+      convoy: ["Arleigh Burke級驅逐艦"],
+      maritime: ["Arleigh Burke級驅逐艦"],
+      subsurface: ["Virginia級潛艦", "P-8A「海神」"],
+      longrange: ["Tomahawk「戰斧」"],
+      intelligence: ["E-2D Advanced Hawkeye", "P-8A「海神」"],
+      drone: ["E-2D Advanced Hawkeye"],
+      satellite: ["Starlink衛星通訊"],
+      communications: ["Starlink衛星通訊"],
+      logistics: ["KC-46A「飛馬」", "C-17 Globemaster III"]
+    }
+  };
   const operationAnimation = {
     scene: null,
     sceneKey: "",
@@ -433,9 +487,93 @@
     toast.timer = setTimeout(() => node.classList.remove("show"), 2400);
   }
 
+  let sectionNavigatorFrame = 0;
+
+  function positionSectionNavigator() {
+    const navigator = $("sectionNavigator");
+    if (!navigator || navigator.hidden) return;
+    if (!window.matchMedia("(min-width: 1280px)").matches) {
+      navigator.style.removeProperty("top");
+      navigator.style.removeProperty("--section-navigator-max-height");
+      navigator.classList.remove("is-scroll-centered");
+      return;
+    }
+    const tabs = document.querySelector(".tabs");
+    const tabsBottom = tabs ? tabs.getBoundingClientRect().bottom : 0;
+    const clearance = Math.max(12, tabsBottom + 12);
+    const availableHeight = Math.max(240, window.innerHeight - clearance - 12);
+    navigator.style.setProperty("--section-navigator-max-height", `${Math.min(520, availableHeight)}px`);
+    const navigatorHeight = navigator.getBoundingClientRect().height;
+    const centeredTop = Math.max(clearance, (window.innerHeight - navigatorHeight) / 2);
+    const shouldCenter = window.scrollY > 80;
+    navigator.style.top = `${Math.round(shouldCenter ? centeredTop : clearance)}px`;
+    navigator.classList.toggle("is-scroll-centered", shouldCenter);
+  }
+
+  function updateSectionNavigatorActive() {
+    sectionNavigatorFrame = 0;
+    const navigator = $("sectionNavigator");
+    if (!navigator || navigator.hidden) return;
+    positionSectionNavigator();
+    const buttons = [...$("sectionNavigatorLinks").querySelectorAll("[data-section-target]")];
+    const visibleTargets = buttons.map(button => ({
+      button,
+      target: $(button.dataset.sectionTarget)
+    })).filter(item => item.target && item.target.offsetParent !== null);
+    if (!visibleTargets.length) return;
+    const threshold = Math.min(220, window.innerHeight * .32);
+    let active = visibleTargets[0];
+    visibleTargets.forEach(item => {
+      if (item.target.getBoundingClientRect().top <= threshold) active = item;
+    });
+    buttons.forEach(button => {
+      const isActive = button === active.button;
+      button.classList.toggle("active", isActive);
+      if (isActive) button.setAttribute("aria-current", "location");
+      else button.removeAttribute("aria-current");
+    });
+  }
+
+  function scheduleSectionNavigatorUpdate() {
+    if (sectionNavigatorFrame) return;
+    sectionNavigatorFrame = requestAnimationFrame(updateSectionNavigatorActive);
+  }
+
+  function renderSectionNavigator(tabId) {
+    const navigator = $("sectionNavigator");
+    const supported = ["builder", "simulation", "storm"].includes(tabId);
+    const panel = supported ? $(tabId) : null;
+    const sections = panel ? [...panel.querySelectorAll("[data-section-nav-label]")] : [];
+    $("sectionNavigatorTurnControls").hidden = tabId !== "simulation";
+    navigator.hidden = !sections.length;
+    document.body.classList.toggle("has-section-navigator", sections.length > 0);
+    if (!sections.length) {
+      $("sectionNavigatorLinks").innerHTML = "";
+      return;
+    }
+    $("sectionNavigatorTitle").textContent = ({
+      builder: "一、想定區塊",
+      simulation: "二、推演區塊",
+      storm: "三、STORM 區塊"
+    })[tabId];
+    $("sectionNavigatorLinks").innerHTML = sections.map((section, index) => `
+      <button type="button" data-section-target="${escapeAttr(section.id)}">
+        <span>${index + 1}</span>
+        <strong>${escapeHtml(section.dataset.sectionNavLabel)}</strong>
+      </button>
+    `).join("");
+    requestAnimationFrame(updateSectionNavigatorActive);
+  }
+
   function setTab(tabId) {
-    document.querySelectorAll(".tab").forEach(btn => btn.classList.toggle("active", btn.dataset.tab === tabId));
+    document.querySelectorAll(".tab").forEach(btn => {
+      const active = btn.dataset.tab === tabId;
+      btn.classList.toggle("active", active);
+      if (active) btn.setAttribute("aria-current", "page");
+      else btn.removeAttribute("aria-current");
+    });
     document.querySelectorAll(".panel").forEach(panel => panel.classList.toggle("active", panel.id === tabId));
+    renderSectionNavigator(tabId);
     if (tabId === "simulation") renderSimulation();
     if (tabId === "storm") renderStorm();
     if (tabId === "aar") renderAAR();
@@ -544,7 +682,7 @@
         <td><select class="inventory-actor">
           ${["BLUE", "RED", "AMBER"].map(actor => `<option value="${actor}"${row.actor === actor ? " selected" : ""}>${actorLabel(actor)}</option>`).join("")}
         </select></td>
-        <td><input class="inventory-alias" maxlength="80" value="${escapeAttr(row.alias)}" placeholder="例如 B-AD-ALPHA"></td>
+        <td><input class="inventory-alias" maxlength="80" value="${escapeAttr(row.alias)}" placeholder="例如 F-16V「毒蛇」"></td>
         <td><select class="inventory-category">
           ${Object.entries(INVENTORY_CATEGORIES).map(([key, label]) => `<option value="${key}"${row.category === key ? " selected" : ""}>${label}</option>`).join("")}
         </select></td>
@@ -644,7 +782,7 @@
     } else if (!allow) {
       status.textContent = "LLM 摘要分享已關閉；次回合想定包改由固定規則生成。";
     } else {
-      status.textContent = "合成模式：即使啟用 LLM，也只送出匿名化的 0–100 類別摘要，不傳送品項名稱與數量。";
+      status.textContent = "公開名稱教學模式：裝備名稱只在本機增加臨場感；所有參數均為合成遊戲值。即使啟用 LLM，也只送出匿名化的 0–100 類別摘要。";
     }
   }
 
@@ -866,7 +1004,7 @@
     const strategic = { ...STRATEGIC_DEFAULTS, ...(s.strategicParameters || {}) };
     const detailedSummary = s.inventoryEnabled ? `
       <article class="card" style="margin-top:1rem">
-        <div class="subheading"><h3>詳細庫存抽象換算</h3><span class="badge">${s.inventoryMode === "sensitive_local" ? "敏感／本機" : "合成資料"}</span></div>
+        <div class="subheading"><h3>詳細庫存抽象換算</h3><span class="badge">${s.inventoryMode === "sensitive_local" ? "敏感／本機" : "公開名稱／合成參數"}</span></div>
         <div class="ledger-summary">
           ${["BLUE", "RED", "AMBER"].map(actor => `<span class="ledger-chip"><strong>${actorLabel(actor)}</strong> ${s.abstractResources?.byActor?.[actor]?.overall ?? 0}/100</span>`).join("")}
           <span class="ledger-chip">${s.detailedInventory.length} 個品項</span>
@@ -971,7 +1109,10 @@
     $("simulationEmpty").hidden = hasScenario;
     $("simulationContent").hidden = !hasScenario;
     $("resolveTurnBtn").disabled = !hasScenario || state.currentTurn > (state.scenario?.turns || 0);
-    if (!hasScenario) return;
+    if (!hasScenario) {
+      scheduleSectionNavigatorUpdate();
+      return;
+    }
 
     $("turnBadge").textContent = state.currentTurn > state.scenario.turns
       ? "推演完成"
@@ -987,6 +1128,7 @@
     renderNextTurnPackage();
     renderNarrative();
     updateLab();
+    scheduleSectionNavigatorUpdate();
   }
 
   function renderStatusCards() {
@@ -1064,6 +1206,16 @@
     return { type: "communications", combat: false };
   }
 
+  function operationEquipmentOptions(actor, type) {
+    return OPERATION_EQUIPMENT_LABELS[actor]?.[type] || [];
+  }
+
+  function operationEquipmentLabel(actor, type, seedText = "") {
+    const options = operationEquipmentOptions(actor, type);
+    if (!options.length) return "";
+    return options[hashText(`${actor}-${type}-${seedText}`) % options.length];
+  }
+
   function renderOperationIconLegend() {
     const legend = $("operationIconLegend");
     if (!legend || legend.dataset.rendered === "true") return;
@@ -1078,9 +1230,10 @@
         <div class="operation-icon-list">
           ${ACTIONS[actor].map(([action]) => {
             const type = operationType(action).type;
+            const equipment = operationEquipmentOptions(actor, type);
             return `<div class="operation-icon-item" title="${escapeAttr(action)}">
               <canvas data-operation-icon="${type}" data-operation-actor="${actor}" aria-hidden="true"></canvas>
-              <div><strong>${escapeHtml(action)}</strong><span>${escapeHtml(OPERATION_TYPE_LABELS[type] || "抽象行動圖標")}</span></div>
+              <div><strong>${escapeHtml(action)}</strong><span>${escapeHtml(equipment.length ? `敘事裝備：${equipment.join("／")}` : OPERATION_TYPE_LABELS[type] || "抽象行動圖標")}</span></div>
             </div>`;
           }).join("")}
         </div>
@@ -1118,6 +1271,7 @@
           resource: Number(item.resource) || 0,
           priority: Number(item.priority) || 3,
           type: kind.type,
+          equipment: operationEquipmentLabel(actor, kind.type, `${log.turn}-${item.action}-${itemIndex}`),
           combat: kind.combat,
           start: 650 + actorIndex * 450 + itemIndex * 380
         });
@@ -1228,12 +1382,14 @@
         const order = scene.log.orders[actor];
         const primary = orderPrimary(order);
         const supports = orderSupports(order);
+        const primaryType = operationType(primary.action).type;
+        const equipment = operationEquipmentLabel(actor, primaryType, `${scene.log.turn}-${primary.action}-0`);
         return `<div class="operation-actor-chip ${actor}">
           <strong>${actorLabel(actor)} · ${escapeHtml(primary.action)}</strong>
-          <span>${escapeHtml(zoneName(primary.zone))} · 支援 ${supports.length} 項</span>
+          <span>${equipment ? `${escapeHtml(equipment)} · ` : ""}${escapeHtml(zoneName(primary.zone))} · 支援 ${supports.length} 項</span>
         </div>`;
       }).join("");
-    $("operationCanvasDescription").textContent = `第 ${scene.log.turn} 回合抽象三方行動示意。${scene.conflicts.length ? `重大衝突區域：${scene.conflicts.map(item => zoneName(item.zone)).join("、")}。` : "本回合沒有達到重大衝突高亮門檻。"}不含真實座標、武器型號、部隊部署或交戰程序。`;
+    $("operationCanvasDescription").textContent = `第 ${scene.log.turn} 回合抽象三方行動示意。${scene.conflicts.length ? `重大衝突區域：${scene.conflicts.map(item => zoneName(item.zone)).join("、")}。` : "本回合沒有達到重大衝突高亮門檻。"}公開裝備名稱僅作敘事標籤；不代表真實座標、數量、性能、部隊部署或交戰程序。`;
     if (!operationAnimation.playing) drawOperationFrame(operationAnimation.elapsed, scene);
     const theaterExpanded = !$("operationTheater").classList.contains("collapsed");
     const simulationVisible = $("simulation").classList.contains("active") && theaterExpanded;
@@ -1503,7 +1659,31 @@
 
     const iconSize = (action.primary ? 22 : 15) + Math.min(5, action.resource / 8);
     drawOperationPictogram(ctx, action.type, point.x, point.y, iconSize, actor.color, rotation);
+    if (action.primary && action.equipment && width >= 620) {
+      drawOperationEquipmentTag(ctx, width, action.equipment, point.x, point.y, actor.color);
+    }
     if (progress >= .96) drawOperationEffect(ctx, action, target.x, target.y, elapsed);
+  }
+
+  function drawOperationEquipmentTag(ctx, width, label, x, y, color) {
+    const display = label.length > 26 ? `${label.slice(0, 25)}…` : label;
+    ctx.save();
+    ctx.font = `700 ${Math.max(10, width * .011)}px sans-serif`;
+    const paddingX = 8;
+    const boxHeight = 22;
+    const boxWidth = Math.min(210, ctx.measureText(display).width + paddingX * 2);
+    const boxX = clamp(x - boxWidth / 2, 6, width - boxWidth - 6);
+    const boxY = Math.max(6, y - 43);
+    ctx.fillStyle = "rgba(3,18,29,.88)";
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    roundedRectPath(ctx, boxX, boxY, boxWidth, boxHeight, 7);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.textBaseline = "middle";
+    ctx.fillText(display, boxX + paddingX, boxY + boxHeight / 2);
+    ctx.restore();
   }
 
   function quadraticPoint(start, control, end, progress) {
@@ -3459,7 +3639,7 @@
         row.consumption, row.recovery, row.replenishment, row.delay, row.reliability, row.note
       ].map(csvEscape).join(","));
     });
-    download("synthetic-resource-inventory.csv", "\ufeff" + lines.join("\n"), "text/csv;charset=utf-8");
+    download("educational-named-resource-inventory.csv", "\ufeff" + lines.join("\n"), "text/csv;charset=utf-8");
   }
 
   function importInventoryCsv(file) {
@@ -3662,6 +3842,17 @@
 
   function bindEvents() {
     document.querySelectorAll(".tab").forEach(btn => btn.addEventListener("click", () => setTab(btn.dataset.tab)));
+    $("sectionNavigatorLinks").addEventListener("click", event => {
+      const button = event.target.closest("[data-section-target]");
+      const target = button ? $(button.dataset.sectionTarget) : null;
+      if (!target) return;
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      $("sectionNavigatorLinks").querySelectorAll("[data-section-target]").forEach(item => {
+        item.classList.toggle("active", item === button);
+      });
+    });
+    window.addEventListener("scroll", scheduleSectionNavigatorUpdate, { passive: true });
+    window.addEventListener("resize", scheduleSectionNavigatorUpdate);
     document.querySelectorAll(".mini-tab").forEach(btn => btn.addEventListener("click", () => {
       document.querySelectorAll(".mini-tab").forEach(b => b.classList.toggle("active", b === btn));
       state.currentLibrary = btn.dataset.library;
@@ -3727,7 +3918,7 @@
     });
     $("loadInventoryTemplateBtn").addEventListener("click", () => {
       renderDetailedInventoryRows(inventoryTemplateRows());
-      toast("已載入合成資源範例。");
+      toast("已載入公開裝備名稱與合成遊戲參數。");
     });
     $("exportInventoryCsvBtn").addEventListener("click", exportInventoryCsv);
     $("inventoryCsvInput").addEventListener("change", event => importInventoryCsv(event.target.files[0]));
@@ -3862,6 +4053,7 @@
     updateRangeLabels();
     renderTemplateInfo();
     renderDetailedInventoryRows(inventoryTemplateRows());
+    renderSectionNavigator("builder");
     updateActionOptions();
     renderLibrary();
     renderStorm();

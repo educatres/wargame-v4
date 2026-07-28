@@ -41,6 +41,15 @@
     <button class="tab" data-tab="guide">六、指引</button>
   </nav>
 
+  <nav id="sectionNavigator" class="section-navigator" aria-label="目前頁面區塊導覽" hidden>
+    <p id="sectionNavigatorTitle">區塊導覽</p>
+    <div id="sectionNavigatorLinks"></div>
+    <div id="sectionNavigatorTurnControls" class="turn-controls" role="region" aria-label="回合結算快速操作" hidden>
+      <span id="turnBadge" class="badge">尚未開始</span>
+      <button id="resolveTurnBtn" class="primary">結算本回合</button>
+    </div>
+  </nav>
+
   <main>
     <section id="builder" class="panel active">
       <div class="section-heading">
@@ -52,7 +61,7 @@
       </div>
 
       <div class="two-column">
-        <form id="scenarioForm" class="card form-grid">
+        <form id="scenarioForm" class="card form-grid" data-section-nav-label="基本設定">
           <label class="full">
             情境範本
             <select id="scenarioTemplate">
@@ -149,7 +158,7 @@
               <option value="public">公開：後手可見先手行動</option>
             </select>
           </label>
-          <div class="full resource-builder strategic-builder">
+          <div id="builderStrategicSection" class="full resource-builder strategic-builder" data-section-nav-label="戰略參數">
             <div class="subheading">
               <div>
                 <h3>戰略壓力參數</h3>
@@ -173,7 +182,7 @@
               <label>全球經濟衝擊（1–5）<input id="globalEconomicShock" type="number" min="1" max="5" value="1"></label>
             </div>
           </div>
-          <div class="full resource-builder">
+          <div id="builderResourceSection" class="full resource-builder" data-section-nav-label="合成資源">
             <div class="subheading">
               <div>
                 <h3>合成資源清單</h3>
@@ -195,20 +204,20 @@
               <label>紅方後勤補給批次<input id="redLogistics" type="number" min="0" max="240" value="84"></label>
             </div>
           </div>
-          <details class="full resource-builder detailed-inventory" open>
+          <details id="builderInventorySection" class="full resource-builder detailed-inventory" data-section-nav-label="詳細庫存" open>
             <summary>
               <span>
-                <strong>詳細資源庫存與抽象換算</strong>
-                <small>以虛構代號輸入品項；系統換算為 0–100 能力指數並逐回合記帳</small>
+                <strong>公開裝備名稱與抽象資源換算</strong>
+                <small>使用公開名稱增加遊戲臨場感；參數皆為合成遊戲值，並換算成 0–100 能力指數</small>
               </span>
-              <span class="badge">規則引擎計算</span>
+              <span class="badge">教學遊戲資料</span>
             </summary>
             <div class="inventory-settings">
               <label class="check-field"><input id="enableDetailedInventory" type="checkbox" checked> 啟用詳細資源帳本</label>
               <label>
                 資料模式
                 <select id="inventoryDataMode">
-                  <option value="synthetic" selected>合成教學資料</option>
+                  <option value="synthetic" selected>公開名稱＋合成參數</option>
                   <option value="sensitive_local">敏感資料／僅在本機處理</option>
                 </select>
               </label>
@@ -216,9 +225,15 @@
               <label class="check-field"><input id="allowSanitizedLlm" type="checkbox" checked> 僅允許送出匿名化摘要</label>
             </div>
             <p id="inventoryPrivacyStatus" class="inventory-privacy" aria-live="polite"></p>
+            <div class="inventory-profile-guide" aria-label="遊戲參數設計原則">
+              <span><strong>航空器</strong>較重視可用率與回合恢復</span>
+              <span><strong>飛彈／火力</strong>消耗較高並保留較多預備</span>
+              <span><strong>預警／ISR</strong>數量較少但可靠度較高</span>
+              <span><strong>艦艇／後勤</strong>補充較慢、延遲回合較長</span>
+            </div>
             <div class="actions inventory-actions">
               <button type="button" id="addInventoryRowBtn" class="secondary">新增品項</button>
-              <button type="button" id="loadInventoryTemplateBtn" class="secondary">載入合成範例</button>
+              <button type="button" id="loadInventoryTemplateBtn" class="secondary">載入公開名稱範例</button>
               <label class="file-button secondary">匯入 CSV<input id="inventoryCsvInput" type="file" accept=".csv,text/csv" hidden></label>
               <button type="button" id="exportInventoryCsvBtn" class="secondary">匯出 CSV</button>
             </div>
@@ -226,7 +241,7 @@
               <table class="inventory-table">
                 <thead>
                   <tr>
-                    <th>方別</th><th>虛構代號</th><th>類別</th><th>名目量</th><th>可用率%</th>
+                    <th>方別</th><th>裝備／資源名稱</th><th>類別</th><th>遊戲存量</th><th>可用率%</th>
                     <th>保留%</th><th>每次消耗</th><th>每回合恢復</th><th>補充量</th><th>延遲回合</th><th>可靠度%</th><th>備註</th><th></th>
                   </tr>
                 </thead>
@@ -236,7 +251,7 @@
             <div>
               <div class="subheading">
                 <h4>抽象資源預覽</h4>
-                <small>可投入量＝名目量 × 可用率 × 可靠度－保留量；數值只供本想定比較</small>
+                <small>可投入量＝遊戲存量 × 可用率 × 可靠度－保留量；所有數值只供本想定比較</small>
               </div>
               <div id="inventoryAbstractPreview" class="inventory-abstract-preview"></div>
             </div>
@@ -264,9 +279,9 @@
           </article>
           <article class="callout">
             <h3>不採用真實武器勝負查表</h3>
-            <p>系統使用「能力、準備、感測、後勤、指揮、環境」等抽象指數，輸出決策後果及不確定性，而非宣稱某武器必定擊敗另一武器。</p>
+            <p>公開裝備名稱只用來增加敘事臨場感；系統仍以「能力、準備、感測、後勤、指揮、環境」等合成指數裁決，不採用真實射程、命中率、庫存或武器勝負查表。</p>
           </article>
-          <details id="llmPanel" class="card llm-card" open>
+          <details id="llmPanel" class="card llm-card" data-section-nav-label="LLM 輔助" open>
             <summary><span>LLM 輔助想定敘事</span><small>點選展開／收合</small></summary>
             <div class="llm-card-body">
               <div class="subheading">
@@ -291,7 +306,7 @@
         </div>
       </div>
 
-      <div id="scenarioPreview" class="preview"></div>
+      <div id="scenarioPreview" class="preview" data-section-nav-label="想定預覽"></div>
     </section>
 
     <section id="simulation" class="panel">
@@ -300,10 +315,6 @@
           <p class="eyebrow">Turn-based Simulation</p>
           <h2>回合推演</h2>
         </div>
-        <div class="turn-controls" role="region" aria-label="回合結算快速操作">
-          <span id="turnBadge" class="badge">尚未開始</span>
-          <button id="resolveTurnBtn" class="primary">結算本回合</button>
-        </div>
       </div>
 
       <div id="simulationEmpty" class="empty-state">
@@ -311,10 +322,10 @@
       </div>
 
       <div id="simulationContent" hidden>
-        <div id="statusCards" class="metric-grid"></div>
+        <div id="statusCards" class="metric-grid" data-section-nav-label="狀態總覽"></div>
 
         <div class="simulation-layout">
-          <section class="card">
+          <section id="simulationMapSection" class="card" data-section-nav-label="情勢圖與動畫">
             <div class="subheading">
               <h3>概略情勢圖</h3>
               <span class="muted">不含座標與真實部署</span>
@@ -346,7 +357,7 @@
                 <p id="operationCanvasEmpty" class="operation-canvas-empty">等待第一個回合結算</p>
               </div>
               <p id="operationCanvasDescription" class="sr-only">
-                抽象臺海三方行動示意圖；不含真實座標、武器型號、部隊部署或交戰程序。
+                抽象臺海三方行動示意圖；公開裝備名稱僅作敘事標籤，不代表真實座標、數量、性能、部隊部署或交戰程序。
               </p>
               <p class="operation-map-credit">
                 底圖改作自
@@ -354,6 +365,7 @@
                 ／NordNordWest／CC BY-SA 3.0
               </p>
               <div id="operationActorSummary" class="operation-actor-summary" aria-live="polite"></div>
+              <p class="operation-equipment-disclaimer">公開裝備名稱僅作遊戲敘事；圖示位置、數量與移動路徑皆為抽象動畫，不代表真實部署或性能。</p>
               <section class="operation-icon-guide" aria-labelledby="operationIconGuideTitle">
                 <div class="operation-icon-guide-heading">
                   <h5 id="operationIconGuideTitle">三方圖標說明</h5>
@@ -370,12 +382,12 @@
             </div>
           </section>
 
-          <form id="orderForm" class="card form-grid">
+          <form id="orderForm" class="card form-grid" data-section-nav-label="下達命令">
             <div class="full subheading">
               <h3>下達回合命令</h3>
               <span id="orderStatus" class="muted">每方每回合 1 項主行動＋2–4 項支援行動，共用 35 點預算</span>
             </div>
-            <p class="full footnote action-safety-note"><strong>抽象作戰類型：</strong>【航空】、【防空】、【遠程火力】、【海上】與【水下】只代表任務效果與資源取捨，不含真實武器型號、射程、座標、目標、彈藥量或交戰程序。</p>
+            <p class="full footnote action-safety-note"><strong>公開名稱、抽象裁決：</strong>【航空】、【防空】、【遠程火力】、【海上】與【水下】可顯示公開裝備名稱，但只代表遊戲中的任務效果與資源取捨，不使用真實射程、座標、目標、庫存或交戰程序。</p>
             <label>
               角色
               <select id="orderActor">
@@ -433,7 +445,7 @@
           </form>
         </div>
 
-        <div class="three-column">
+        <div id="simulationIntelSection" class="three-column" data-section-nav-label="情報與事件">
           <article class="card">
             <h3>本回合情報</h3>
             <div id="intelPanel"></div>
@@ -448,7 +460,7 @@
           </article>
         </div>
 
-        <div class="resource-turn-grid">
+        <div id="simulationResourceSection" class="resource-turn-grid" data-section-nav-label="資源與次回合">
           <article class="card">
             <div class="subheading">
               <h3>詳細資源帳本</h3>
@@ -465,7 +477,7 @@
           </article>
         </div>
 
-        <article class="card">
+        <article id="simulationLogSection" class="card" data-section-nav-label="回合紀錄">
           <div class="subheading">
             <h3>回合紀錄</h3>
             <button id="clearRunBtn" class="danger">重設推演</button>
@@ -473,11 +485,11 @@
           <div id="turnNarrative" class="narrative"></div>
         </article>
 
-        <article class="card intercept-card">
+        <article id="simulationLabSection" class="card intercept-card" data-section-nav-label="攔截實驗">
           <div class="subheading">
             <div>
-              <h3>攔截資源配置實驗</h3>
-              <p class="muted">僅用合成機率比較資源配置，不代表真實系統。</p>
+              <h3>攔截資源配置計算機</h3>
+              <p class="muted">獨立的教學計算器，不會影響正式推演。僅用合成機率比較資源配置，不代表真實系統。</p>
             </div>
           </div>
           <div class="lab-grid">
@@ -506,12 +518,12 @@
         <span class="badge">模型透明 · 批次重複 · 因子實驗</span>
       </div>
 
-      <article class="callout storm-disclaimer">
+      <article id="stormOverviewSection" class="callout storm-disclaimer" data-section-nav-label="模式定位">
         <h3>定位</h3>
         <p>STORM 是戰役層級、資料驅動且具隨機性的分析思維。本版本把大型模型縮成五種表徵、合成參數與可解釋的統計實驗，用於「先提出問題，再設計實驗，最後解讀分布」，而不是用單次結果預測真實戰爭。</p>
       </article>
 
-      <div class="storm-flow card" aria-label="STORM戰役分析流程">
+      <div id="stormFlowSection" class="storm-flow card" data-section-nav-label="分析流程" aria-label="STORM戰役分析流程">
         <button class="storm-flow-node active" data-storm-stage="systems"><strong>1 系統</strong><span>有哪些資產與支援網路？</span></button>
         <span class="storm-arrow">→</span>
         <button class="storm-flow-node" data-storm-stage="capabilities"><strong>2 能力</strong><span>各系統能做什麼？</span></button>
@@ -524,7 +536,7 @@
       </div>
       <div id="stormStageExplanation" class="storm-explanation card"></div>
 
-      <div class="section-heading storm-subheading">
+      <div id="stormRepresentationSection" class="section-heading storm-subheading" data-section-nav-label="模型表徵">
         <div>
           <p class="eyebrow">Five Representations</p>
           <h3>五種模型表徵</h3>
@@ -534,7 +546,7 @@
       <div id="stormRepresentations" class="representation-grid"></div>
       <article id="stormRepresentationDetail" class="card representation-detail"></article>
 
-      <div class="section-heading storm-subheading">
+      <div id="stormExperimentSection" class="section-heading storm-subheading" data-section-nav-label="批次實驗">
         <div>
           <p class="eyebrow">Stochastic Replications</p>
           <h3>批次隨機實驗：同一方案為何要跑很多次？</h3>
@@ -680,7 +692,7 @@
         </article>
       </div>
 
-      <div class="section-heading storm-subheading">
+      <div id="stormDoeSection" class="section-heading storm-subheading" data-section-nav-label="因子實驗">
         <div>
           <p class="eyebrow">Design of Experiments</p>
           <h3>2³ 因子實驗：找出真正重要的假設</h3>
@@ -710,7 +722,7 @@
         </div>
       </article>
 
-      <article class="card storm-sources">
+      <article id="stormSourcesSection" class="card storm-sources" data-section-nav-label="公開來源">
         <h3>公開概念來源</h3>
         <p>本模組參考公開學術資料所描述的戰役分析、五種表徵、隨機重複與實驗設計概念。它沒有使用或重製正式 STORM 的程式、資料庫或受限情境。</p>
         <ul class="compact-list">
