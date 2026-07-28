@@ -296,6 +296,63 @@
   const ORDER_BUDGET = 35;
   const MIN_SUPPORT_ACTIONS = 2;
   const MAX_SUPPORT_ACTIONS = 4;
+  const OPERATION_ACTORS = {
+    BLUE: { color: "#39a0ff", glow: "rgba(57,160,255,.42)", home: [0.585, 0.53], label: "藍方" },
+    RED: { color: "#ff5b52", glow: "rgba(255,91,82,.42)", home: [0.12, 0.47], label: "紅方" },
+    AMBER: { color: "#ffd84a", glow: "rgba(255,216,74,.42)", home: [0.93, 0.42], label: "琥珀方" }
+  };
+  const OPERATION_ZONE_ANCHORS = {
+    "Z-NW": [0.43, 0.2],
+    "Z-CW": [0.43, 0.45],
+    "Z-SW": [0.42, 0.73],
+    "Z-NE": [0.72, 0.2],
+    "Z-E": [0.76, 0.47],
+    "Z-SE": [0.72, 0.75],
+    "Z-ISL": [0.59, 0.5],
+    "Z-REAR": [0.89, 0.68]
+  };
+  const OPERATION_TYPE_LABELS = {
+    aviation: "航空機／空中行動",
+    airdefense: "雷達盾牌／防空警戒",
+    convoy: "船隊／商船護航",
+    maritime: "軍艦／海上行動",
+    subsurface: "潛艦／水下警戒",
+    longrange: "閃電／抽象遠程火力",
+    drone: "無人機／偵察中繼",
+    satellite: "衛星／高空通訊",
+    communications: "訊號波／通訊網路",
+    intelligence: "雷達／情報支援",
+    logistics: "卡車／後勤補充",
+    energy: "閃電／能源電網",
+    diplomacy: "對話框／外交協調",
+    humanitarian: "十字符號／人道支援",
+    disperse: "分岔箭頭／分散部署"
+  };
+  const operationAnimation = {
+    scene: null,
+    sceneKey: "",
+    elapsed: 0,
+    duration: 12000,
+    speed: 1,
+    playing: false,
+    startedAt: 0,
+    frameId: 0,
+    pendingAutoplayTurn: null,
+    autoPlayedKey: ""
+  };
+  const OPERATION_MAP_ASPECT = 1015.733 / 1221.247;
+  const operationMapImage = new Image();
+  let operationMapReady = false;
+  operationMapImage.decoding = "async";
+  operationMapImage.onload = () => {
+    operationMapReady = true;
+    if ($("operationCanvas")) drawOperationFrame(operationAnimation.elapsed, operationAnimation.scene);
+  };
+  operationMapImage.onerror = () => {
+    operationMapReady = false;
+    if ($("operationTheaterStatus")) $("operationTheaterStatus").textContent = "臺海向量底圖載入失敗。";
+  };
+  operationMapImage.src = "assets/taiwan-location-map.svg";
 
   function mulberry32(seed) {
     let a = seed >>> 0;
@@ -340,6 +397,7 @@
   function setTab(tabId) {
     document.querySelectorAll(".tab").forEach(btn => btn.classList.toggle("active", btn.dataset.tab === tabId));
     document.querySelectorAll(".panel").forEach(panel => panel.classList.toggle("active", panel.id === tabId));
+    if (tabId === "simulation") renderSimulation();
     if (tabId === "storm") renderStorm();
     if (tabId === "aar") renderAAR();
     if (tabId === "library") renderLibrary();
@@ -659,6 +717,7 @@
 
     renderStatusCards();
     renderZoneMap();
+    renderOperationTheater();
     renderOrderControls();
     renderCurrentOrders();
     renderTurnPanels();
@@ -706,6 +765,698 @@
         <div class="zone-signals">${signals.map(s => `<i class="signal ${s}"></i>`).join("")}</div>
       </div>`;
     }).join("");
+  }
+
+  function operationType(action) {
+    const text = String(action || "");
+    if (/商船護航|多國商船護航/.test(text)) return { type: "convoy", combat: false };
+    if (/防空|強化防空警戒/.test(text)) return { type: "airdefense", combat: /交戰/.test(text) };
+    if (/航空|空中|空中施壓/.test(text)) return { type: "aviation", combat: true };
+    if (/遠程火力/.test(text)) return { type: "longrange", combat: true };
+    if (/水下|反潛/.test(text)) return { type: "subsurface", combat: true };
+    if (/無人機/.test(text)) return { type: "drone", combat: false };
+    if (/星鏈|衛星|高空平臺|高空通訊/.test(text)) return { type: "satellite", combat: false };
+    if (/備援通訊|網路防護|通訊/.test(text)) return { type: "communications", combat: false };
+    if (/海上|臨檢|封控區|海警|民兵/.test(text)) {
+      return { type: "maritime", combat: /拒止|封控|臨檢|攔截/.test(text) };
+    }
+    if (/後勤|工業補充|供應鏈/.test(text)) return { type: "logistics", combat: false };
+    if (/能源|電網/.test(text)) return { type: "energy", combat: false };
+    if (/外交/.test(text)) return { type: "diplomacy", combat: false };
+    if (/人道/.test(text)) return { type: "humanitarian", combat: false };
+    if (/情報|ISR/.test(text)) return { type: "intelligence", combat: false };
+    if (/分散部署/.test(text)) return { type: "disperse", combat: false };
+    if (/經濟/.test(text)) return { type: "logistics", combat: false };
+    return { type: "communications", combat: false };
+  }
+
+  function renderOperationIconLegend() {
+    const legend = $("operationIconLegend");
+    if (!legend || legend.dataset.rendered === "true") return;
+    const factionLabels = {
+      BLUE: "藍方（臺灣）",
+      RED: "紅方（中國大陸）",
+      AMBER: "黃方（外部支援）"
+    };
+    legend.innerHTML = ["BLUE", "RED", "AMBER"].map(actor => `
+      <section class="operation-icon-faction ${actor}" aria-label="${factionLabels[actor]}圖標">
+        <h6>${factionLabels[actor]}</h6>
+        <div class="operation-icon-list">
+          ${ACTIONS[actor].map(([action]) => {
+            const type = operationType(action).type;
+            return `<div class="operation-icon-item" title="${escapeAttr(action)}">
+              <canvas data-operation-icon="${type}" data-operation-actor="${actor}" aria-hidden="true"></canvas>
+              <div><strong>${escapeHtml(action)}</strong><span>${escapeHtml(OPERATION_TYPE_LABELS[type] || "抽象行動圖標")}</span></div>
+            </div>`;
+          }).join("")}
+        </div>
+      </section>
+    `).join("");
+    legend.querySelectorAll("canvas[data-operation-icon]").forEach(canvas => {
+      const actor = OPERATION_ACTORS[canvas.dataset.operationActor];
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const size = 32;
+      canvas.width = size * dpr;
+      canvas.height = size * dpr;
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      drawOperationPictogram(ctx, canvas.dataset.operationIcon, size / 2, size / 2, 11, actor.color, 0);
+    });
+    legend.dataset.rendered = "true";
+  }
+
+  function latestOperationScene() {
+    const log = state.logs[state.logs.length - 1];
+    if (!log?.orders) return null;
+    const actions = [];
+    ["BLUE", "RED", "AMBER"].forEach((actor, actorIndex) => {
+      const order = log.orders[actor];
+      if (!order) return;
+      orderItems(order).forEach((item, itemIndex) => {
+        const kind = operationType(item.action);
+        actions.push({
+          actor,
+          actorIndex,
+          itemIndex,
+          primary: itemIndex === 0,
+          action: item.action,
+          zone: item.zone,
+          resource: Number(item.resource) || 0,
+          priority: Number(item.priority) || 3,
+          type: kind.type,
+          combat: kind.combat,
+          start: 650 + actorIndex * 450 + itemIndex * 380
+        });
+      });
+    });
+    const conflicts = detectOperationConflicts(actions);
+    const key = `${state.scenario?.seed || 0}-${log.turn}-${hashText(JSON.stringify(log.orders))}`;
+    return {
+      key,
+      log,
+      actions,
+      conflicts,
+      duration: conflicts.length ? 14500 : 12000
+    };
+  }
+
+  function detectOperationConflicts(actions) {
+    const byZone = new Map();
+    actions.filter(action => action.combat).forEach(action => {
+      if (!byZone.has(action.zone)) byZone.set(action.zone, []);
+      byZone.get(action.zone).push(action);
+    });
+    const conflicts = [];
+    byZone.forEach((items, zone) => {
+      const actors = new Set(items.map(item => item.actor));
+      const opposed = actors.has("RED") && (actors.has("BLUE") || actors.has("AMBER"));
+      if (!opposed) return;
+      const intensity = items.reduce((sum, item) => sum + Math.max(3, item.resource) * (.72 + item.priority * .13), 0);
+      const explicitEngagement = items.some(item => /交戰|攔截|拒止|反制/.test(item.action));
+      if (actors.size >= 3 || intensity >= 38 || (explicitEngagement && intensity >= 28)) {
+        conflicts.push({ zone, items, intensity: round1(intensity), actors: [...actors] });
+      }
+    });
+    if (!conflicts.length) {
+      const combatActions = actions.filter(action => action.combat);
+      const actors = new Set(combatActions.map(action => action.actor));
+      const opposed = actors.has("RED") && (actors.has("BLUE") || actors.has("AMBER"));
+      const theaterIntensity = combatActions.reduce((sum, item) => sum + Math.max(3, item.resource) * (.72 + item.priority * .13), 0);
+      const explicitEngagement = combatActions.some(item => /交戰|攔截|拒止|反制/.test(item.action));
+      if (opposed && (theaterIntensity >= 72 || (explicitEngagement && theaterIntensity >= 58))) {
+        const focalAction = [...combatActions].sort((a, b) => (b.resource * b.priority) - (a.resource * a.priority))[0];
+        conflicts.push({
+          zone: focalAction.zone,
+          items: combatActions,
+          intensity: round1(theaterIntensity),
+          actors: [...actors],
+          theaterWide: true
+        });
+      }
+    }
+    return conflicts;
+  }
+
+  function renderOperationTheater() {
+    const canvas = $("operationCanvas");
+    if (!canvas) return;
+    renderOperationIconLegend();
+    const scene = latestOperationScene();
+    const replay = $("operationReplayBtn");
+    const pause = $("operationPauseBtn");
+    const empty = $("operationCanvasEmpty");
+    const currentOrders = state.orders[state.currentTurn] || {};
+
+    if (!scene) {
+      stopOperationAnimation();
+      operationAnimation.scene = null;
+      operationAnimation.sceneKey = "";
+      operationAnimation.autoPlayedKey = "";
+      operationAnimation.pendingAutoplayTurn = null;
+      replay.disabled = true;
+      pause.disabled = true;
+      empty.hidden = false;
+      $("operationTheaterStatus").textContent = `等待第 ${state.currentTurn} 回合結算後顯示三方行動。`;
+      $("operationActorSummary").innerHTML = ["BLUE", "RED", "AMBER"]
+        .filter(actor => actor !== "AMBER" || state.scenario?.amberSupport !== "none")
+        .map(actor => `<div class="operation-actor-chip ${actor}"><strong>${actorLabel(actor)}</strong><span>${currentOrders[actor] ? "命令已提交；內容於規則允許時揭露" : "等待命令"}</span></div>`)
+        .join("");
+      $("operationCanvasDescription").textContent = "尚無已結算回合；動畫不會提前揭露密封命令。";
+      drawOperationFrame(0, null);
+      return;
+    }
+
+    replay.disabled = false;
+    replay.textContent = "重播";
+    pause.disabled = false;
+    empty.hidden = true;
+    const changed = scene.key !== operationAnimation.sceneKey;
+    if (changed) {
+      stopOperationAnimation();
+      operationAnimation.scene = scene;
+      operationAnimation.sceneKey = scene.key;
+      operationAnimation.duration = scene.duration;
+      operationAnimation.elapsed = scene.duration;
+    } else {
+      operationAnimation.scene = scene;
+      operationAnimation.duration = scene.duration;
+    }
+
+    const conflictText = scene.conflicts.length
+      ? ` · 偵測到 ${scene.conflicts.length} 個重大衝突區域`
+      : " · 未達重大衝突高亮門檻";
+    $("operationTheaterStatus").textContent = `最近結算：第 ${scene.log.turn} 回合${conflictText}`;
+    $("operationActorSummary").innerHTML = ["BLUE", "RED", "AMBER"]
+      .filter(actor => scene.log.orders[actor])
+      .map(actor => {
+        const order = scene.log.orders[actor];
+        const primary = orderPrimary(order);
+        const supports = orderSupports(order);
+        return `<div class="operation-actor-chip ${actor}">
+          <strong>${actorLabel(actor)} · ${escapeHtml(primary.action)}</strong>
+          <span>${escapeHtml(zoneName(primary.zone))} · 支援 ${supports.length} 項</span>
+        </div>`;
+      }).join("");
+    $("operationCanvasDescription").textContent = `第 ${scene.log.turn} 回合抽象三方行動示意。${scene.conflicts.length ? `重大衝突區域：${scene.conflicts.map(item => zoneName(item.zone)).join("、")}。` : "本回合沒有達到重大衝突高亮門檻。"}不含真實座標、武器型號、部隊部署或交戰程序。`;
+    if (!operationAnimation.playing) drawOperationFrame(operationAnimation.elapsed, scene);
+    const theaterExpanded = !$("operationTheater").classList.contains("collapsed");
+    const simulationVisible = $("simulation").classList.contains("active") && theaterExpanded;
+    const shouldAutoplay = theaterExpanded && (
+      operationAnimation.pendingAutoplayTurn === scene.log.turn
+      || (simulationVisible && operationAnimation.autoPlayedKey !== scene.key)
+    );
+    if (shouldAutoplay) {
+      operationAnimation.pendingAutoplayTurn = null;
+      operationAnimation.autoPlayedKey = scene.key;
+      requestAnimationFrame(() => startOperationAnimation(true));
+    }
+  }
+
+  function stopOperationAnimation() {
+    if (operationAnimation.frameId) cancelAnimationFrame(operationAnimation.frameId);
+    operationAnimation.frameId = 0;
+    operationAnimation.playing = false;
+    const pause = $("operationPauseBtn");
+    if (pause) pause.textContent = "暫停";
+    const frame = $("operationCanvasFrame");
+    if (frame) frame.classList.remove("major-conflict-active");
+  }
+
+  function startOperationAnimation(restart = false) {
+    const scene = operationAnimation.scene || latestOperationScene();
+    if (!scene) return;
+    operationAnimation.scene = scene;
+    operationAnimation.sceneKey = scene.key;
+    operationAnimation.duration = scene.duration;
+    if (restart) operationAnimation.elapsed = 0;
+    stopOperationAnimation();
+    operationAnimation.playing = true;
+    operationAnimation.startedAt = performance.now() - operationAnimation.elapsed / operationAnimation.speed;
+    $("operationPauseBtn").textContent = "暫停";
+    operationAnimation.frameId = requestAnimationFrame(stepOperationAnimation);
+  }
+
+  function stepOperationAnimation(now) {
+    if (!operationAnimation.playing || !operationAnimation.scene) return;
+    operationAnimation.elapsed = Math.min(
+      operationAnimation.duration,
+      (now - operationAnimation.startedAt) * operationAnimation.speed
+    );
+    drawOperationFrame(operationAnimation.elapsed, operationAnimation.scene);
+    if (operationAnimation.elapsed < operationAnimation.duration) {
+      operationAnimation.frameId = requestAnimationFrame(stepOperationAnimation);
+    } else {
+      operationAnimation.playing = false;
+      operationAnimation.frameId = 0;
+      $("operationPauseBtn").textContent = "重新播放";
+      $("operationCanvasFrame").classList.remove("major-conflict-active");
+    }
+  }
+
+  function toggleOperationAnimation() {
+    if (!operationAnimation.scene) return;
+    if (!operationAnimation.playing) {
+      startOperationAnimation(operationAnimation.elapsed >= operationAnimation.duration);
+      return;
+    }
+    operationAnimation.elapsed = Math.min(
+      operationAnimation.duration,
+      (performance.now() - operationAnimation.startedAt) * operationAnimation.speed
+    );
+    stopOperationAnimation();
+    $("operationPauseBtn").textContent = "繼續";
+    drawOperationFrame(operationAnimation.elapsed, operationAnimation.scene);
+  }
+
+  function setOperationSpeed() {
+    const nextSpeed = Number($("operationSpeed").value) || 1;
+    if (operationAnimation.playing) {
+      operationAnimation.elapsed = Math.min(
+        operationAnimation.duration,
+        (performance.now() - operationAnimation.startedAt) * operationAnimation.speed
+      );
+      operationAnimation.speed = nextSpeed;
+      operationAnimation.startedAt = performance.now() - operationAnimation.elapsed / nextSpeed;
+    } else {
+      operationAnimation.speed = nextSpeed;
+    }
+  }
+
+  async function toggleOperationFullscreen() {
+    const theater = $("operationTheater");
+    if (!theater || !document.fullscreenEnabled) {
+      toast("此瀏覽器不支援全螢幕模式。");
+      return;
+    }
+    try {
+      if (document.fullscreenElement === theater) await document.exitFullscreen();
+      else await theater.requestFullscreen();
+    } catch {
+      toast("無法切換全螢幕模式，請檢查瀏覽器權限。");
+    }
+  }
+
+  function syncOperationFullscreen() {
+    const button = $("operationFullscreenBtn");
+    const theater = $("operationTheater");
+    if (!button || !theater) return;
+    const active = document.fullscreenElement === theater;
+    button.textContent = active ? "退出全螢幕" : "全螢幕";
+    button.setAttribute("aria-pressed", String(active));
+    requestAnimationFrame(() => drawOperationFrame(operationAnimation.elapsed, operationAnimation.scene));
+  }
+
+  async function toggleOperationTheaterVisibility() {
+    const theater = $("operationTheater");
+    const button = $("operationToggleVisibilityBtn");
+    if (!theater || !button) return;
+    const collapsing = !theater.classList.contains("collapsed");
+    if (collapsing && document.fullscreenElement === theater) {
+      try { await document.exitFullscreen(); } catch { /* Continue with the inline collapsed state. */ }
+    }
+    if (collapsing && operationAnimation.playing) {
+      operationAnimation.elapsed = Math.min(
+        operationAnimation.duration,
+        (performance.now() - operationAnimation.startedAt) * operationAnimation.speed
+      );
+      stopOperationAnimation();
+      $("operationPauseBtn").textContent = "繼續";
+    }
+    theater.classList.toggle("collapsed", collapsing);
+    button.textContent = collapsing ? "顯示動畫" : "隱藏";
+    button.setAttribute("aria-expanded", String(!collapsing));
+    if (!collapsing) {
+      renderOperationTheater();
+      requestAnimationFrame(() => drawOperationFrame(operationAnimation.elapsed, operationAnimation.scene));
+    }
+  }
+
+  function operationCanvasContext() {
+    const canvas = $("operationCanvas");
+    const frame = $("operationCanvasFrame");
+    if (!canvas || !frame) return null;
+    const rect = frame.getBoundingClientRect();
+    const width = Math.max(320, Math.round(rect.width || 640));
+    const height = Math.max(240, Math.round(rect.height || 400));
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+    }
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx, width, height };
+  }
+
+  function drawOperationFrame(elapsed, scene) {
+    const surface = operationCanvasContext();
+    if (!surface) return;
+    const { ctx, width, height } = surface;
+    ctx.clearRect(0, 0, width, height);
+    drawOperationBackground(ctx, width, height);
+    drawOperationMap(ctx, width, height);
+    if (!scene) {
+      $("operationCanvasFrame").classList.remove("major-conflict", "major-conflict-active");
+      return;
+    }
+
+    scene.actions.forEach(action => drawOperationAction(ctx, width, height, action, elapsed));
+    const conflictActive = scene.conflicts.length && elapsed >= 6200 && elapsed <= 11100;
+    const conflictVisible = scene.conflicts.length && elapsed >= 6000;
+    $("operationCanvasFrame").classList.toggle("major-conflict", !!conflictVisible);
+    $("operationCanvasFrame").classList.toggle("major-conflict-active", !!(conflictActive && operationAnimation.playing));
+    if (conflictVisible) {
+      scene.conflicts.forEach((conflict, index) => drawOperationConflict(ctx, width, height, conflict, elapsed, index));
+      drawCanvasConflictFrame(ctx, width, height, elapsed, conflictActive);
+    }
+    if (elapsed >= scene.duration - 2400) drawOperationOutcome(ctx, width, height, scene, elapsed);
+  }
+
+  function drawOperationBackground(ctx, width, height) {
+    const gradient = ctx.createLinearGradient(0, 0, width, height);
+    gradient.addColorStop(0, "#071c2b");
+    gradient.addColorStop(.55, "#0c3043");
+    gradient.addColorStop(1, "#061724");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+    ctx.save();
+    ctx.strokeStyle = "rgba(148,205,226,.08)";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2, 10]);
+    for (let x = width * .08; x < width; x += width * .1) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
+    }
+    for (let y = height * .12; y < height; y += height * .12) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawOperationMap(ctx, width, height) {
+    ctx.save();
+    const mapHeight = height * 1.04;
+    const mapWidth = mapHeight * OPERATION_MAP_ASPECT;
+    const mapX = width * .59 - mapWidth * .74;
+    const mapY = height * .51 - mapHeight * .56;
+    if (operationMapReady) {
+      ctx.globalAlpha = .64;
+      ctx.filter = "grayscale(1) sepia(.28) hue-rotate(145deg) saturate(1.35) brightness(.78) contrast(1.18)";
+      ctx.drawImage(operationMapImage, mapX, mapY, mapWidth, mapHeight);
+      ctx.filter = "none";
+      ctx.globalAlpha = 1;
+    } else {
+      ctx.fillStyle = "rgba(204,230,239,.52)";
+      ctx.font = `700 ${Math.max(9, width * .012)}px sans-serif`;
+      ctx.fillText("臺海向量底圖載入中…", width * .39, height * .5);
+    }
+
+    ctx.font = `700 ${Math.max(10, width * .015)}px sans-serif`;
+    ctx.fillStyle = "rgba(218,239,246,.78)";
+    ctx.fillText("大陸沿岸", mapX + mapWidth * .09, mapY + mapHeight * .13);
+    ctx.fillText("臺灣", mapX + mapWidth * .8, mapY + mapHeight * .51);
+    ctx.font = `650 ${Math.max(8, width * .011)}px sans-serif`;
+    ctx.fillText("金門", mapX + mapWidth * .045, mapY + mapHeight * .46);
+    ctx.fillText("澎湖", mapX + mapWidth * .35, mapY + mapHeight * .62);
+    ctx.font = `700 ${Math.max(10, width * .015)}px sans-serif`;
+    ctx.fillText("外部支援區", width * .83, height * .12);
+
+    ctx.font = `600 ${Math.max(8, width * .011)}px sans-serif`;
+    Object.entries(OPERATION_ZONE_ANCHORS).forEach(([zone, point]) => {
+      const x = point[0] * width;
+      const y = point[1] * height;
+      ctx.strokeStyle = "rgba(164,210,225,.22)";
+      ctx.beginPath(); ctx.arc(x, y, Math.max(10, width * .018), 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = "rgba(200,228,237,.5)";
+      ctx.fillText(zoneName(zone), x + 7, y - 8);
+    });
+    ctx.restore();
+  }
+
+  function drawOperationAction(ctx, width, height, action, elapsed) {
+    if (elapsed < action.start) return;
+    const actor = OPERATION_ACTORS[action.actor];
+    const home = { x: actor.home[0] * width, y: actor.home[1] * height };
+    const anchor = OPERATION_ZONE_ANCHORS[action.zone] || OPERATION_ZONE_ANCHORS["Z-CW"];
+    const spread = action.itemIndex ? (action.itemIndex % 2 ? 1 : -1) * Math.min(18, width * .023) : 0;
+    const target = { x: anchor[0] * width + spread, y: anchor[1] * height + spread * .35 };
+    const travelDuration = action.primary ? 3500 : 2700;
+    const rawProgress = clamp((elapsed - action.start) / travelDuration, 0, 1);
+    const progress = rawProgress < .5 ? 2 * rawProgress * rawProgress : 1 - Math.pow(-2 * rawProgress + 2, 2) / 2;
+    const bend = (action.actorIndex - 1) * height * .08 + (action.itemIndex % 2 ? height * .04 : -height * .03);
+    const control = {
+      x: (home.x + target.x) / 2,
+      y: (home.y + target.y) / 2 + bend
+    };
+    const point = quadraticPoint(home, control, target, progress);
+    const ahead = quadraticPoint(home, control, target, Math.min(1, progress + .015));
+    const rotation = Math.atan2(ahead.y - point.y, ahead.x - point.x);
+
+    ctx.save();
+    ctx.globalAlpha = action.primary ? .82 : .48;
+    ctx.strokeStyle = actor.color;
+    ctx.lineWidth = action.primary ? 2.1 : 1.25;
+    ctx.setLineDash(action.type === "subsurface" ? [3, 7] : [7, 7]);
+    ctx.beginPath();
+    for (let index = 0; index <= 24 * progress; index++) {
+      const sample = quadraticPoint(home, control, target, index / 24);
+      if (index === 0) ctx.moveTo(sample.x, sample.y);
+      else ctx.lineTo(sample.x, sample.y);
+    }
+    ctx.stroke();
+    ctx.restore();
+
+    const iconSize = (action.primary ? 22 : 15) + Math.min(5, action.resource / 8);
+    drawOperationPictogram(ctx, action.type, point.x, point.y, iconSize, actor.color, rotation);
+    if (progress >= .96) drawOperationEffect(ctx, action, target.x, target.y, elapsed);
+  }
+
+  function quadraticPoint(start, control, end, progress) {
+    const inverse = 1 - progress;
+    return {
+      x: inverse * inverse * start.x + 2 * inverse * progress * control.x + progress * progress * end.x,
+      y: inverse * inverse * start.y + 2 * inverse * progress * control.y + progress * progress * end.y
+    };
+  }
+
+  function drawOperationPictogram(ctx, type, x, y, size, color, rotation = 0) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(["aviation", "longrange"].includes(type) ? rotation : 0);
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.lineWidth = Math.max(1.4, size * .08);
+    ctx.strokeStyle = color;
+    ctx.fillStyle = "rgba(5,24,36,.88)";
+    ctx.shadowColor = color;
+    ctx.shadowBlur = size * .45;
+    ctx.beginPath(); ctx.arc(0, 0, size * .66, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = color;
+    ctx.strokeStyle = color;
+
+    if (type === "aviation") {
+      ctx.beginPath();
+      ctx.moveTo(size * .5, 0); ctx.lineTo(-size * .2, -size * .12); ctx.lineTo(-size * .48, -size * .42);
+      ctx.lineTo(-size * .56, -size * .35); ctx.lineTo(-size * .38, 0); ctx.lineTo(-size * .56, size * .35);
+      ctx.lineTo(-size * .48, size * .42); ctx.lineTo(-size * .2, size * .12); ctx.closePath(); ctx.fill();
+    } else if (type === "convoy" || type === "maritime") {
+      ctx.beginPath(); ctx.moveTo(-size * .45, size * .12); ctx.lineTo(size * .45, size * .12);
+      ctx.lineTo(size * .28, size * .38); ctx.lineTo(-size * .28, size * .38); ctx.closePath(); ctx.stroke();
+      ctx.strokeRect(-size * .18, -size * .18, size * .36, size * .3);
+      ctx.beginPath(); ctx.moveTo(-size * .5, size * .5); ctx.quadraticCurveTo(0, size * .36, size * .5, size * .5); ctx.stroke();
+      if (type === "convoy") {
+        ctx.beginPath(); ctx.arc(-size * .34, -size * .32, size * .09, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(0, -size * .32, size * .09, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(size * .34, -size * .32, size * .09, 0, Math.PI * 2); ctx.fill();
+      }
+    } else if (type === "airdefense" || type === "intelligence") {
+      ctx.beginPath(); ctx.arc(0, size * .18, size * .38, Math.PI, 0); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, size * .18); ctx.lineTo(size * .28, -size * .15); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, size * .18, size * .08, 0, Math.PI * 2); ctx.fill();
+      if (type === "airdefense") {
+        ctx.beginPath(); ctx.moveTo(-size * .38, -size * .22); ctx.quadraticCurveTo(0, -size * .5, size * .38, -size * .22);
+        ctx.lineTo(size * .3, size * .12); ctx.quadraticCurveTo(0, size * .45, -size * .3, size * .12); ctx.closePath(); ctx.stroke();
+      }
+    } else if (type === "satellite") {
+      ctx.strokeRect(-size * .15, -size * .16, size * .3, size * .32);
+      ctx.strokeRect(-size * .52, -size * .22, size * .25, size * .44);
+      ctx.strokeRect(size * .27, -size * .22, size * .25, size * .44);
+      ctx.beginPath(); ctx.moveTo(-size * .27, 0); ctx.lineTo(-size * .15, 0); ctx.moveTo(size * .15, 0); ctx.lineTo(size * .27, 0); ctx.stroke();
+    } else if (type === "communications") {
+      for (let radius = .18; radius <= .48; radius += .15) {
+        ctx.beginPath(); ctx.arc(0, size * .2, size * radius, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
+      }
+      ctx.beginPath(); ctx.arc(0, size * .2, size * .08, 0, Math.PI * 2); ctx.fill();
+    } else if (type === "drone") {
+      ctx.strokeRect(-size * .16, -size * .1, size * .32, size * .2);
+      [[-.4,-.35],[.4,-.35],[-.4,.35],[.4,.35]].forEach(([dx, dy]) => {
+        ctx.beginPath(); ctx.moveTo(dx * size * .45, dy * size * .45); ctx.lineTo(dx * size, dy * size); ctx.stroke();
+        ctx.beginPath(); ctx.arc(dx * size, dy * size, size * .13, 0, Math.PI * 2); ctx.stroke();
+      });
+    } else if (type === "subsurface") {
+      ctx.beginPath(); ctx.ellipse(0, size * .12, size * .48, size * .24, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-size * .08, -size * .12); ctx.lineTo(-size * .08, -size * .34); ctx.lineTo(size * .12, -size * .34); ctx.stroke();
+    } else if (type === "longrange" || type === "energy") {
+      ctx.beginPath(); ctx.moveTo(size * .08, -size * .5); ctx.lineTo(-size * .3, size * .05);
+      ctx.lineTo(-size * .02, size * .05); ctx.lineTo(-size * .12, size * .5);
+      ctx.lineTo(size * .34, -size * .12); ctx.lineTo(size * .08, -size * .12); ctx.closePath(); ctx.fill();
+    } else if (type === "logistics") {
+      ctx.strokeRect(-size * .5, -size * .2, size * .55, size * .42);
+      ctx.beginPath(); ctx.moveTo(size * .05, -size * .08); ctx.lineTo(size * .32, -size * .08);
+      ctx.lineTo(size * .48, size * .22); ctx.lineTo(size * .05, size * .22); ctx.closePath(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(-size * .3, size * .32, size * .1, 0, Math.PI * 2);
+      ctx.moveTo(size * .42, size * .32); ctx.arc(size * .32, size * .32, size * .1, 0, Math.PI * 2); ctx.stroke();
+    } else if (type === "diplomacy") {
+      roundedRectPath(ctx, -size * .46, -size * .32, size * .92, size * .58, size * .12); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-size * .18, size * .25); ctx.lineTo(-size * .31, size * .48); ctx.lineTo(size * .02, size * .26); ctx.stroke();
+      [-.22, 0, .22].forEach(dx => { ctx.beginPath(); ctx.arc(dx * size, -size * .03, size * .055, 0, Math.PI * 2); ctx.fill(); });
+    } else if (type === "humanitarian") {
+      ctx.fillRect(-size * .1, -size * .42, size * .2, size * .84);
+      ctx.fillRect(-size * .42, -size * .1, size * .84, size * .2);
+    } else if (type === "disperse") {
+      [-.48, 0, .48].forEach((dx, index) => {
+        ctx.beginPath(); ctx.moveTo(0, size * .36); ctx.lineTo(dx * size, -size * .28);
+        ctx.lineTo(dx * size + (index === 0 ? .12 : -.12) * size, -size * .2); ctx.moveTo(dx * size, -size * .28);
+        ctx.lineTo(dx * size + (index === 2 ? -.12 : .12) * size, -size * .15); ctx.stroke();
+      });
+    }
+    ctx.restore();
+  }
+
+  function drawOperationEffect(ctx, action, x, y, elapsed) {
+    const actor = OPERATION_ACTORS[action.actor];
+    const pulse = .5 + .5 * Math.sin(elapsed / (action.primary ? 260 : 410) + action.itemIndex);
+    ctx.save();
+    ctx.strokeStyle = actor.color;
+    ctx.globalAlpha = .18 + pulse * .35;
+    ctx.lineWidth = action.primary ? 2 : 1;
+    if (["satellite", "communications", "intelligence", "airdefense", "drone"].includes(action.type)) {
+      for (let index = 1; index <= 3; index++) {
+        ctx.beginPath(); ctx.arc(x, y, 10 + index * 9 + pulse * 5, 0, Math.PI * 2); ctx.stroke();
+      }
+    } else if (action.type === "disperse") {
+      for (let index = 0; index < 5; index++) {
+        const angle = index * Math.PI * 2 / 5;
+        ctx.beginPath(); ctx.arc(x + Math.cos(angle) * (15 + pulse * 10), y + Math.sin(angle) * (15 + pulse * 10), 2.5, 0, Math.PI * 2); ctx.fillStyle = actor.color; ctx.fill();
+      }
+    } else {
+      ctx.beginPath(); ctx.arc(x, y, 13 + pulse * 12, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawOperationConflict(ctx, width, height, conflict, elapsed, index) {
+    const anchor = OPERATION_ZONE_ANCHORS[conflict.zone] || OPERATION_ZONE_ANCHORS["Z-CW"];
+    const x = anchor[0] * width;
+    const y = anchor[1] * height;
+    const phase = clamp((elapsed - 6200 - index * 220) / 1600, 0, 1);
+    const flash = .5 + .5 * Math.sin(elapsed / 105 + index);
+    const boxWidth = Math.min(width * .25, 180);
+    const boxHeight = Math.min(height * .28, 120);
+    ctx.save();
+    ctx.strokeStyle = `rgba(255,${Math.round(128 + flash * 90)},64,${.4 + flash * .55})`;
+    ctx.lineWidth = 2 + flash * 3;
+    ctx.setLineDash([10, 5]);
+    roundedRectPath(ctx, x - boxWidth / 2, y - boxHeight / 2, boxWidth, boxHeight, 12);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    if (elapsed >= 7200 && elapsed <= 10300) {
+      const burst = clamp((elapsed - 7200) / 900, 0, 1);
+      for (let ray = 0; ray < 16; ray++) {
+        const angle = ray * Math.PI * 2 / 16 + index * .17;
+        const inner = 6 + burst * 8;
+        const outer = 18 + burst * (22 + (ray % 3) * 6);
+        ctx.strokeStyle = ray % 2 ? `rgba(255,214,74,${1 - burst * .45})` : `rgba(255,91,82,${1 - burst * .4})`;
+        ctx.lineWidth = ray % 3 === 0 ? 3 : 1.5;
+        ctx.beginPath();
+        ctx.moveTo(x + Math.cos(angle) * inner, y + Math.sin(angle) * inner);
+        ctx.lineTo(x + Math.cos(angle) * outer, y + Math.sin(angle) * outer);
+        ctx.stroke();
+      }
+      ctx.fillStyle = `rgba(255,245,190,${.8 * flash})`;
+      ctx.beginPath(); ctx.arc(x, y, 7 + flash * 10, 0, Math.PI * 2); ctx.fill();
+    }
+    if (elapsed >= 8200) {
+      const smokeAge = clamp((elapsed - 8200) / 2500, 0, 1);
+      for (let cloud = 0; cloud < 7; cloud++) {
+        const angle = cloud * 2.17 + index;
+        const distance = 6 + cloud * 3 + smokeAge * 14;
+        ctx.fillStyle = `rgba(180,196,201,${.3 * (1 - smokeAge * .55)})`;
+        ctx.beginPath();
+        ctx.arc(x + Math.cos(angle) * distance, y - smokeAge * 18 + Math.sin(angle) * distance * .45, 7 + cloud * 1.2 + smokeAge * 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.fillStyle = "rgba(255,232,184,.92)";
+    ctx.font = `800 ${Math.max(9, width * .012)}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.fillText(`重大衝突 · ${zoneName(conflict.zone)}`, x, y - boxHeight / 2 - 8);
+    ctx.restore();
+  }
+
+  function drawCanvasConflictFrame(ctx, width, height, elapsed, active) {
+    const pulse = active ? .5 + .5 * Math.sin(elapsed / 125) : .35;
+    ctx.save();
+    ctx.strokeStyle = `rgba(255,${Math.round(120 + pulse * 105)},56,${.35 + pulse * .6})`;
+    ctx.lineWidth = 2 + pulse * 4;
+    ctx.shadowColor = "rgba(255,73,56,.85)";
+    ctx.shadowBlur = active ? 12 + pulse * 20 : 8;
+    roundedRectPath(ctx, 7, 7, width - 14, height - 14, 14);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawOperationOutcome(ctx, width, height, scene, elapsed) {
+    const fade = clamp((elapsed - (scene.duration - 2400)) / 600, 0, 1);
+    const boxHeight = Math.min(76, height * .2);
+    ctx.save();
+    ctx.globalAlpha = fade;
+    ctx.fillStyle = "rgba(3,17,27,.86)";
+    roundedRectPath(ctx, width * .055, height - boxHeight - 16, width * .89, boxHeight, 10);
+    ctx.fill();
+    ctx.strokeStyle = scene.conflicts.length ? "rgba(255,177,74,.75)" : "rgba(105,190,224,.55)";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = "#eef8fb";
+    ctx.font = `800 ${Math.max(11, width * .015)}px sans-serif`;
+    ctx.fillText(`第 ${scene.log.turn} 回合裁決`, width * .075, height - boxHeight + 8);
+    ctx.font = `600 ${Math.max(9, width * .012)}px sans-serif`;
+    drawCanvasWrappedText(ctx, scene.log.outcome, width * .075, height - boxHeight + 29, width * .82, Math.max(13, width * .017), 2);
+    ctx.restore();
+  }
+
+  function drawCanvasWrappedText(ctx, text, x, y, maxWidth, lineHeight, maxLines) {
+    const characters = [...String(text || "")];
+    let line = "";
+    let lineIndex = 0;
+    characters.forEach((character, index) => {
+      if (lineIndex >= maxLines) return;
+      const candidate = line + character;
+      if (ctx.measureText(candidate).width > maxWidth && line) {
+        ctx.fillText(line, x, y + lineIndex * lineHeight);
+        lineIndex += 1;
+        line = character;
+      } else {
+        line = candidate;
+      }
+      if (index === characters.length - 1 && lineIndex < maxLines) ctx.fillText(line, x, y + lineIndex * lineHeight);
+    });
+  }
+
+  function roundedRectPath(ctx, x, y, width, height, radius) {
+    const r = Math.min(radius, width / 2, height / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + width - r, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+    ctx.lineTo(x + width, y + height - r);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+    ctx.lineTo(x + r, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
   }
 
   function renderOrderControls() {
@@ -1263,6 +2014,7 @@
         state.status.BLUE.intel < 50 ? "情報品質不足" : "需持續監控"
     };
     state.logs.push(log);
+    operationAnimation.pendingAutoplayTurn = log.turn;
     state.currentTurn += 1;
     saveState(false);
     renderSimulation();
@@ -2232,6 +2984,18 @@
     });
     $("autoOrdersBtn").addEventListener("click", autoFillOrders);
     $("resolveTurnBtn").addEventListener("click", resolveTurn);
+    $("operationToggleVisibilityBtn").addEventListener("click", toggleOperationTheaterVisibility);
+    $("operationFullscreenBtn").disabled = !document.fullscreenEnabled;
+    $("operationFullscreenBtn").addEventListener("click", toggleOperationFullscreen);
+    document.addEventListener("fullscreenchange", syncOperationFullscreen);
+    $("operationReplayBtn").addEventListener("click", () => startOperationAnimation(true));
+    $("operationPauseBtn").addEventListener("click", toggleOperationAnimation);
+    $("operationSpeed").addEventListener("change", setOperationSpeed);
+    window.addEventListener("resize", () => {
+      if (operationAnimation.scene || state.scenario) {
+        drawOperationFrame(operationAnimation.elapsed, operationAnimation.scene);
+      }
+    });
     $("clearRunBtn").addEventListener("click", resetRun);
     $("saveBtn").addEventListener("click", () => saveState(true));
     $("exportBtn").addEventListener("click", exportJSON);

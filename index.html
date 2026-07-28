@@ -274,6 +274,48 @@
               <span class="muted">不含座標與真實部署</span>
             </div>
             <div id="zoneMap" class="zone-map" aria-label="抽象臺海區域圖"></div>
+            <section id="operationTheater" class="operation-theater" aria-labelledby="operationTheaterTitle">
+              <div class="operation-theater-heading">
+                <div>
+                  <h4 id="operationTheaterTitle">三方作戰示意動畫</h4>
+                  <p id="operationTheaterStatus" class="muted">等待回合結算後顯示三方行動。</p>
+                </div>
+                <div class="operation-playback" aria-label="作戰示意動畫播放控制">
+                  <button type="button" id="operationToggleVisibilityBtn" class="secondary" aria-expanded="true" aria-controls="operationCanvasFrame operationActorSummary operationIconLegend">隱藏</button>
+                  <button type="button" id="operationFullscreenBtn" class="secondary" aria-pressed="false">全螢幕</button>
+                  <button type="button" id="operationReplayBtn" class="secondary" disabled>重播</button>
+                  <button type="button" id="operationPauseBtn" class="secondary" disabled>暫停</button>
+                  <label>
+                    速度
+                    <select id="operationSpeed" aria-label="動畫播放速度">
+                      <option value="0.75">0.75×</option>
+                      <option value="1" selected>1×</option>
+                      <option value="1.5">1.5×</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+              <div id="operationCanvasFrame" class="operation-canvas-frame">
+                <canvas id="operationCanvas" role="img" aria-describedby="operationCanvasDescription"></canvas>
+                <p id="operationCanvasEmpty" class="operation-canvas-empty">等待第一個回合結算</p>
+              </div>
+              <p id="operationCanvasDescription" class="sr-only">
+                抽象臺海三方行動示意圖；不含真實座標、武器型號、部隊部署或交戰程序。
+              </p>
+              <p class="operation-map-credit">
+                底圖改作自
+                <a href="https://commons.wikimedia.org/wiki/File:Taiwan_location_map.svg" target="_blank" rel="noopener noreferrer">Taiwan location map.svg</a>
+                ／NordNordWest／CC BY-SA 3.0
+              </p>
+              <div id="operationActorSummary" class="operation-actor-summary" aria-live="polite"></div>
+              <section class="operation-icon-guide" aria-labelledby="operationIconGuideTitle">
+                <div class="operation-icon-guide-heading">
+                  <h5 id="operationIconGuideTitle">三方圖標說明</h5>
+                  <span>每項行動使用的實際動畫圖標</span>
+                </div>
+                <div id="operationIconLegend" class="operation-icon-legend"></div>
+              </section>
+            </section>
             <div class="legend">
               <span><i class="dot blue"></i>藍方壓力／行動</span>
               <span><i class="dot red"></i>紅方壓力／行動</span>
