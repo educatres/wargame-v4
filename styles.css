@@ -410,6 +410,7 @@ output { color: var(--primary); font-weight: 800; }
 .white-event-form button { justify-self: start; }
 
 .lab-grid { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); gap: .8rem; margin: .8rem 0 1rem; }
+.intercept-card[hidden] { display: none !important; }
 .footnote { color: var(--muted); font-size: .84rem; margin-bottom: 0; }
 .action-safety-note { margin: 0; padding: .65rem .75rem; border-left: 4px solid var(--amber); border-radius: .25rem .6rem .6rem .25rem; background: #fff8e8; }
 
@@ -423,6 +424,51 @@ th { background: #edf3f7; position: sticky; top: 0; }
 .decision-timeline-table > thead > tr > th:nth-child(2) { width: 190px; }
 .decision-timeline-table > thead > tr > th:nth-child(3) { width: 820px; }
 .decision-timeline-table > thead > tr > th:nth-child(n+4) { width: 170px; }
+.timeline-review-btn {
+  display: block; width: 100%; margin-top: .45rem; padding: .34rem .45rem;
+  border: 1px solid #9ab5c7; border-radius: .45rem;
+  color: var(--primary); background: #fff; font-size: .7rem; font-weight: 850;
+}
+.timeline-review-btn:hover { border-color: var(--primary); background: var(--blue-soft); }
+.aar-turn-review { margin-top: 1rem; min-width: 0; }
+.aar-review-heading {
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: .8rem;
+}
+.aar-review-heading h3 { margin: 0 0 .25rem; }
+.aar-review-heading p { margin-bottom: 0; }
+.aar-review-controls { display: flex; align-items: flex-end; justify-content: flex-end; gap: .5rem; flex-wrap: wrap; }
+.aar-review-controls label {
+  display: grid; gap: .25rem; min-width: 190px; color: #384858; font-size: .78rem; font-weight: 800;
+}
+.aar-review-controls select { padding: .46rem .55rem; }
+.aar-review-tabs {
+  display: flex; gap: .35rem; overflow-x: auto; padding: .2rem .1rem .65rem;
+  border-bottom: 1px solid var(--border); scrollbar-width: thin;
+}
+.aar-review-tabs .mini-tab { flex: 0 0 auto; white-space: nowrap; }
+.aar-review-content { min-height: 220px; padding-top: .9rem; }
+.aar-review-empty {
+  display: grid; min-height: 170px; place-items: center; padding: 1rem;
+  border: 1px dashed #b9cbd7; border-radius: .75rem; color: var(--muted); background: #f7fafc; text-align: center;
+}
+.aar-review-log-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; }
+.aar-event-log { border-left-color: var(--neutral); }
+.aar-review-table { min-width: 760px; }
+.aar-package-heading { display: flex; align-items: center; gap: .65rem; flex-wrap: wrap; }
+.aar-package-heading h4 { margin: 0; }
+.aar-order-grid { display: grid; gap: .75rem; }
+.aar-order-card { overflow: hidden; border: 1px solid var(--border); border-radius: .75rem; background: #fff; }
+.aar-order-card > header {
+  display: flex; justify-content: space-between; gap: .7rem; padding: .58rem .75rem;
+  color: #fff; background: var(--neutral);
+}
+.aar-order-card.BLUE > header { background: #0d6fc7; }
+.aar-order-card.RED > header { background: #c83e37; }
+.aar-order-card.AMBER > header { color: #332a00; background: #efc900; }
+.aar-order-table { min-width: 920px; font-size: .82rem; }
+.aar-order-card .footnote { padding: 0 .75rem .7rem; }
+.aar-replay-theater { margin-top: 0; padding-top: 0; border-top: 0; }
+.aar-replay-theater:fullscreen { padding: clamp(.8rem, 2vw, 1.5rem); }
 .faction-count-cell { min-width: 820px; padding: .55rem; background: #f4f7f9; }
 .faction-count-grid {
   display: grid;
@@ -644,7 +690,10 @@ footer {
 
 @media (max-width: 980px) {
   .topbar, .section-heading { align-items: flex-start; flex-direction: column; }
+  .aar-review-heading { flex-direction: column; }
+  .aar-review-controls { width: 100%; justify-content: flex-start; }
   .two-column, .simulation-layout, .three-column { grid-template-columns: 1fr; }
+  .aar-review-log-grid { grid-template-columns: 1fr; }
   .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .preview-grid { grid-template-columns: 1fr; }
   .resource-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -665,6 +714,8 @@ footer {
   .operation-canvas-frame { min-height: 260px; aspect-ratio: 4 / 3; }
   .operation-actor-summary { grid-template-columns: 1fr; }
   .operation-icon-legend { grid-template-columns: 1fr; }
+  .aar-review-controls > * { flex: 1 1 135px; }
+  .aar-review-controls label { min-width: 100%; }
   .section-navigator:not([hidden]) { grid-template-columns: 1fr; }
   .section-navigator .turn-controls { justify-content: space-between; }
   .section-navigator .turn-controls .badge {

@@ -4,6 +4,7 @@
   const DATA = window.WARGAME_DATA;
   const STORAGE_KEY = "taiwan-strait-scenario-generator-v2";
   const LLM_SETTINGS_KEY = "taiwan-strait-scenario-generator-llm-v1";
+  const SHOW_INTERCEPT_LAB = false;
 
   const ACTIONS = {
     BLUE: [
@@ -339,6 +340,10 @@
     logs: [],
     revealedIntel: [],
     currentLibrary: "sources",
+    aarReview: {
+      turn: null,
+      tab: "intel"
+    },
     storm: {
       activeStage: "systems",
       activeRepresentation: "c2",
@@ -433,6 +438,16 @@
     pendingAutoplayTurn: null,
     autoPlayedKey: ""
   };
+  const aarReplayAnimation = {
+    scene: null,
+    sceneKey: "",
+    elapsed: 0,
+    duration: 12000,
+    speed: 1,
+    playing: false,
+    startedAt: 0,
+    frameId: 0
+  };
   const OPERATION_MAP_ASPECT = 1015.733 / 1221.247;
   const operationMapImage = new Image();
   let operationMapReady = false;
@@ -440,6 +455,7 @@
   operationMapImage.onload = () => {
     operationMapReady = true;
     if ($("operationCanvas")) drawOperationFrame(operationAnimation.elapsed, operationAnimation.scene);
+    if ($("aarReplayCanvas")) drawAarReplayFrame();
   };
   operationMapImage.onerror = () => {
     operationMapReady = false;
@@ -543,7 +559,9 @@
     const navigator = $("sectionNavigator");
     const supported = ["builder", "simulation", "storm"].includes(tabId);
     const panel = supported ? $(tabId) : null;
-    const sections = panel ? [...panel.querySelectorAll("[data-section-nav-label]")] : [];
+    const sections = panel
+      ? [...panel.querySelectorAll("[data-section-nav-label]")].filter(section => !section.hidden)
+      : [];
     $("sectionNavigatorTurnControls").hidden = tabId !== "simulation";
     navigator.hidden = !sections.length;
     document.body.classList.toggle("has-section-navigator", sections.length > 0);
@@ -979,6 +997,7 @@
     state.orders = {};
     state.logs = [];
     state.revealedIntel = [];
+    state.aarReview = { turn: null, tab: "intel" };
     saveState(false);
     renderScenario();
     renderSimulation();
@@ -1252,8 +1271,7 @@
     legend.dataset.rendered = "true";
   }
 
-  function latestOperationScene() {
-    const log = state.logs[state.logs.length - 1];
+  function operationSceneForLog(log) {
     if (!log?.orders) return null;
     const actions = [];
     ["BLUE", "RED", "AMBER"].forEach((actor, actorIndex) => {
@@ -1286,6 +1304,10 @@
       conflicts,
       duration: conflicts.length ? 14500 : 12000
     };
+  }
+
+  function latestOperationScene() {
+    return operationSceneForLog(state.logs[state.logs.length - 1]);
   }
 
   function detectOperationConflicts(actions) {
@@ -1523,9 +1545,9 @@
     }
   }
 
-  function operationCanvasContext() {
-    const canvas = $("operationCanvas");
-    const frame = $("operationCanvasFrame");
+  function operationCanvasContext(canvasId = "operationCanvas", frameId = "operationCanvasFrame") {
+    const canvas = $(canvasId);
+    const frame = $(frameId);
     if (!canvas || !frame) return null;
     const rect = frame.getBoundingClientRect();
     const width = Math.max(320, Math.round(rect.width || 640));
@@ -1540,23 +1562,27 @@
     return { ctx, width, height };
   }
 
-  function drawOperationFrame(elapsed, scene) {
-    const surface = operationCanvasContext();
+  function drawOperationFrame(elapsed, scene, options = {}) {
+    const canvasId = options.canvasId || "operationCanvas";
+    const frameId = options.frameId || "operationCanvasFrame";
+    const playing = options.playing ?? operationAnimation.playing;
+    const surface = operationCanvasContext(canvasId, frameId);
     if (!surface) return;
+    const frame = $(frameId);
     const { ctx, width, height } = surface;
     ctx.clearRect(0, 0, width, height);
     drawOperationBackground(ctx, width, height);
     drawOperationMap(ctx, width, height);
     if (!scene) {
-      $("operationCanvasFrame").classList.remove("major-conflict", "major-conflict-active");
+      frame.classList.remove("major-conflict", "major-conflict-active");
       return;
     }
 
     scene.actions.forEach(action => drawOperationAction(ctx, width, height, action, elapsed));
     const conflictActive = scene.conflicts.length && elapsed >= 6200 && elapsed <= 11100;
     const conflictVisible = scene.conflicts.length && elapsed >= 6000;
-    $("operationCanvasFrame").classList.toggle("major-conflict", !!conflictVisible);
-    $("operationCanvasFrame").classList.toggle("major-conflict-active", !!(conflictActive && operationAnimation.playing));
+    frame.classList.toggle("major-conflict", !!conflictVisible);
+    frame.classList.toggle("major-conflict-active", !!(conflictActive && playing));
     if (conflictVisible) {
       scene.conflicts.forEach((conflict, index) => drawOperationConflict(ctx, width, height, conflict, elapsed, index));
       drawCanvasConflictFrame(ctx, width, height, elapsed, conflictActive);
@@ -2109,9 +2135,9 @@
     return state.scenario.intel.filter(i => Number(i.turn) === state.currentTurn);
   }
 
-  function currentWeather() {
+  function weatherForTurn(turn) {
     if (!state.scenario) return [];
-    const baseTurn = ((state.currentTurn - 1) % 12) + 1;
+    const baseTurn = ((Number(turn) - 1) % 12) + 1;
     const rows = DATA.weather.filter(w => Number(w.turn) === baseTurn);
     const modifier = state.scenario.weatherPreset === "adverse" ? 1 :
       state.scenario.weatherPreset === "stable" ? -1 : 0;
@@ -2120,6 +2146,10 @@
       sea_state_1_5: clamp(Number(w.sea_state_1_5) + modifier, 1, 5),
       visibility_1_5: clamp(Number(w.visibility_1_5) - modifier, 1, 5)
     }));
+  }
+
+  function currentWeather() {
+    return weatherForTurn(state.currentTurn);
   }
 
   function currentEvents() {
@@ -2733,6 +2763,7 @@
     const orders = state.orders[state.currentTurn] || {};
     const rng = mulberry32(state.scenario.seed + state.currentTurn * 7919 + hashText(JSON.stringify(orders)));
     const difficulty = DIFFICULTY[state.scenario.difficulty];
+    const intel = currentIntel();
     const events = currentEvents();
     const weather = currentWeather();
     const avgSea = weather.reduce((sum, w) => sum + Number(w.sea_state_1_5), 0) / Math.max(1, weather.length);
@@ -2785,7 +2816,7 @@
       environment: { avgSea: round1(avgSea), avgVisibility: round1(avgVisibility) },
       outcome,
       resourceLedger,
-      abstractResourcesAfter: state.scenario.abstractResources,
+      abstractResourcesAfter: JSON.parse(JSON.stringify(state.scenario.abstractResources || null)),
       statusAfter: JSON.parse(JSON.stringify(state.status)),
       keyRisk: state.status.BLUE.civilianRisk > 65 ? "民事風險升高" :
         state.status.BLUE.sustainment < 50 ? "藍方持續性不足" :
@@ -2795,6 +2826,16 @@
     state.logs.push(log);
     const nextTurnPackage = await generateNextTurnPackage(log);
     log.nextTurnPackage = nextTurnPackage;
+    log.turnSnapshot = {
+      version: 1,
+      intel: JSON.parse(JSON.stringify(intel)),
+      weather: JSON.parse(JSON.stringify(weather)),
+      events: JSON.parse(JSON.stringify(events)),
+      orders: JSON.parse(JSON.stringify(orders)),
+      resourceLedger: JSON.parse(JSON.stringify(resourceLedger || null)),
+      abstractResourcesAfter: JSON.parse(JSON.stringify(state.scenario.abstractResources || null)),
+      nextTurnPackage: JSON.parse(JSON.stringify(nextTurnPackage || null))
+    };
     state.scenario.nextTurnPackages.push(nextTurnPackage);
     operationAnimation.pendingAutoplayTurn = log.turn;
     state.currentTurn += 1;
@@ -2908,11 +2949,401 @@
       <article class="metric amber"><small>每次投入效率</small><strong>${percent(efficiency)}</strong><small>增加投入存在邊際效益遞減</small></article>`;
   }
 
+  function turnReviewSnapshot(log) {
+    if (log?.turnSnapshot) return log.turnSnapshot;
+    const turn = Number(log?.turn || 0);
+    return {
+      version: 0,
+      reconstructed: true,
+      intel: (state.scenario?.intel || []).filter(item => Number(item.turn) === turn),
+      weather: weatherForTurn(turn),
+      events: timelineEvents(log),
+      orders: log?.orders || {},
+      resourceLedger: log?.resourceLedger || null,
+      abstractResourcesAfter: log?.abstractResourcesAfter || null,
+      nextTurnPackage: log?.nextTurnPackage
+        || (state.scenario?.nextTurnPackages || []).find(item => Number(item.turn) === turn + 1)
+        || null
+    };
+  }
+
+  function reviewEmpty(message) {
+    return `<div class="aar-review-empty">${escapeHtml(message)}</div>`;
+  }
+
+  function renderReviewIntel(snapshot) {
+    const rows = snapshot.intel || [];
+    if (!rows.length) return reviewEmpty("本回合沒有新增情報；這本身也是需要檢討的資訊缺口。");
+    return `<div class="aar-review-log-grid">${rows.map(item => `<article class="turn-log">
+      <strong>${escapeHtml(item.report_type || "情報")} · ${escapeHtml(zoneName(item.zone_id))}</strong>
+      <p>${escapeHtml(item.report_text || "無文字內容")}</p>
+      <small>來源 ${escapeHtml(item.source_reliability || "未標示")} · 信心 ${Number(item.confidence_pct) || 0}%</small>
+    </article>`).join("")}</div>`;
+  }
+
+  function renderReviewWeather(snapshot) {
+    const rows = snapshot.weather || [];
+    if (!rows.length) return reviewEmpty("本回合沒有天候與環境資料。");
+    return `<div class="table-wrap"><table class="aar-review-table">
+      <thead><tr><th>區域</th><th>海象</th><th>能見度</th><th>風速</th><th>降水機率</th></tr></thead>
+      <tbody>${rows.map(item => `<tr>
+        <td><strong>${escapeHtml(zoneName(item.zone_id))}</strong></td>
+        <td>${Number(item.sea_state_1_5) || 0}/5</td>
+        <td>${Number(item.visibility_1_5) || 0}/5</td>
+        <td>約 ${Number(item.wind_kts) || 0} 節（合成）</td>
+        <td>${Number(item.precip_probability_pct) || 0}%（合成）</td>
+      </tr>`).join("")}</tbody>
+    </table></div>`;
+  }
+
+  function renderReviewEvents(snapshot) {
+    const rows = snapshot.events || [];
+    if (!rows.length) return reviewEmpty("本回合沒有預排或臨時導調事件。");
+    return `<div class="aar-review-log-grid">${rows.map(event => `<article class="turn-log aar-event-log">
+      <strong>${escapeHtml(event.event_name || "未命名事件")}</strong>
+      <p>${escapeHtml(event.description || "舊版紀錄未保存事件說明。")}</p>
+      <small>${escapeHtml(event.category || "未分類")} · ${escapeHtml(zoneName(event.zone_id || "Z-ISL"))}
+        · 影響 ${escapeHtml(actorLabel(event.affected_actor || "ALL"))}${event.whiteInjected ? " · 白方臨時發布" : ""}</small>
+    </article>`).join("")}</div>`;
+  }
+
+  function renderReviewLedger(snapshot) {
+    const ledger = snapshot.resourceLedger;
+    if (!ledger) return reviewEmpty("本回合未啟用詳細資源帳本，或舊版紀錄未保存帳本明細。");
+    const entries = ledger.entries || [];
+    const changedCount = entries.filter(entry =>
+      entry.recovery || entry.replenishment || entry.actionConsumption || entry.eventLoss
+    ).length;
+    const totals = ledger.totals || {};
+    const actorScores = ["BLUE", "RED", "AMBER"].map(actor => {
+      const score = snapshot.abstractResourcesAfter?.byActor?.[actor]?.overall;
+      return Number.isFinite(score)
+        ? `<span class="ledger-chip"><strong>${actorLabel(actor)}</strong> ${round1(score)}/100</span>`
+        : "";
+    }).join("");
+    return `<div class="ledger-summary">${actorScores}
+      <span class="ledger-chip">行動消耗 ${round1(Number(totals.consumed || 0))}</span>
+      <span class="ledger-chip">事件損失 ${round1(Number(totals.eventLoss || 0))}</span>
+      <span class="ledger-chip">恢復／補充 ${round1(Number(totals.recovered || 0) + Number(totals.replenished || 0))}</span>
+      <span class="ledger-chip">異動品項 ${changedCount}/${entries.length}</span>
+    </div>
+    ${entries.length ? `<div class="table-wrap"><table class="ledger-table aar-review-table">
+      <thead><tr><th>品項</th><th>方別／類別</th><th>期初</th><th>恢復</th><th>補充</th><th>行動消耗</th><th>事件損失</th><th>期末</th></tr></thead>
+      <tbody>${entries.map(entry => `<tr>
+        <td>${escapeHtml(entry.alias || "未命名品項")}</td>
+        <td>${escapeHtml(actorLabel(entry.actor))}／${escapeHtml(INVENTORY_CATEGORIES[entry.category] || entry.category || "未分類")}</td>
+        <td>${Number(entry.opening) || 0}</td><td>+${Number(entry.recovery) || 0}</td><td>+${Number(entry.replenishment) || 0}</td>
+        <td>−${Number(entry.actionConsumption) || 0}</td><td>−${Number(entry.eventLoss) || 0}</td><td><strong>${Number(entry.closing) || 0}</strong></td>
+      </tr>`).join("")}</tbody>
+    </table></div>` : reviewEmpty("本回合帳本沒有已登錄品項。")}`;
+  }
+
+  function renderReviewNextPackage(snapshot) {
+    const packageData = snapshot.nextTurnPackage;
+    if (!packageData) return reviewEmpty("本回合沒有保存次回合想定包，或已是想定的最後一回合。");
+    const pressures = packageData.resourcePressures || [];
+    const intel = packageData.intelUpdates || [];
+    const events = packageData.candidateEvents || [];
+    const source = packageData.generatedBy === "LLM_SANITIZED" ? "LLM／匿名摘要" : "固定規則";
+    return `<div class="aar-package-heading"><span class="badge">${source}</span>
+      <h4>第 ${Number(packageData.turn) || "—"} 回合 · ${escapeHtml(packageData.headline || "次回合想定")}</h4></div>
+      <p>${escapeHtml(packageData.summary || "")}</p>
+      ${pressures.length ? `<h5>資源壓力</h5>${pressures.map(item => `<div class="package-pressure">
+        <span>${escapeHtml(actorLabel(item.actor))}／${escapeHtml(INVENTORY_CATEGORIES[item.category] || item.category || "未分類")}</span>
+        <span class="inventory-score-bar"><i style="width:${clamp(Number(item.score) || 0)}%"></i></span>
+        <strong>${round1(Number(item.score) || 0)}${Number(item.trend) ? ` (${item.trend > 0 ? "+" : ""}${round1(Number(item.trend))})` : ""}</strong>
+      </div>`).join("")}` : ""}
+      ${intel.length ? `<h5>新情報</h5><ul class="package-list">${intel.map(item => `<li><strong>${escapeHtml(item.type || "情報")}／${escapeHtml(zoneName(item.zone))}</strong>：${escapeHtml(item.text || "")}（信心 ${Number(item.confidence) || 0}%）</li>`).join("")}</ul>` : ""}
+      ${events.length ? `<h5>候選事件</h5><ul class="package-list">${events.map(item => `<li><strong>${escapeHtml(item.name || "事件")}</strong>：${escapeHtml(item.description || "")}</li>`).join("")}</ul>` : ""}
+      <h5>決策難題</h5>
+      <ul class="package-list">${(packageData.decisionDilemmas || []).map(item => `<li>${escapeHtml(item)}</li>`).join("") || "<li>未保存決策難題。</li>"}</ul>
+      <p class="package-source-note">資料邊界：${packageData.privacy === "SANITIZED_AGGREGATE_ONLY" ? "僅使用匿名化聚合值" : "本機規則"}${packageData.fallbackReason ? `；${escapeHtml(packageData.fallbackReason)}` : ""}。</p>`;
+  }
+
+  function renderReviewOrders(snapshot) {
+    const orders = snapshot.orders || {};
+    const actors = ["BLUE", "RED", "AMBER"].filter(actor => orders[actor]);
+    if (!actors.length) return reviewEmpty("本回合沒有保存三方命令。");
+    return `<div class="aar-order-grid">${actors.map(actor => {
+      const order = orders[actor];
+      const items = orderItems(order);
+      return `<article class="aar-order-card ${actor}">
+        <header><strong>${escapeHtml(actorLabel(actor))}</strong><span>投入 ${orderTotalResource(order)}/${ORDER_BUDGET}</span></header>
+        <div class="table-wrap"><table class="aar-order-table">
+          <thead><tr><th>類型</th><th>行動</th><th>區域</th><th>投入</th><th>優先</th><th>風險</th><th>條件</th></tr></thead>
+          <tbody>${items.map((item, index) => `<tr>
+            <td>${index === 0 ? "主要" : "支援"}</td>
+            <td><strong>${escapeHtml(item.action || "未填寫")}</strong></td>
+            <td>${escapeHtml(zoneName(item.zone))}</td>
+            <td>${Number(item.resource) || 0}</td>
+            <td>${Number(item.priority) || "—"}</td>
+            <td>${escapeHtml(riskLabel(item.risk))}</td>
+            <td>${escapeHtml(item.condition || "未填寫")}</td>
+          </tr>`).join("")}</tbody>
+        </table></div>
+        <p class="footnote"><strong>理由：</strong>${escapeHtml(order.rationale || "未填寫理由")}${order.aiGenerated ? " · AI 建議命令" : ""}</p>
+      </article>`;
+    }).join("")}</div>`;
+  }
+
+  function aarReplayIconLegendMarkup(log) {
+    return `<div class="operation-icon-guide">
+      <div class="operation-icon-guide-heading">
+        <h5>本回合圖標說明</h5>
+        <span>依藍、紅、黃三方列出本回合實際使用的行動圖標</span>
+      </div>
+      <div class="operation-icon-legend">${["BLUE", "RED", "AMBER"].map(actor => {
+        const items = orderItems(log.orders?.[actor]);
+        return `<section class="operation-icon-faction ${actor}">
+          <h6>${escapeHtml(actorLabel(actor))}</h6>
+          <div class="operation-icon-list">${items.length ? items.map((item, index) => {
+            const type = operationType(item.action).type;
+            return `<div class="operation-icon-item">
+              <canvas data-aar-replay-icon="${escapeAttr(type)}" data-aar-replay-actor="${actor}" aria-hidden="true"></canvas>
+              <div><strong>${escapeHtml(item.action)}</strong><span>${escapeHtml(OPERATION_TYPE_LABELS[type] || type)} · ${index === 0 ? "主要行動" : "支援行動"}</span></div>
+            </div>`;
+          }).join("") : `<div class="operation-icon-item"><div></div><div><strong>本回合未提交</strong><span>沒有可顯示的行動圖標</span></div></div>`}</div>
+        </section>`;
+      }).join("")}</div>
+    </div>`;
+  }
+
+  function aarReplayMarkup(log) {
+    return `<section id="aarReplayTheater" class="operation-theater aar-replay-theater" aria-label="第 ${log.turn} 回合三方作戰示意動畫">
+      <div class="operation-theater-heading">
+        <div>
+          <h4>第 ${log.turn} 回合三方作戰示意動畫</h4>
+          <p id="aarReplayStatus" class="muted">選定回合的唯讀動畫重播。</p>
+        </div>
+        <div class="operation-playback">
+          <button id="aarReplayBtn" type="button" class="secondary">重播</button>
+          <button id="aarReplayPauseBtn" type="button" class="secondary">暫停</button>
+          <label>速度
+            <select id="aarReplaySpeed" aria-label="事後檢討動畫播放速度">
+              <option value="0.5">0.5×</option>
+              <option value="1" selected>1×</option>
+              <option value="1.5">1.5×</option>
+              <option value="2">2×</option>
+            </select>
+          </label>
+          <button id="aarReplayFullscreenBtn" type="button" class="secondary">全螢幕</button>
+        </div>
+      </div>
+      <div id="aarReplayCanvasFrame" class="operation-canvas-frame">
+        <canvas id="aarReplayCanvas" role="img" aria-label="第 ${log.turn} 回合三方行動路徑與衝突示意"></canvas>
+      </div>
+      <div id="aarReplayActorSummary" class="operation-actor-summary"></div>
+      <p id="aarReplayDescription" class="operation-equipment-disclaimer"></p>
+      ${aarReplayIconLegendMarkup(log)}
+      <p class="operation-map-credit">底圖：Wikimedia Commons 向量地圖，僅供教學示意。</p>
+    </section>`;
+  }
+
+  function renderAarReplay(log) {
+    const scene = operationSceneForLog(log);
+    aarReplayAnimation.scene = scene;
+    aarReplayAnimation.sceneKey = scene?.key || "";
+    aarReplayAnimation.duration = scene?.duration || 12000;
+    aarReplayAnimation.elapsed = aarReplayAnimation.duration;
+    aarReplayAnimation.speed = 1;
+    aarReplayAnimation.playing = false;
+    const fullscreen = $("aarReplayFullscreenBtn");
+    if (fullscreen) fullscreen.disabled = !document.fullscreenEnabled;
+    if (!scene) {
+      $("aarReplayStatus").textContent = "本回合沒有可重建的命令動畫。";
+      $("aarReplayBtn").disabled = true;
+      $("aarReplayPauseBtn").disabled = true;
+      drawAarReplayFrame();
+      return;
+    }
+    const conflictText = scene.conflicts.length
+      ? `偵測到 ${scene.conflicts.length} 個重大衝突區域`
+      : "未達重大衝突高亮門檻";
+    $("aarReplayStatus").textContent = `第 ${log.turn} 回合 · ${conflictText}`;
+    $("aarReplayActorSummary").innerHTML = ["BLUE", "RED", "AMBER"].filter(actor => log.orders?.[actor]).map(actor => {
+      const order = log.orders[actor];
+      const primary = orderPrimary(order);
+      const type = operationType(primary.action).type;
+      const equipment = operationEquipmentLabel(actor, type, `${log.turn}-${primary.action}-0`);
+      return `<div class="operation-actor-chip ${actor}">
+        <strong>${escapeHtml(actorLabel(actor))} · ${escapeHtml(primary.action)}</strong>
+        <span>${equipment ? `${escapeHtml(equipment)} · ` : ""}${escapeHtml(zoneName(primary.zone))} · 支援 ${orderSupports(order).length} 項</span>
+      </div>`;
+    }).join("");
+    $("aarReplayDescription").textContent = `第 ${log.turn} 回合抽象行動示意。${scene.conflicts.length ? `重大衝突區域：${scene.conflicts.map(item => zoneName(item.zone)).join("、")}。` : ""}公開裝備名稱僅為教學遊戲的敘事標籤，不代表真實座標、數量、性能、部署或交戰程序。`;
+    $("aarReplayTheater").querySelectorAll("canvas[data-aar-replay-icon]").forEach(canvas => {
+      const actor = OPERATION_ACTORS[canvas.dataset.aarReplayActor];
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const size = 32;
+      canvas.width = size * dpr;
+      canvas.height = size * dpr;
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      drawOperationPictogram(ctx, canvas.dataset.aarReplayIcon, size / 2, size / 2, 11, actor.color, 0);
+    });
+    requestAnimationFrame(drawAarReplayFrame);
+  }
+
+  function drawAarReplayFrame() {
+    drawOperationFrame(aarReplayAnimation.elapsed, aarReplayAnimation.scene, {
+      canvasId: "aarReplayCanvas",
+      frameId: "aarReplayCanvasFrame",
+      playing: aarReplayAnimation.playing
+    });
+  }
+
+  function stopAarReplayAnimation() {
+    if (aarReplayAnimation.frameId) cancelAnimationFrame(aarReplayAnimation.frameId);
+    aarReplayAnimation.frameId = 0;
+    aarReplayAnimation.playing = false;
+    const frame = $("aarReplayCanvasFrame");
+    if (frame) frame.classList.remove("major-conflict-active");
+  }
+
+  function startAarReplayAnimation(restart = false) {
+    if (!aarReplayAnimation.scene) return;
+    if (restart) aarReplayAnimation.elapsed = 0;
+    stopAarReplayAnimation();
+    aarReplayAnimation.playing = true;
+    aarReplayAnimation.startedAt = performance.now() - aarReplayAnimation.elapsed / aarReplayAnimation.speed;
+    if ($("aarReplayPauseBtn")) $("aarReplayPauseBtn").textContent = "暫停";
+    aarReplayAnimation.frameId = requestAnimationFrame(stepAarReplayAnimation);
+  }
+
+  function stepAarReplayAnimation(now) {
+    if (!aarReplayAnimation.playing || !aarReplayAnimation.scene) return;
+    aarReplayAnimation.elapsed = Math.min(
+      aarReplayAnimation.duration,
+      (now - aarReplayAnimation.startedAt) * aarReplayAnimation.speed
+    );
+    drawAarReplayFrame();
+    if (aarReplayAnimation.elapsed < aarReplayAnimation.duration) {
+      aarReplayAnimation.frameId = requestAnimationFrame(stepAarReplayAnimation);
+    } else {
+      stopAarReplayAnimation();
+      if ($("aarReplayPauseBtn")) $("aarReplayPauseBtn").textContent = "重新播放";
+    }
+  }
+
+  function toggleAarReplayAnimation() {
+    if (!aarReplayAnimation.scene) return;
+    if (!aarReplayAnimation.playing) {
+      startAarReplayAnimation(aarReplayAnimation.elapsed >= aarReplayAnimation.duration);
+      return;
+    }
+    aarReplayAnimation.elapsed = Math.min(
+      aarReplayAnimation.duration,
+      (performance.now() - aarReplayAnimation.startedAt) * aarReplayAnimation.speed
+    );
+    stopAarReplayAnimation();
+    if ($("aarReplayPauseBtn")) $("aarReplayPauseBtn").textContent = "繼續";
+    drawAarReplayFrame();
+  }
+
+  function setAarReplaySpeed() {
+    const nextSpeed = Number($("aarReplaySpeed")?.value) || 1;
+    if (aarReplayAnimation.playing) {
+      aarReplayAnimation.elapsed = Math.min(
+        aarReplayAnimation.duration,
+        (performance.now() - aarReplayAnimation.startedAt) * aarReplayAnimation.speed
+      );
+      aarReplayAnimation.speed = nextSpeed;
+      aarReplayAnimation.startedAt = performance.now() - aarReplayAnimation.elapsed / nextSpeed;
+    } else {
+      aarReplayAnimation.speed = nextSpeed;
+    }
+  }
+
+  async function toggleAarReplayFullscreen() {
+    const theater = $("aarReplayTheater");
+    if (!theater || !document.fullscreenEnabled) {
+      toast("此瀏覽器不支援全螢幕模式。");
+      return;
+    }
+    try {
+      if (document.fullscreenElement === theater) await document.exitFullscreen();
+      else await theater.requestFullscreen();
+    } catch {
+      toast("無法切換全螢幕模式，請檢查瀏覽器權限。");
+    }
+  }
+
+  function syncAarReplayFullscreen() {
+    const button = $("aarReplayFullscreenBtn");
+    const theater = $("aarReplayTheater");
+    if (!button || !theater) return;
+    const active = document.fullscreenElement === theater;
+    button.textContent = active ? "退出全螢幕" : "全螢幕";
+    button.setAttribute("aria-pressed", String(active));
+    requestAnimationFrame(drawAarReplayFrame);
+  }
+
+  function renderAarReviewContent(log) {
+    const host = $("aarReviewContent");
+    if (!host || !log) return;
+    stopAarReplayAnimation();
+    const snapshot = turnReviewSnapshot(log);
+    const tab = state.aarReview.tab;
+    if (tab === "intel") host.innerHTML = renderReviewIntel(snapshot);
+    else if (tab === "weather") host.innerHTML = renderReviewWeather(snapshot);
+    else if (tab === "events") host.innerHTML = renderReviewEvents(snapshot);
+    else if (tab === "ledger") host.innerHTML = renderReviewLedger(snapshot);
+    else if (tab === "next") host.innerHTML = renderReviewNextPackage(snapshot);
+    else if (tab === "orders") host.innerHTML = renderReviewOrders(snapshot);
+    else {
+      host.innerHTML = aarReplayMarkup(log);
+      renderAarReplay(log);
+    }
+    host.dataset.reviewTurn = String(log.turn);
+    host.dataset.reviewTab = tab;
+  }
+
+  function renderAarReview() {
+    const logs = state.logs || [];
+    if (!logs.length) return;
+    state.aarReview ||= { turn: null, tab: "intel" };
+    const availableTabs = ["intel", "weather", "events", "ledger", "next", "animation", "orders"];
+    if (!availableTabs.includes(state.aarReview.tab)) state.aarReview.tab = "intel";
+    const availableTurns = logs.map(log => Number(log.turn));
+    if (!availableTurns.includes(Number(state.aarReview.turn))) {
+      state.aarReview.turn = availableTurns[availableTurns.length - 1];
+    }
+    const selectedIndex = availableTurns.indexOf(Number(state.aarReview.turn));
+    const selectedLog = logs[selectedIndex];
+    $("aarReviewTurnSelect").innerHTML = logs.map(log =>
+      `<option value="${log.turn}" ${Number(log.turn) === Number(state.aarReview.turn) ? "selected" : ""}>第 ${log.turn} 回合 · T+${log.elapsedHours}h</option>`
+    ).join("");
+    $("aarReviewPrevBtn").disabled = selectedIndex <= 0;
+    $("aarReviewNextBtn").disabled = selectedIndex >= logs.length - 1;
+    const snapshot = turnReviewSnapshot(selectedLog);
+    $("aarReviewMeta").textContent = `第 ${selectedLog.turn} 回合 · T+${selectedLog.elapsedHours}h · ${snapshot.reconstructed ? "由舊紀錄重建" : "完整快照"} · ${selectedLog.outcome}`;
+    $("aarReviewTabs").querySelectorAll("[data-aar-review-tab]").forEach(button => {
+      const active = button.dataset.aarReviewTab === state.aarReview.tab;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-selected", String(active));
+      button.tabIndex = active ? 0 : -1;
+    });
+    renderAarReviewContent(selectedLog);
+  }
+
+  function selectAarReviewTurn(turn, scrollIntoView = false) {
+    if (!(state.logs || []).some(log => Number(log.turn) === Number(turn))) return;
+    state.aarReview ||= { turn: null, tab: "intel" };
+    state.aarReview.turn = Number(turn);
+    renderAarReview();
+    if (scrollIntoView) $("aarTurnReview")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   function renderAAR() {
     const hasLogs = state.logs.length > 0;
     $("aarEmpty").hidden = hasLogs;
     $("aarContent").hidden = !hasLogs;
-    if (!hasLogs) return;
+    if (!hasLogs) {
+      stopAarReplayAnimation();
+      aarReplayAnimation.scene = null;
+      state.aarReview = { turn: null, tab: "intel" };
+      return;
+    }
 
     const last = state.logs[state.logs.length - 1];
     const totalBlueResource = 100 - last.statusAfter.BLUE.resources;
@@ -2940,11 +3371,14 @@
       insights.push(`<li><strong>外部支援：</strong>檢查美軍支援是否被用於補足情報／後勤缺口，而非被當成無限制資源。</li>`);
     }
     $("aarInsights").innerHTML = `<ul class="compact-list">${insights.join("")}</ul>`;
+    renderAarReview();
 
     $("timelineBody").innerHTML = state.logs.map(log => {
       const o = log.orders || {};
       return `<tr>
-        <td>${log.turn}<br><small>T+${log.elapsedHours}h</small></td>
+        <td>${log.turn}<br><small>T+${log.elapsedHours}h</small>
+          <button type="button" class="timeline-review-btn" data-review-turn="${log.turn}">回看此回合</button>
+        </td>
         <td>${escapeHtml(log.event)}</td>
         <td class="faction-count-cell">${renderTurnFactionCountTables(log)}</td>
         <td>${formatOrder(o.BLUE)}</td>
@@ -3534,6 +3968,7 @@
         orders: state.orders,
         logs: state.logs,
         revealedIntel: state.revealedIntel,
+        aarReview: state.aarReview,
         storm: state.storm
       }));
       if (showToast) toast("進度已儲存在此瀏覽器。");
@@ -3553,6 +3988,7 @@
       Object.assign(state, parsed);
       ensureScenarioResources(state.scenario);
       hydrateInventoryFormFromScenario(state.scenario);
+      state.aarReview ||= { turn: null, tab: "intel" };
       state.storm ||= { activeStage: "systems", activeRepresentation: "c2", lastExperiment: null, comparison: [], doe: null };
       renderScenario();
       renderSimulation();
@@ -3581,6 +4017,7 @@
     state.status = initialStatus(state.scenario);
     state.orders = {};
     state.logs = [];
+    state.aarReview = { turn: null, tab: "intel" };
     saveState(false);
     renderSimulation();
     renderAAR();
@@ -3596,6 +4033,7 @@
     state.orders = {};
     state.logs = [];
     state.revealedIntel = [];
+    state.aarReview = { turn: null, tab: "intel" };
     state.storm = { activeStage: "systems", activeRepresentation: "c2", lastExperiment: null, comparison: [], doe: null };
     try { localStorage.removeItem(STORAGE_KEY); } catch { /* State is still cleared for this session. */ }
     renderScenario();
@@ -3628,6 +4066,7 @@
       status: state.status,
       orders: state.orders,
       logs: state.logs,
+      aarReview: state.aarReview,
       storm: state.storm
     };
     download(`${safeFileName(state.scenario.name)}.json`, JSON.stringify(payload, null, 2));
@@ -3648,6 +4087,7 @@
         state.status = payload.status || initialStatus(payload.scenario);
         state.orders = payload.orders || {};
         state.logs = payload.logs || [];
+        state.aarReview = payload.aarReview || { turn: null, tab: "intel" };
         state.storm = payload.storm || { activeStage: "systems", activeRepresentation: "c2", lastExperiment: null, comparison: [], doe: null };
         saveState(false);
         renderScenario();
@@ -3943,8 +4383,8 @@
     });
     window.addEventListener("scroll", scheduleSectionNavigatorUpdate, { passive: true });
     window.addEventListener("resize", scheduleSectionNavigatorUpdate);
-    document.querySelectorAll(".mini-tab").forEach(btn => btn.addEventListener("click", () => {
-      document.querySelectorAll(".mini-tab").forEach(b => b.classList.toggle("active", b === btn));
+    document.querySelectorAll(".library-tabs .mini-tab").forEach(btn => btn.addEventListener("click", () => {
+      document.querySelectorAll(".library-tabs .mini-tab").forEach(b => b.classList.toggle("active", b === btn));
       state.currentLibrary = btn.dataset.library;
       renderLibrary();
     }));
@@ -4055,6 +4495,7 @@
     $("operationFullscreenBtn").disabled = !document.fullscreenEnabled;
     $("operationFullscreenBtn").addEventListener("click", toggleOperationFullscreen);
     document.addEventListener("fullscreenchange", syncOperationFullscreen);
+    document.addEventListener("fullscreenchange", syncAarReplayFullscreen);
     $("operationReplayBtn").addEventListener("click", () => startOperationAnimation(true));
     $("operationPauseBtn").addEventListener("click", toggleOperationAnimation);
     $("operationSpeed").addEventListener("change", setOperationSpeed);
@@ -4062,6 +4503,7 @@
       if (operationAnimation.scene || state.scenario) {
         drawOperationFrame(operationAnimation.elapsed, operationAnimation.scene);
       }
+      if ($("aarReplayCanvas")) drawAarReplayFrame();
     });
     $("clearRunBtn").addEventListener("click", resetRun);
     $("saveBtn").addEventListener("click", () => saveState(true));
@@ -4069,6 +4511,36 @@
     $("importInput").addEventListener("change", event => importJSON(event.target.files[0]));
     $("exportCsvBtn").addEventListener("click", exportCSV);
     $("printBtn").addEventListener("click", () => window.print());
+    $("aarReviewTurnSelect").addEventListener("change", event => selectAarReviewTurn(event.target.value));
+    $("aarReviewPrevBtn").addEventListener("click", () => {
+      const turns = state.logs.map(log => Number(log.turn));
+      const index = turns.indexOf(Number(state.aarReview?.turn));
+      if (index > 0) selectAarReviewTurn(turns[index - 1]);
+    });
+    $("aarReviewNextBtn").addEventListener("click", () => {
+      const turns = state.logs.map(log => Number(log.turn));
+      const index = turns.indexOf(Number(state.aarReview?.turn));
+      if (index >= 0 && index < turns.length - 1) selectAarReviewTurn(turns[index + 1]);
+    });
+    $("aarReviewTabs").addEventListener("click", event => {
+      const button = event.target.closest("[data-aar-review-tab]");
+      if (!button) return;
+      state.aarReview ||= { turn: null, tab: "intel" };
+      state.aarReview.tab = button.dataset.aarReviewTab;
+      renderAarReview();
+    });
+    $("aarReviewContent").addEventListener("click", event => {
+      if (event.target.closest("#aarReplayBtn")) startAarReplayAnimation(true);
+      else if (event.target.closest("#aarReplayPauseBtn")) toggleAarReplayAnimation();
+      else if (event.target.closest("#aarReplayFullscreenBtn")) toggleAarReplayFullscreen();
+    });
+    $("aarReviewContent").addEventListener("change", event => {
+      if (event.target.id === "aarReplaySpeed") setAarReplaySpeed();
+    });
+    $("timelineBody").addEventListener("click", event => {
+      const button = event.target.closest("[data-review-turn]");
+      if (button) selectAarReviewTurn(button.dataset.reviewTurn, true);
+    });
     $("librarySearch").addEventListener("input", renderLibrary);
     ["labIncoming","labShots","labBaseP","labDetection","labReadiness","labSea","labJamming"]
       .forEach(id => $(id).addEventListener("input", updateLab));
@@ -4136,7 +4608,13 @@
     container.innerHTML = `<p><strong>範本簡介：</strong>${escapeHtml(template.overview)}</p>${sourceHtml}`;
   }
 
+  function applyFeatureVisibility() {
+    const interceptLab = $("simulationLabSection");
+    if (interceptLab) interceptLab.hidden = !SHOW_INTERCEPT_LAB;
+  }
+
   function init() {
+    applyFeatureVisibility();
     bindEvents();
     updateLlmProvider();
     loadLlmSettings();

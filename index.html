@@ -485,7 +485,7 @@
           <div id="turnNarrative" class="narrative"></div>
         </article>
 
-        <article id="simulationLabSection" class="card intercept-card" data-section-nav-label="攔截實驗">
+        <article id="simulationLabSection" class="card intercept-card" data-section-nav-label="攔截實驗" hidden>
           <div class="subheading">
             <div>
               <h3>攔截資源配置計算機</h3>
@@ -763,6 +763,32 @@
             </ol>
           </article>
         </div>
+        <article id="aarTurnReview" class="card aar-turn-review">
+          <div class="aar-review-heading">
+            <div>
+              <p class="eyebrow">Turn Archive</p>
+              <h3>逐回合完整回看</h3>
+              <p id="aarReviewMeta" class="muted"></p>
+            </div>
+            <div class="aar-review-controls">
+              <button id="aarReviewPrevBtn" type="button" class="secondary">← 上一回合</button>
+              <label>選擇回合
+                <select id="aarReviewTurnSelect" aria-label="選擇要回看的回合"></select>
+              </label>
+              <button id="aarReviewNextBtn" type="button" class="secondary">下一回合 →</button>
+            </div>
+          </div>
+          <div id="aarReviewTabs" class="aar-review-tabs" role="tablist" aria-label="回合回看內容">
+            <button type="button" class="mini-tab active" role="tab" data-aar-review-tab="intel">本回合情報</button>
+            <button type="button" class="mini-tab" role="tab" data-aar-review-tab="weather">天候與環境</button>
+            <button type="button" class="mini-tab" role="tab" data-aar-review-tab="events">事件／導調訊息</button>
+            <button type="button" class="mini-tab" role="tab" data-aar-review-tab="ledger">詳細資源帳本</button>
+            <button type="button" class="mini-tab" role="tab" data-aar-review-tab="next">次回合想定包</button>
+            <button type="button" class="mini-tab" role="tab" data-aar-review-tab="animation">三方作戰示意動畫</button>
+            <button type="button" class="mini-tab" role="tab" data-aar-review-tab="orders">下達回合命令</button>
+          </div>
+          <div id="aarReviewContent" class="aar-review-content" role="tabpanel"></div>
+        </article>
         <article class="card table-card aar-timeline-card">
           <h3>決策時間線</h3>
           <p class="footnote">每回合依三方命令、共同事件與詳細資源帳本，自動產生藍、紅、琥珀三張合成計數表。</p>
