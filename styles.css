@@ -156,7 +156,19 @@ output { color: var(--primary); font-weight: 800; }
 .zone[data-zone="Z-ISL"] { grid-column: 2; grid-row: 1 / span 4; background: #f2eee5; border-color: #b7a889; }
 .zone[data-zone="Z-REAR"] { grid-column: 1 / -1; grid-row: 5; opacity: .75; }
 .zone-name { font-weight: 900; }
-.zone-signals { display: flex; gap: .25rem; flex-wrap: wrap; }
+.zone-signals { display: flex; align-items: center; gap: .3rem; min-height: 30px; flex-wrap: wrap; }
+.zone-actor-marker {
+  display: inline-grid; place-items: center; width: 28px; height: 28px; border: 2px solid rgba(255,255,255,.88);
+  border-radius: 50%; color: #fff; font-size: .72rem; font-style: normal; font-weight: 900;
+  box-shadow: 0 2px 7px rgba(18,34,48,.24); animation: zone-marker-enter .24s ease-out both;
+}
+.zone-actor-marker.BLUE { background: var(--blue); }
+.zone-actor-marker.RED { background: var(--red); }
+.zone-actor-marker.AMBER { color: #403500; background: var(--amber); border-color: #fff7bd; }
+@keyframes zone-marker-enter {
+  from { opacity: 0; transform: scale(.55); }
+  to { opacity: 1; transform: scale(1); }
+}
 .signal { width: .7rem; height: .7rem; border-radius: 50%; }
 .signal.blue, .dot.blue { background: var(--blue); }
 .signal.red, .dot.red { background: var(--red); }
@@ -205,6 +217,7 @@ output { color: var(--primary); font-weight: 800; }
   position: absolute; inset: 0; display: grid; place-items: center; margin: 0; padding: 1rem;
   color: rgba(224,239,247,.78); font-weight: 800; text-align: center; pointer-events: none;
 }
+.operation-canvas-empty[hidden] { display: none; }
 .operation-map-credit { margin: .35rem 0 0; color: var(--muted); font-size: .68rem; text-align: right; }
 .operation-map-credit a { font-weight: 700; }
 .operation-actor-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem; margin-top: .55rem; }

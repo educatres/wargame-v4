@@ -755,14 +755,24 @@
     const events = currentEvents();
     const zones = DATA.zones.filter(z => z.zone_id !== "Z-REAR" || state.scenario.amberSupport !== "none");
     $("zoneMap").innerHTML = zones.map(zone => {
-      const signals = [];
-      Object.values(currentOrders).forEach(order => {
-        if (orderVisibleBeforeResolution(order.actor) && orderItems(order).some(item => item.zone === zone.zone_id)) signals.push(order.actor.toLowerCase());
+      const actorMarkerCounts = new Map();
+      Object.entries(currentOrders).forEach(([actorId, order]) => {
+        const actor = order.actor || actorId;
+        const count = orderItems(order).filter(item => item.zone === zone.zone_id).length;
+        if (count) actorMarkerCounts.set(actor, count);
       });
-      events.filter(event => event.zone_id === zone.zone_id).forEach(() => signals.push("neutral"));
+      const actorMarkers = ["BLUE", "RED", "AMBER"].filter(actor => actorMarkerCounts.has(actor));
+      const neutralSignals = events.filter(event => event.zone_id === zone.zone_id);
       return `<div class="zone" data-zone="${zone.zone_id}" title="${escapeHtml(zone.teaching_note || "")}">
         <div><span class="zone-name">${escapeHtml(zone.zone_name)}</span><br><small>${escapeHtml(zone.domain)} · ${escapeHtml(zone.distance_band)}</small></div>
-        <div class="zone-signals">${signals.map(s => `<i class="signal ${s}"></i>`).join("")}</div>
+        <div class="zone-signals">
+          ${actorMarkers.map(actor => {
+            const markerText = ({ BLUE: "藍", RED: "紅", AMBER: "黃" })[actor];
+            const markerLabel = `${actorLabel(actor)}在此區域有 ${actorMarkerCounts.get(actor)} 項已提交行動`;
+            return `<span class="zone-actor-marker ${actor}" role="img" aria-label="${escapeAttr(markerLabel)}" title="${escapeAttr(markerLabel)}">${markerText}</span>`;
+          }).join("")}
+          ${neutralSignals.map(() => `<i class="signal neutral" title="民事或天候事件"></i>`).join("")}
+        </div>
       </div>`;
     }).join("");
   }
@@ -916,6 +926,7 @@
       replay.disabled = true;
       pause.disabled = true;
       empty.hidden = false;
+      empty.setAttribute("aria-hidden", "false");
       $("operationTheaterStatus").textContent = `等待第 ${state.currentTurn} 回合結算後顯示三方行動。`;
       $("operationActorSummary").innerHTML = ["BLUE", "RED", "AMBER"]
         .filter(actor => actor !== "AMBER" || state.scenario?.amberSupport !== "none")
@@ -930,6 +941,7 @@
     replay.textContent = "重播";
     pause.disabled = false;
     empty.hidden = true;
+    empty.setAttribute("aria-hidden", "true");
     const changed = scene.key !== operationAnimation.sceneKey;
     if (changed) {
       stopOperationAnimation();
