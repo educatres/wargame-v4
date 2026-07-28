@@ -178,6 +178,45 @@
     redLogistics: 84
   };
 
+  const INVENTORY_CATEGORIES = {
+    aviation: "航空任務",
+    airDefense: "防空／攔截",
+    longRange: "遠程火力",
+    maritime: "海上任務",
+    subsurface: "水下任務",
+    isr: "ISR／感測",
+    communications: "通訊／指管",
+    logistics: "後勤／維修",
+    energy: "能源／基礎設施"
+  };
+
+  const INVENTORY_BASELINES = {
+    aviation: 70,
+    airDefense: 180,
+    longRange: 90,
+    maritime: 24,
+    subsurface: 14,
+    isr: 100,
+    communications: 32,
+    logistics: 90,
+    energy: 100
+  };
+
+  const INVENTORY_TEMPLATE = [
+    ["BLUE", "B-AIR-ALPHA", "aviation", 72, 82, 22, 8, 2, 12, 3, 86, "合成航空任務批次"],
+    ["BLUE", "B-AD-BRAVO", "airDefense", 210, 88, 30, 18, 1, 40, 4, 90, "合成防護資源"],
+    ["BLUE", "B-SEA-CHARLIE", "maritime", 20, 76, 25, 2, 1, 3, 5, 84, "合成海上任務包"],
+    ["BLUE", "B-ISR-DELTA", "isr", 140, 80, 15, 10, 4, 20, 2, 82, "無人載具與感測批次"],
+    ["BLUE", "B-C2-ECHO", "communications", 36, 92, 20, 3, 1, 6, 3, 91, "備援通訊節點"],
+    ["BLUE", "B-LOG-FOXTROT", "logistics", 96, 78, 25, 9, 5, 18, 2, 88, "補給與維修批次"],
+    ["RED", "R-AIR-ALPHA", "aviation", 128, 84, 18, 12, 3, 24, 3, 87, "合成航空任務批次"],
+    ["RED", "R-LR-BRAVO", "longRange", 160, 82, 28, 16, 1, 30, 4, 86, "抽象遠程資源"],
+    ["RED", "R-SEA-CHARLIE", "maritime", 34, 79, 20, 3, 1, 6, 3, 84, "合成海上任務包"],
+    ["RED", "R-LOG-DELTA", "logistics", 116, 81, 20, 10, 5, 22, 2, 89, "補給與維修批次"],
+    ["AMBER", "A-ISR-ALPHA", "isr", 90, 86, 25, 8, 3, 18, 3, 92, "外部情報支援批次"],
+    ["AMBER", "A-LOG-BRAVO", "logistics", 72, 80, 30, 7, 4, 16, 4, 90, "外部後勤支援批次"]
+  ];
+
   const STORM_STAGES = {
     systems: {
       title: "系統：建立可追溯的資產與支援網路",
@@ -421,7 +460,7 @@
         sustainment: round1(averageForActor("BLUE", "sustainment")),
         command: round1(clamp(averageForActor("BLUE", "command_quality") + networkCommandBonus)),
         intel: round1(clamp(64 - scenario.uncertainty * 3 + droneIntelBonus)),
-        resources: 100,
+        resources: scenario.inventoryEnabled ? scenario.abstractResources?.byActor?.BLUE?.overall ?? 100 : 100,
         civilianRisk: 25 + scenario.civilPressure * 5,
         powerAvailability: 100
       },
@@ -430,7 +469,7 @@
         sustainment: round1(averageForActor("RED", "sustainment")),
         command: round1(averageForActor("RED", "command_quality")),
         intel: 68 - scenario.uncertainty * 2,
-        resources: 100,
+        resources: scenario.inventoryEnabled ? scenario.abstractResources?.byActor?.RED?.overall ?? 100 : 100,
         civilianRisk: 0
       },
       AMBER: {
@@ -438,7 +477,9 @@
         sustainment: amberEnabled ? round1(averageForActor("AMBER", "sustainment")) : 0,
         command: amberEnabled ? round1(averageForActor("AMBER", "command_quality")) : 0,
         intel: amberEnabled ? 82 : 0,
-        resources: scenario.amberSupport === "limited" ? 80 : scenario.amberSupport === "indirect" ? 60 : 0,
+        resources: amberEnabled && scenario.inventoryEnabled
+          ? scenario.abstractResources?.byActor?.AMBER?.overall ?? 0
+          : scenario.amberSupport === "limited" ? 80 : scenario.amberSupport === "indirect" ? 60 : 0,
         civilianRisk: 0,
         precisionStockpile: 100
       }
@@ -457,6 +498,173 @@
     };
   }
 
+  function inventoryTemplateRows() {
+    return INVENTORY_TEMPLATE.map((values, index) => {
+      const [actor, alias, category, nominal, availability, reserve, consumption, recovery, replenishment, delay, reliability, note] = values;
+      return {
+        id: `INV-${Date.now()}-${index + 1}`,
+        actor, alias, category, nominal, current: nominal, availability, reserve,
+        consumption, recovery, replenishment, delay, reliability, note,
+        replenishmentApplied: false
+      };
+    });
+  }
+
+  function sanitizeInventoryRow(row, index = 0) {
+    const actor = ["BLUE", "RED", "AMBER"].includes(row?.actor) ? row.actor : "BLUE";
+    const category = Object.hasOwn(INVENTORY_CATEGORIES, row?.category) ? row.category : "logistics";
+    const numeric = (key, fallback, max = 100000) => clamp(Number(row?.[key] ?? fallback) || 0, 0, max);
+    const nominal = numeric("nominal", 0);
+    return {
+      id: String(row?.id || `INV-${Date.now()}-${index + 1}`).slice(0, 80),
+      actor,
+      alias: String(row?.alias || `${actor}-RESOURCE-${index + 1}`).replace(/[\r\n]+/g, " ").trim().slice(0, 80),
+      category,
+      nominal,
+      current: clamp(Number(row?.current ?? nominal) || 0, 0, 100000),
+      availability: numeric("availability", 100, 100),
+      reserve: numeric("reserve", 20, 100),
+      consumption: numeric("consumption", 1),
+      recovery: numeric("recovery", 0),
+      replenishment: numeric("replenishment", 0),
+      delay: Math.round(numeric("delay", 0, 100)),
+      reliability: numeric("reliability", 85, 100),
+      note: String(row?.note || "").replace(/[\r\n]+/g, " ").trim().slice(0, 160),
+      replenishmentApplied: Boolean(row?.replenishmentApplied)
+    };
+  }
+
+  function renderDetailedInventoryRows(rows = inventoryTemplateRows()) {
+    const host = $("detailedInventoryRows");
+    if (!host) return;
+    host.innerHTML = rows.map((raw, index) => {
+      const row = sanitizeInventoryRow(raw, index);
+      const numberInput = (field, value, max = 100000) => `<input class="inventory-${field}" type="number" min="0" max="${max}" step="1" value="${round1(value)}">`;
+      return `<tr data-inventory-id="${escapeAttr(row.id)}">
+        <td><select class="inventory-actor">
+          ${["BLUE", "RED", "AMBER"].map(actor => `<option value="${actor}"${row.actor === actor ? " selected" : ""}>${actorLabel(actor)}</option>`).join("")}
+        </select></td>
+        <td><input class="inventory-alias" maxlength="80" value="${escapeAttr(row.alias)}" placeholder="例如 B-AD-ALPHA"></td>
+        <td><select class="inventory-category">
+          ${Object.entries(INVENTORY_CATEGORIES).map(([key, label]) => `<option value="${key}"${row.category === key ? " selected" : ""}>${label}</option>`).join("")}
+        </select></td>
+        <td>${numberInput("nominal", row.nominal)}</td>
+        <td>${numberInput("availability", row.availability, 100)}</td>
+        <td>${numberInput("reserve", row.reserve, 100)}</td>
+        <td>${numberInput("consumption", row.consumption)}</td>
+        <td>${numberInput("recovery", row.recovery)}</td>
+        <td>${numberInput("replenishment", row.replenishment)}</td>
+        <td>${numberInput("delay", row.delay, 100)}</td>
+        <td>${numberInput("reliability", row.reliability, 100)}</td>
+        <td><input class="inventory-note" maxlength="160" value="${escapeAttr(row.note)}" placeholder="僅填合成說明"></td>
+        <td><button type="button" class="danger remove-inventory-row" aria-label="移除此品項">×</button></td>
+      </tr>`;
+    }).join("");
+    syncDetailedInventoryPreview();
+  }
+
+  function readDetailedInventoryRows() {
+    return [...$("detailedInventoryRows").querySelectorAll("tr")].map((tr, index) => sanitizeInventoryRow({
+      id: tr.dataset.inventoryId,
+      actor: tr.querySelector(".inventory-actor").value,
+      alias: tr.querySelector(".inventory-alias").value,
+      category: tr.querySelector(".inventory-category").value,
+      nominal: tr.querySelector(".inventory-nominal").value,
+      current: tr.querySelector(".inventory-nominal").value,
+      availability: tr.querySelector(".inventory-availability").value,
+      reserve: tr.querySelector(".inventory-reserve").value,
+      consumption: tr.querySelector(".inventory-consumption").value,
+      recovery: tr.querySelector(".inventory-recovery").value,
+      replenishment: tr.querySelector(".inventory-replenishment").value,
+      delay: tr.querySelector(".inventory-delay").value,
+      reliability: tr.querySelector(".inventory-reliability").value,
+      note: tr.querySelector(".inventory-note").value
+    }, index));
+  }
+
+  function calculateAbstractInventory(rows, previous = null) {
+    const byActor = {};
+    ["BLUE", "RED", "AMBER"].forEach(actor => {
+      const actorRows = (rows || []).filter(row => row.actor === actor);
+      const categories = {};
+      Object.keys(INVENTORY_CATEGORIES).forEach(category => {
+        const matching = actorRows.filter(row => row.category === category);
+        if (!matching.length) return;
+        const usable = matching.reduce((sum, row) => sum + row.current * row.availability / 100 * row.reliability / 100, 0);
+        const reserve = matching.reduce((sum, row) => sum + row.current * row.reserve / 100, 0);
+        const committable = Math.max(0, usable - reserve);
+        const planned = matching.reduce((sum, row) => sum + row.consumption, 0);
+        const endurance = planned > 0 ? committable / planned : 12;
+        const score = round1(clamp(usable / INVENTORY_BASELINES[category] * 70 + Math.min(5, endurance) * 6));
+        const previousScore = previous?.byActor?.[actor]?.categories?.[category]?.score;
+        categories[category] = {
+          score, usable: round1(usable), committable: round1(committable),
+          endurance: round1(Math.min(99, endurance)),
+          trend: Number.isFinite(previousScore) ? round1(score - previousScore) : 0
+        };
+      });
+      const scores = Object.values(categories).map(item => item.score);
+      byActor[actor] = {
+        overall: scores.length ? round1(scores.reduce((sum, value) => sum + value, 0) / scores.length) : 0,
+        categories
+      };
+    });
+    return { byActor, generatedAt: new Date().toISOString(), scale: "SYNTHETIC_0_100" };
+  }
+
+  function renderInventoryAbstractPreview(abstractInventory) {
+    const host = $("inventoryAbstractPreview");
+    if (!host) return;
+    host.innerHTML = ["BLUE", "RED", "AMBER"].map(actor => {
+      const entry = abstractInventory.byActor[actor];
+      const categories = Object.entries(entry.categories);
+      return `<article class="inventory-actor-card ${actor}">
+        <h5>${actorLabel(actor)} · 綜合 ${entry.overall}</h5>
+        ${categories.length ? categories.map(([key, value]) => `<div class="inventory-score-row">
+          <span>${INVENTORY_CATEGORIES[key]}</span>
+          <span class="inventory-score-bar"><i style="width:${value.score}%"></i></span>
+          <strong>${value.score}</strong>
+        </div>`).join("") : `<p class="muted">尚無品項</p>`}
+      </article>`;
+    }).join("");
+  }
+
+  function syncInventoryPrivacy() {
+    const mode = $("inventoryDataMode").value;
+    const allow = $("allowSanitizedLlm").checked;
+    const enabled = $("enableDetailedInventory").checked;
+    const status = $("inventoryPrivacyStatus");
+    status.classList.toggle("warning", mode === "sensitive_local" || !allow);
+    if (!enabled) {
+      status.textContent = "詳細帳本已停用；推演會沿用舊版合成資源指數。";
+    } else if (mode === "sensitive_local" && !allow) {
+      status.textContent = "本機隔離：品項明細與匿名摘要都不會送給 LLM；次回合想定包改由固定規則生成。";
+    } else if (mode === "sensitive_local") {
+      status.textContent = "敏感模式：原始名稱、數量、備註不離開瀏覽器；LLM 只能收到方別、類別、0–100 分數與趨勢。";
+    } else if (!allow) {
+      status.textContent = "LLM 摘要分享已關閉；次回合想定包改由固定規則生成。";
+    } else {
+      status.textContent = "合成模式：即使啟用 LLM，也只送出匿名化的 0–100 類別摘要，不傳送品項名稱與數量。";
+    }
+  }
+
+  function syncDetailedInventoryPreview() {
+    if (!$("detailedInventoryRows")) return;
+    const rows = readDetailedInventoryRows();
+    renderInventoryAbstractPreview(calculateAbstractInventory(rows));
+    syncInventoryPrivacy();
+  }
+
+  function calculateCombinedResourceBalance(resources, abstractResources) {
+    const base = calculateResourceBalance(resources);
+    const blueDetail = abstractResources?.byActor?.BLUE?.overall;
+    const redDetail = abstractResources?.byActor?.RED?.overall;
+    return {
+      blue: round1(clamp(base.blue + (Number.isFinite(blueDetail) ? (blueDetail - 50) * .12 : 0), -15, 15)),
+      red: round1(clamp(base.red + (Number.isFinite(redDetail) ? (redDetail - 50) * .12 : 0), -15, 15))
+    };
+  }
+
   function calculateResourceBalance(resources) {
     const normalized = { ...RESOURCE_DEFAULTS, ...(resources || {}) };
     const blueBase = ((normalized.blueAircraft / 48) + (normalized.blueInterceptors / 160) + (normalized.blueVessels / 14) + (normalized.blueLogistics / 72)) * 5 - 20;
@@ -468,11 +676,38 @@
 
   function ensureScenarioResources(scenario) {
     scenario.resources = { ...RESOURCE_DEFAULTS, ...(scenario.resources || readResourceInventory()) };
-    scenario.resourceBalance ||= calculateResourceBalance(scenario.resources);
+    scenario.inventoryEnabled = Boolean(scenario.inventoryEnabled && Array.isArray(scenario.detailedInventory));
+    scenario.inventoryMode ||= "synthetic";
+    scenario.allowSanitizedLlm = scenario.allowSanitizedLlm !== false;
+    scenario.useLlmNextTurn = scenario.useLlmNextTurn !== false;
+    scenario.detailedInventory = (scenario.detailedInventory || []).map(sanitizeInventoryRow);
+    scenario.initialDetailedInventory ||= JSON.parse(JSON.stringify(scenario.detailedInventory));
+    scenario.resourceLedger ||= [];
+    scenario.nextTurnPackages ||= [];
+    scenario.events ||= [];
+    scenario.intel ||= [];
+    scenario.abstractResources = scenario.inventoryEnabled
+      ? calculateAbstractInventory(scenario.detailedInventory, scenario.abstractResources)
+      : null;
+    scenario.resourceBalance = scenario.inventoryEnabled
+      ? calculateCombinedResourceBalance(scenario.resources, scenario.abstractResources)
+      : (scenario.resourceBalance || calculateResourceBalance(scenario.resources));
     scenario.strategicParameters = { ...STRATEGIC_DEFAULTS, ...(scenario.strategicParameters || {}) };
     scenario.turnOrderMode ||= "simultaneous";
     scenario.firstOrderVisibility ||= "sealed";
     return scenario;
+  }
+
+  function hydrateInventoryFormFromScenario(scenario) {
+    if (!scenario || !$("detailedInventoryRows")) return;
+    $("enableDetailedInventory").checked = Boolean(scenario.inventoryEnabled);
+    $("inventoryDataMode").value = scenario.inventoryMode || "synthetic";
+    $("useLlmNextTurn").checked = scenario.useLlmNextTurn !== false;
+    $("allowSanitizedLlm").checked = scenario.allowSanitizedLlm !== false;
+    if (scenario.detailedInventory?.length) {
+      renderDetailedInventoryRows(scenario.detailedInventory);
+    }
+    syncInventoryPrivacy();
   }
 
   function readStrategicParameters() {
@@ -550,7 +785,18 @@
       sourceLabel: template?.sourceLabel || "自訂合成想定",
       strategicParameters: formValues.strategicParameters,
       resources: formValues.resources,
-      resourceBalance: calculateResourceBalance(formValues.resources),
+      inventoryEnabled: formValues.inventoryEnabled,
+      inventoryMode: formValues.inventoryMode,
+      useLlmNextTurn: formValues.useLlmNextTurn,
+      allowSanitizedLlm: formValues.allowSanitizedLlm,
+      detailedInventory: formValues.detailedInventory,
+      initialDetailedInventory: JSON.parse(JSON.stringify(formValues.detailedInventory)),
+      abstractResources: formValues.inventoryEnabled ? calculateAbstractInventory(formValues.detailedInventory) : null,
+      resourceLedger: [],
+      nextTurnPackages: [],
+      resourceBalance: formValues.inventoryEnabled
+        ? calculateCombinedResourceBalance(formValues.resources, calculateAbstractInventory(formValues.detailedInventory))
+        : calculateResourceBalance(formValues.resources),
       overview: template?.overview || pick(overviewTemplates.filter(Boolean), rng),
       objectives: template?.objectives || focus.objectives,
       successCriteria: template?.success || focus.success,
@@ -579,6 +825,11 @@
       firstOrderVisibility: $("firstOrderVisibility").value,
       strategicParameters: readStrategicParameters(),
       resources: readResourceInventory(),
+      inventoryEnabled: $("enableDetailedInventory").checked,
+      inventoryMode: $("inventoryDataMode").value,
+      useLlmNextTurn: $("useLlmNextTurn").checked,
+      allowSanitizedLlm: $("allowSanitizedLlm").checked,
+      detailedInventory: readDetailedInventoryRows(),
       teacherConstraints: $("teacherConstraints").value.trim()
     };
   }
@@ -613,6 +864,16 @@
     }
     const s = state.scenario;
     const strategic = { ...STRATEGIC_DEFAULTS, ...(s.strategicParameters || {}) };
+    const detailedSummary = s.inventoryEnabled ? `
+      <article class="card" style="margin-top:1rem">
+        <div class="subheading"><h3>詳細庫存抽象換算</h3><span class="badge">${s.inventoryMode === "sensitive_local" ? "敏感／本機" : "合成資料"}</span></div>
+        <div class="ledger-summary">
+          ${["BLUE", "RED", "AMBER"].map(actor => `<span class="ledger-chip"><strong>${actorLabel(actor)}</strong> ${s.abstractResources?.byActor?.[actor]?.overall ?? 0}/100</span>`).join("")}
+          <span class="ledger-chip">${s.detailedInventory.length} 個品項</span>
+          <span class="ledger-chip">LLM：${s.useLlmNextTurn && s.allowSanitizedLlm ? "僅匿名摘要" : "不分享資源摘要"}</span>
+        </div>
+        <p class="muted">品項明細由固定規則換算並逐回合記帳；LLM 不負責數量計算，也不接收品項名稱、原始數量或備註。</p>
+      </article>` : "";
     container.className = "preview";
     container.innerHTML = `
       <div class="preview-summary">
@@ -665,6 +926,7 @@
           <div><strong>通訊與資源壓力</strong><p class="muted">星鏈節點 ${s.resources.starlinkNodes} · 高空通訊平臺 ${s.resources.highAltitudePlatforms}<br>藍方資源修正 ${s.resourceBalance.blue >= 0 ? "+" : ""}${s.resourceBalance.blue}<br>紅方資源修正 ${s.resourceBalance.red >= 0 ? "+" : ""}${s.resourceBalance.red}</p></div>
         </div>
       </article>
+      ${detailedSummary}
       <div class="actions" style="margin-top:1rem">
         <button class="primary" id="goSimulationBtn">開始回合推演</button>
         <button class="secondary" id="regenerateEventsBtn">以相同設定重抽事件</button>
@@ -721,6 +983,8 @@
     renderOrderControls();
     renderCurrentOrders();
     renderTurnPanels();
+    renderResourceLedger();
+    renderNextTurnPackage();
     renderNarrative();
     updateLab();
   }
@@ -1822,7 +2086,7 @@
     const zones = DATA.zones.filter(z => z.zone_id !== "Z-REAR" || missingActors.includes("AMBER")).map(z => ({ id: z.zone_id, name: z.zone_name, domain: z.domain }));
     const events = currentEvents();
     const weather = currentWeather().map(w => ({ zone: w.zone_id, sea: w.sea_state_1_5, visibility: w.visibility_1_5 }));
-    return `你是兵推回合助理。只能使用下列完全合成、虛構的模擬資料；不得補入真實部隊、武器型號、座標、部署、射程、目標或可執行的現實作戰建議。\n\n請只回傳嚴格 JSON：{"orders":[{"actor":"BLUE|RED|AMBER","primary":{"action":"允許動作之一","zone":"允許區域之一","resource":10到35的整數,"priority":1到5,"condition":"繁體中文、100字內","risk":"low|medium|high"},"supports":[{"action":"允許動作之一","zone":"允許區域之一","resource":3到25的整數,"priority":1到5,"condition":"繁體中文、100字內","risk":"low|medium|high"},{"action":"...第二項支援行動"}],"rationale":"繁體中文、80字內"}]}。每個角色恰有 1 個主行動與 2–4 個支援行動，所有行動 resource 合計不得超過 ${ORDER_BUDGET}。\n\n必須補齊的角色：${JSON.stringify(missingActors)}\n允許動作：${JSON.stringify(availableActions)}\n允許區域：${JSON.stringify(zones)}\n當前狀態：${JSON.stringify({ turn: state.currentTurn, turnOrderMode: state.scenario.turnOrderMode, firstOrderVisibility: state.scenario.firstOrderVisibility, status: state.status, resources: state.scenario.resources, strategicParameters: state.scenario.strategicParameters, currentOrders: state.orders[state.currentTurn], events: events.map(event => ({ name: event.event_name, category: event.category, zone: event.zone_id, description: event.description })), weather })}`;
+    return `你是兵推回合助理。只能使用下列完全合成、虛構的模擬資料；不得補入真實部隊、武器型號、座標、部署、射程、目標或可執行的現實作戰建議。\n\n請只回傳嚴格 JSON：{"orders":[{"actor":"BLUE|RED|AMBER","primary":{"action":"允許動作之一","zone":"允許區域之一","resource":10到35的整數,"priority":1到5,"condition":"繁體中文、100字內","risk":"low|medium|high"},"supports":[{"action":"允許動作之一","zone":"允許區域之一","resource":3到25的整數,"priority":1到5,"condition":"繁體中文、100字內","risk":"low|medium|high"},{"action":"...第二項支援行動"}],"rationale":"繁體中文、80字內"}]}。每個角色恰有 1 個主行動與 2–4 個支援行動，所有行動 resource 合計不得超過 ${ORDER_BUDGET}。\n\n必須補齊的角色：${JSON.stringify(missingActors)}\n允許動作：${JSON.stringify(availableActions)}\n允許區域：${JSON.stringify(zones)}\n當前狀態：${JSON.stringify({ turn: state.currentTurn, turnOrderMode: state.scenario.turnOrderMode, firstOrderVisibility: state.scenario.firstOrderVisibility, status: state.status, abstractResources: state.scenario.inventoryEnabled ? sanitizedAbstractSummary(state.scenario.abstractResources) : null, syntheticLegacyResources: state.scenario.inventoryEnabled ? null : state.scenario.resources, strategicParameters: state.scenario.strategicParameters, currentOrders: state.orders[state.currentTurn], events: events.map(event => ({ name: event.event_name, category: event.category, zone: event.zone_id, description: event.description })), weather })}`;
   }
 
   function applyAiOrders(result, missingActors) {
@@ -1915,7 +2179,9 @@
         state.status.BLUE.civilianRisk = clamp(state.status.BLUE.civilianRisk + (effect.civilian || 0) * scale);
       }
     });
-    status.resources = clamp(status.resources - orderTotalResource(order) * 0.72);
+    if (!state.scenario.inventoryEnabled) {
+      status.resources = clamp(status.resources - orderTotalResource(order) * 0.72);
+    }
   }
 
   function applyEvent(event) {
@@ -1964,8 +2230,325 @@
     }
   }
 
+  function inventoryCategoryForAction(action) {
+    const type = operationType(action).type;
+    return ({
+      aviation: "aviation",
+      airdefense: "airDefense",
+      longrange: "longRange",
+      maritime: "maritime",
+      convoy: "maritime",
+      subsurface: "subsurface",
+      drone: "isr",
+      intelligence: "isr",
+      satellite: "communications",
+      communications: "communications",
+      logistics: "logistics",
+      humanitarian: "logistics",
+      energy: "energy",
+      diplomacy: "communications",
+      disperse: "logistics"
+    }[type] || "logistics");
+  }
+
+  function applyDetailedInventoryTurn(orders, events) {
+    if (!state.scenario.inventoryEnabled) return null;
+    const previousAbstract = state.scenario.abstractResources;
+    const rows = state.scenario.detailedInventory.map(sanitizeInventoryRow);
+    const entries = rows.map(row => ({
+      id: row.id, actor: row.actor, alias: row.alias, category: row.category,
+      opening: round1(row.current), recovery: 0, replenishment: 0,
+      actionConsumption: 0, eventLoss: 0, closing: 0
+    }));
+    const entryById = new Map(entries.map(entry => [entry.id, entry]));
+
+    rows.forEach(row => {
+      const entry = entryById.get(row.id);
+      const recovered = Math.min(row.recovery, Math.max(0, row.nominal - row.current));
+      row.current += recovered;
+      entry.recovery = round1(recovered);
+      if (!row.replenishmentApplied && row.replenishment > 0 && state.currentTurn > row.delay) {
+        row.current += row.replenishment;
+        row.replenishmentApplied = true;
+        entry.replenishment = round1(row.replenishment);
+      }
+    });
+
+    const spend = (actor, category, demand, field, protectReserve) => {
+      const matching = rows.filter(row => row.actor === actor && row.category === category);
+      if (!matching.length || demand <= 0) return 0;
+      const capacities = matching.map(row => protectReserve
+        ? Math.max(0, row.current - row.nominal * row.reserve / 100)
+        : Math.max(0, row.current));
+      let remaining = Math.min(demand, capacities.reduce((sum, value) => sum + value, 0));
+      let spent = 0;
+      matching.forEach((row, index) => {
+        const capacityTotal = capacities.reduce((sum, value) => sum + value, 0);
+        const target = index === matching.length - 1
+          ? remaining
+          : Math.min(remaining, demand * (capacityTotal ? capacities[index] / capacityTotal : 0));
+        const used = Math.min(capacities[index], target);
+        row.current = Math.max(0, row.current - used);
+        entryById.get(row.id)[field] += used;
+        remaining -= used;
+        spent += used;
+      });
+      return spent;
+    };
+
+    Object.entries(orders).forEach(([actor, order]) => {
+      orderItems(order).forEach((item, index) => {
+        const category = inventoryCategoryForAction(item.action);
+        const matching = rows.filter(row => row.actor === actor && row.category === category);
+        const baseConsumption = matching.length
+          ? matching.reduce((sum, row) => sum + row.consumption, 0) / matching.length
+          : 0;
+        const roleWeight = index === 0 ? 1 : .58;
+        const demand = baseConsumption * Math.max(.35, Number(item.resource || 0) / 20) * roleWeight;
+        spend(actor, category, demand, "actionConsumption", true);
+      });
+    });
+
+    events.forEach(event => {
+      const affected = event.affected_actor === "ALL"
+        ? ["BLUE", "RED", ...(state.scenario.amberSupport === "none" ? [] : ["AMBER"])]
+        : [event.affected_actor].filter(actor => ["BLUE", "RED", "AMBER"].includes(actor));
+      const category = inventoryCategoryForAction(`${event.category || ""} ${event.event_name || ""} ${event.description || ""}`);
+      const severity = Math.abs(Number(event.readiness_delta || 0)) + Math.abs(Number(event.sustainment_delta || 0)) + Math.abs(Number(event.command_delta || 0));
+      affected.forEach(actor => {
+        const matching = rows.filter(row => row.actor === actor && row.category === category);
+        const baseConsumption = matching.length
+          ? matching.reduce((sum, row) => sum + row.consumption, 0) / matching.length
+          : 0;
+        spend(actor, category, baseConsumption * severity / 25, "eventLoss", false);
+      });
+    });
+
+    rows.forEach(row => {
+      row.current = round1(row.current);
+      const entry = entryById.get(row.id);
+      entry.actionConsumption = round1(entry.actionConsumption);
+      entry.eventLoss = round1(entry.eventLoss);
+      entry.closing = row.current;
+    });
+
+    const abstractAfter = calculateAbstractInventory(rows, previousAbstract);
+    state.scenario.detailedInventory = rows;
+    state.scenario.abstractResources = abstractAfter;
+    state.scenario.resourceBalance = calculateCombinedResourceBalance(state.scenario.resources, abstractAfter);
+    ["BLUE", "RED", "AMBER"].forEach(actor => {
+      if (state.status[actor]) state.status[actor].resources = abstractAfter.byActor[actor].overall;
+    });
+    const ledger = {
+      turn: state.currentTurn,
+      entries,
+      abstractBefore: previousAbstract,
+      abstractAfter,
+      totals: {
+        consumed: round1(entries.reduce((sum, entry) => sum + entry.actionConsumption, 0)),
+        eventLoss: round1(entries.reduce((sum, entry) => sum + entry.eventLoss, 0)),
+        recovered: round1(entries.reduce((sum, entry) => sum + entry.recovery, 0)),
+        replenished: round1(entries.reduce((sum, entry) => sum + entry.replenishment, 0))
+      }
+    };
+    state.scenario.resourceLedger.push(ledger);
+    return ledger;
+  }
+
+  function sanitizedAbstractSummary(abstractResources) {
+    const summary = {};
+    ["BLUE", "RED", "AMBER"].forEach(actor => {
+      const entry = abstractResources?.byActor?.[actor];
+      summary[actor] = {
+        overall: round1(entry?.overall || 0),
+        categories: Object.fromEntries(Object.entries(entry?.categories || {}).map(([category, value]) => [
+          category,
+          { score: round1(value.score), trend: round1(value.trend || 0) }
+        ]))
+      };
+    });
+    return summary;
+  }
+
+  function fallbackNextTurnPackage(log, nextTurn) {
+    const summary = sanitizedAbstractSummary(log.abstractResourcesAfter);
+    const pressures = [];
+    Object.entries(summary).forEach(([actor, actorData]) => {
+      Object.entries(actorData.categories).forEach(([category, value]) => {
+        if (value.score < 60 || value.trend < -3) {
+          pressures.push({
+            actor,
+            category,
+            score: value.score,
+            trend: value.trend,
+            text: `${actorLabel(actor)}的${INVENTORY_CATEGORIES[category]}為 ${value.score}，本回合變化 ${value.trend >= 0 ? "+" : ""}${value.trend}。`
+          });
+        }
+      });
+    });
+    pressures.sort((a, b) => a.score - b.score || a.trend - b.trend);
+    const focal = pressures[0];
+    const zone = orderPrimary(log.orders.BLUE)?.zone || orderPrimary(log.orders.RED)?.zone || "Z-ISL";
+    const headline = nextTurn > state.scenario.turns
+      ? "推演結束：轉入事後檢討"
+      : focal ? `${actorLabel(focal.actor)}的${INVENTORY_CATEGORIES[focal.category]}形成下一回合壓力`
+        : "各方資源仍可支應，但需留意累積消耗";
+    return {
+      turn: nextTurn,
+      headline,
+      summary: nextTurn > state.scenario.turns
+        ? "已完成最後一回合，不再注入新事件；請檢視資源帳本與決策取捨。"
+        : "依固定規則比較本回合結算後的抽象資源、趨勢與保留水準，形成下一回合導調重點。",
+      resourcePressures: pressures.slice(0, 5),
+      intelUpdates: nextTurn > state.scenario.turns ? [] : [{
+        type: "資源態勢",
+        zone,
+        confidence: 72,
+        text: focal
+          ? `匿名化彙整顯示${actorLabel(focal.actor)}的${INVENTORY_CATEGORIES[focal.category]}承受持續壓力；實際原因仍需多源確認。`
+          : "匿名化彙整未顯示單一資源類別立即失衡，但累積消耗仍可能縮小後續選項。"
+      }],
+      candidateEvents: nextTurn > state.scenario.turns ? [] : [{
+        name: focal ? `${INVENTORY_CATEGORIES[focal.category]}調度壓力` : "跨域資源協調壓力",
+        category: focal ? INVENTORY_CATEGORIES[focal.category] : "後勤",
+        zone,
+        severity: focal && focal.score < 35 ? "high" : "medium",
+        description: "各方需在維持當前任務、補充恢復與保留後續彈性之間重新排序。"
+      }],
+      decisionDilemmas: nextTurn > state.scenario.turns ? ["哪些投入真正改善目標，哪些只增加了短期消耗？"] : [
+        "應優先維持當前任務，或降低強度以保存後續回合資源？",
+        "哪些情報缺口若未補足，會使資源配置建立在錯誤信心上？",
+        "如何在任務效果、民事風險與升級控制之間設定可檢驗的停損條件？"
+      ],
+      generatedBy: "RULE_ENGINE",
+      privacy: "SANITIZED_AGGREGATE_ONLY"
+    };
+  }
+
+  function nextTurnPackagePrompt(log, fallback) {
+    const abstractSummary = sanitizedAbstractSummary(log.abstractResourcesAfter);
+    const orderSummary = Object.fromEntries(Object.entries(log.orders).map(([actor, order]) => [
+      actor,
+      orderItems(order).map(item => ({
+        category: inventoryCategoryForAction(item.action),
+        zone: item.zone,
+        effortBand: item.resource >= 20 ? "high" : item.resource >= 10 ? "medium" : "low"
+      }))
+    ]));
+    return `你是教育兵推的次回合想定編輯器。只能使用下列完全合成且已匿名化的 0–100 摘要。不得推測或補入真實武器名稱、數量、單位、座標、部署、性能、射程、目標或作戰程序。不得改寫任何數值或直接裁決損失；數值已由規則引擎結算。
+
+只回傳嚴格 JSON：
+{"headline":"60字內","summary":"180字內","resourcePressures":[{"actor":"BLUE|RED|AMBER","category":"允許類別","score":0到100,"trend":-100到100,"text":"100字內"}],"intelUpdates":[{"type":"50字內","zone":"允許區域","confidence":35到95,"text":"160字內，標示不確定性"}],"candidateEvents":[{"name":"60字內","category":"50字內","zone":"允許區域","severity":"low|medium|high","description":"160字內"}],"decisionDilemmas":["3項，每項120字內"]}
+
+允許類別：${JSON.stringify(Object.keys(INVENTORY_CATEGORIES))}
+允許區域：${JSON.stringify(DATA.zones.map(zone => zone.zone_id))}
+下一回合：${fallback.turn}
+匿名資源摘要：${JSON.stringify(abstractSummary)}
+狀態摘要：${JSON.stringify({
+      BLUE: { readiness: round1(log.statusAfter.BLUE.readiness), sustainment: round1(log.statusAfter.BLUE.sustainment), command: round1(log.statusAfter.BLUE.command), civilianRisk: round1(log.statusAfter.BLUE.civilianRisk) },
+      RED: { readiness: round1(log.statusAfter.RED.readiness), sustainment: round1(log.statusAfter.RED.sustainment), command: round1(log.statusAfter.RED.command) },
+      AMBER: { readiness: round1(log.statusAfter.AMBER.readiness), sustainment: round1(log.statusAfter.AMBER.sustainment), command: round1(log.statusAfter.AMBER.command) }
+    })}
+行動摘要：${JSON.stringify(orderSummary)}
+本回合事件分類：${JSON.stringify(currentEvents().map(event => ({ category: event.category, zone: event.zone_id })))}
+
+請聚焦資源趨勢、情報缺口、延續行動與決策難題。事件只提供敘事導調，不得包含數值增減。`;
+  }
+
+  function normalizeNextTurnPackage(result, fallback) {
+    const validZones = new Set(DATA.zones.map(zone => zone.zone_id));
+    const validCategories = new Set(Object.keys(INVENTORY_CATEGORIES));
+    const cleanText = (value, fallbackText, max) => String(value || fallbackText || "").replace(/[\r\n]+/g, " ").trim().slice(0, max);
+    return {
+      ...fallback,
+      headline: cleanText(result?.headline, fallback.headline, 60),
+      summary: cleanText(result?.summary, fallback.summary, 180),
+      resourcePressures: Array.isArray(result?.resourcePressures) ? result.resourcePressures.slice(0, 6).filter(item =>
+        ["BLUE", "RED", "AMBER"].includes(item?.actor) && validCategories.has(item?.category)
+      ).map(item => ({
+        actor: item.actor,
+        category: item.category,
+        score: round1(clamp(Number(item.score) || 0)),
+        trend: round1(clamp(Number(item.trend) || 0, -100, 100)),
+        text: cleanText(item.text, "", 100)
+      })) : fallback.resourcePressures,
+      intelUpdates: Array.isArray(result?.intelUpdates) ? result.intelUpdates.slice(0, 3).filter(item => validZones.has(item?.zone)).map(item => ({
+        type: cleanText(item.type, "資源態勢", 50),
+        zone: item.zone,
+        confidence: Math.round(clamp(Number(item.confidence) || 60, 35, 95)),
+        text: cleanText(item.text, "", 160)
+      })).filter(item => item.text) : fallback.intelUpdates,
+      candidateEvents: Array.isArray(result?.candidateEvents) ? result.candidateEvents.slice(0, 3).filter(item => validZones.has(item?.zone)).map(item => ({
+        name: cleanText(item.name, "資源協調壓力", 60),
+        category: cleanText(item.category, "後勤", 50),
+        zone: item.zone,
+        severity: ["low", "medium", "high"].includes(item.severity) ? item.severity : "medium",
+        description: cleanText(item.description, "", 160)
+      })).filter(item => item.description) : fallback.candidateEvents,
+      decisionDilemmas: cleanLlmList(result?.decisionDilemmas, fallback.decisionDilemmas, 4).map(item => item.slice(0, 120)),
+      generatedBy: "LLM_SANITIZED",
+      privacy: "SANITIZED_AGGREGATE_ONLY"
+    };
+  }
+
+  function applyNextTurnPackageArtifacts(packageData) {
+    if (packageData.turn > state.scenario.turns) return;
+    packageData.intelUpdates.forEach((item, index) => state.scenario.intel.push({
+      report_id: `NEXT-INT-${packageData.turn}-${Date.now()}-${index}`,
+      turn: packageData.turn,
+      report_type: item.type,
+      zone_id: item.zone,
+      report_text: item.text,
+      source_reliability: packageData.generatedBy === "LLM_SANITIZED" ? "AI 合成摘要" : "規則引擎",
+      confidence_pct: item.confidence,
+      nextTurnGenerated: true
+    }));
+    packageData.candidateEvents.forEach((item, index) => state.scenario.events.push({
+      event_id: `NEXT-EVT-${packageData.turn}-${Date.now()}-${index}`,
+      trigger_turn: packageData.turn,
+      event_name: item.name,
+      category: item.category,
+      zone_id: item.zone,
+      affected_actor: "WHITE",
+      description: item.description,
+      severity: item.severity,
+      nextTurnGenerated: true
+    }));
+  }
+
+  async function generateNextTurnPackage(log) {
+    const nextTurn = log.turn + 1;
+    const fallback = fallbackNextTurnPackage(log, nextTurn);
+    const apiKey = $("llmApiKey").value.trim();
+    const permitted = state.scenario.useLlmNextTurn && state.scenario.allowSanitizedLlm && apiKey && nextTurn <= state.scenario.turns;
+    if (!permitted) {
+      fallback.fallbackReason = !state.scenario.useLlmNextTurn ? "LLM 次回合生成未啟用"
+        : !state.scenario.allowSanitizedLlm ? "匿名摘要分享未獲允許"
+          : !apiKey ? "未設定 API Key" : "已完成最後回合";
+      applyNextTurnPackageArtifacts(fallback);
+      return fallback;
+    }
+    try {
+      const provider = $("llmProvider").value;
+      const result = extractJson(await requestLlm(provider, $("llmModel").value.trim(), apiKey, nextTurnPackagePrompt(log, fallback), $("llmReasoning").value));
+      const normalized = normalizeNextTurnPackage(result, fallback);
+      normalized.provider = LLM_PRESETS[provider].label;
+      normalized.model = $("llmModel").value.trim();
+      applyNextTurnPackageArtifacts(normalized);
+      return normalized;
+    } catch (error) {
+      fallback.fallbackReason = `LLM 失敗：${error.message}`;
+      applyNextTurnPackageArtifacts(fallback);
+      toast("次回合想定包改由固定規則生成。");
+      return fallback;
+    }
+  }
+
   async function resolveTurn() {
     if (!state.scenario || state.currentTurn > state.scenario.turns) return;
+    const resolveButton = $("resolveTurnBtn");
+    resolveButton.disabled = true;
+    resolveButton.textContent = "結算與生成中…";
     await autoFillOrders();
     const orders = state.orders[state.currentTurn] || {};
     const rng = mulberry32(state.scenario.seed + state.currentTurn * 7919 + hashText(JSON.stringify(orders)));
@@ -2009,6 +2592,7 @@
       balance < -12 ? "紅方施壓取得較明顯效果，藍方需調整部署與資訊判讀。" :
       "本回合態勢膠著，雙方均付出資源與持續性成本。";
 
+    const resourceLedger = applyDetailedInventoryTurn(orders, events);
     const log = {
       turn: state.currentTurn,
       elapsedHours: (state.currentTurn - 1) * state.scenario.hoursPerTurn,
@@ -2019,6 +2603,8 @@
       amberContribution: round1(amberContribution),
       environment: { avgSea: round1(avgSea), avgVisibility: round1(avgVisibility) },
       outcome,
+      resourceLedger,
+      abstractResourcesAfter: state.scenario.abstractResources,
       statusAfter: JSON.parse(JSON.stringify(state.status)),
       keyRisk: state.status.BLUE.civilianRisk > 65 ? "民事風險升高" :
         state.status.BLUE.sustainment < 50 ? "藍方持續性不足" :
@@ -2026,11 +2612,15 @@
         state.status.BLUE.intel < 50 ? "情報品質不足" : "需持續監控"
     };
     state.logs.push(log);
+    const nextTurnPackage = await generateNextTurnPackage(log);
+    log.nextTurnPackage = nextTurnPackage;
+    state.scenario.nextTurnPackages.push(nextTurnPackage);
     operationAnimation.pendingAutoplayTurn = log.turn;
     state.currentTurn += 1;
     saveState(false);
     renderSimulation();
     renderAAR();
+    resolveButton.textContent = "結算本回合";
     toast(state.currentTurn > state.scenario.turns ? "推演完成，可進行事後檢討。" : "本回合已結算。");
   }
 
@@ -2044,6 +2634,70 @@
         <p><strong>關鍵風險：</strong>${escapeHtml(log.keyRisk)}</p>
         <small>藍方準備 ${round1(log.statusAfter.BLUE.readiness)} · 紅方準備 ${round1(log.statusAfter.RED.readiness)} · 民事風險 ${round1(log.statusAfter.BLUE.civilianRisk)}</small>
       </div>`).join("") : `<p class="muted">尚未結算任何回合。</p>`;
+  }
+
+  function renderResourceLedger() {
+    const host = $("resourceLedgerPanel");
+    if (!host) return;
+    if (!state.scenario.inventoryEnabled) {
+      host.innerHTML = `<p class="muted">本想定未啟用詳細資源帳本，沿用舊版 0–100 資源指數。</p>`;
+      return;
+    }
+    const ledger = state.scenario.resourceLedger?.at(-1);
+    const abstractInventory = state.scenario.abstractResources;
+    const chips = ["BLUE", "RED", "AMBER"].map(actor => {
+      const overall = abstractInventory?.byActor?.[actor]?.overall ?? 0;
+      return `<span class="ledger-chip"><strong>${actorLabel(actor)}</strong> ${overall}/100</span>`;
+    }).join("");
+    if (!ledger) {
+      host.innerHTML = `<div class="ledger-summary">${chips}</div><p class="muted">等待第一個回合結算。結算後會顯示期初、恢復、補充、行動消耗、事件損失與期末數量。</p>`;
+      return;
+    }
+    const changed = ledger.entries.filter(entry =>
+      entry.recovery || entry.replenishment || entry.actionConsumption || entry.eventLoss
+    );
+    host.innerHTML = `<div class="ledger-summary">${chips}
+        <span class="ledger-chip">行動消耗 ${ledger.totals.consumed}</span>
+        <span class="ledger-chip">事件損失 ${ledger.totals.eventLoss}</span>
+        <span class="ledger-chip">恢復／補充 ${round1(ledger.totals.recovered + ledger.totals.replenished)}</span>
+      </div>
+      ${changed.length ? `<div class="table-wrap"><table class="ledger-table">
+        <thead><tr><th>品項</th><th>方別／類別</th><th>期初</th><th>恢復</th><th>補充</th><th>行動消耗</th><th>事件損失</th><th>期末</th></tr></thead>
+        <tbody>${changed.map(entry => `<tr>
+          <td>${escapeHtml(entry.alias)}</td>
+          <td>${actorLabel(entry.actor)}／${INVENTORY_CATEGORIES[entry.category]}</td>
+          <td>${entry.opening}</td><td>+${entry.recovery}</td><td>+${entry.replenishment}</td>
+          <td>−${entry.actionConsumption}</td><td>−${entry.eventLoss}</td><td><strong>${entry.closing}</strong></td>
+        </tr>`).join("")}</tbody>
+      </table></div>` : `<p class="muted">第 ${ledger.turn} 回合沒有對已登錄品項造成數量變化。</p>`}`;
+  }
+
+  function renderNextTurnPackage() {
+    const host = $("nextTurnPackagePanel");
+    const badge = $("nextTurnPackageSource");
+    if (!host || !badge) return;
+    const packageData = state.scenario.nextTurnPackages?.at(-1);
+    if (!packageData) {
+      badge.textContent = "尚未生成";
+      host.innerHTML = `<p class="muted">回合結算後，系統會依剩餘資源、趨勢、事件與狀態形成下一回合想定包。</p>`;
+      return;
+    }
+    badge.textContent = packageData.generatedBy === "LLM_SANITIZED" ? "LLM／匿名摘要" : "固定規則";
+    const pressures = packageData.resourcePressures || [];
+    const events = packageData.candidateEvents || [];
+    const intel = packageData.intelUpdates || [];
+    host.innerHTML = `<h4>第 ${packageData.turn} 回合 · ${escapeHtml(packageData.headline)}</h4>
+      <p>${escapeHtml(packageData.summary)}</p>
+      ${pressures.length ? `<h5>資源壓力</h5>${pressures.map(item => `<div class="package-pressure">
+        <span>${actorLabel(item.actor)}／${INVENTORY_CATEGORIES[item.category]}</span>
+        <span class="inventory-score-bar"><i style="width:${clamp(item.score)}%"></i></span>
+        <strong>${round1(item.score)}${Number(item.trend) ? ` (${item.trend > 0 ? "+" : ""}${round1(item.trend)})` : ""}</strong>
+      </div>`).join("")}` : ""}
+      ${intel.length ? `<h5>新情報</h5><ul class="package-list">${intel.map(item => `<li><strong>${escapeHtml(item.type)}／${zoneName(item.zone)}</strong>：${escapeHtml(item.text)}（信心 ${item.confidence}%）</li>`).join("")}</ul>` : ""}
+      ${events.length ? `<h5>候選事件</h5><ul class="package-list">${events.map(item => `<li><strong>${escapeHtml(item.name)}</strong>：${escapeHtml(item.description)}</li>`).join("")}</ul>` : ""}
+      <h5>決策難題</h5>
+      <ul class="package-list">${(packageData.decisionDilemmas || []).map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+      <p class="package-source-note">資料邊界：${packageData.privacy === "SANITIZED_AGGREGATE_ONLY" ? "僅使用匿名化聚合值" : "本機規則"}${packageData.fallbackReason ? `；${escapeHtml(packageData.fallbackReason)}` : ""}。</p>`;
   }
 
   function updateLab() {
@@ -2628,6 +3282,7 @@
       if (!parsed.scenario) return false;
       Object.assign(state, parsed);
       ensureScenarioResources(state.scenario);
+      hydrateInventoryFormFromScenario(state.scenario);
       state.storm ||= { activeStage: "systems", activeRepresentation: "c2", lastExperiment: null, comparison: [], doe: null };
       renderScenario();
       renderSimulation();
@@ -2643,6 +3298,16 @@
     if (!state.scenario) return;
     if (!confirm("確定要清除目前回合紀錄並重新開始嗎？")) return;
     state.currentTurn = 1;
+    state.scenario.events = state.scenario.events.filter(event => !event.nextTurnGenerated);
+    state.scenario.intel = state.scenario.intel.filter(report => !report.nextTurnGenerated);
+    state.scenario.nextTurnPackages = [];
+    if (state.scenario.inventoryEnabled) {
+      state.scenario.detailedInventory = (state.scenario.initialDetailedInventory || state.scenario.detailedInventory)
+        .map((row, index) => sanitizeInventoryRow({ ...row, current: row.nominal, replenishmentApplied: false }, index));
+      state.scenario.resourceLedger = [];
+      state.scenario.abstractResources = calculateAbstractInventory(state.scenario.detailedInventory);
+      state.scenario.resourceBalance = calculateCombinedResourceBalance(state.scenario.resources, state.scenario.abstractResources);
+    }
     state.status = initialStatus(state.scenario);
     state.orders = {};
     state.logs = [];
@@ -2685,7 +3350,7 @@
     if (!state.scenario) return toast("目前沒有可匯出的想定。");
     const payload = {
       app: "Taiwan Strait Scenario Generator with STORM Teaching Lab",
-      version: "2.0",
+      version: "3.0",
       exportedAt: new Date().toISOString(),
       safetyClass: "EDUCATIONAL_SYNTHETIC",
       scenario: state.scenario,
@@ -2708,6 +3373,7 @@
           throw new Error("不是本系統的合成資料格式");
         }
         state.scenario = ensureScenarioResources(payload.scenario);
+        hydrateInventoryFormFromScenario(state.scenario);
         state.currentTurn = payload.currentTurn || 1;
         state.status = payload.status || initialStatus(payload.scenario);
         state.orders = payload.orders || {};
@@ -2751,6 +3417,88 @@
   function csvEscape(value) {
     const s = String(value ?? "");
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  }
+
+  function parseCsvRows(text) {
+    const rows = [];
+    let row = [], field = "", quoted = false;
+    const source = String(text || "").replace(/^\ufeff/, "");
+    for (let index = 0; index < source.length; index += 1) {
+      const char = source[index];
+      if (char === '"') {
+        if (quoted && source[index + 1] === '"') {
+          field += '"';
+          index += 1;
+        } else {
+          quoted = !quoted;
+        }
+      } else if (char === "," && !quoted) {
+        row.push(field);
+        field = "";
+      } else if ((char === "\n" || char === "\r") && !quoted) {
+        if (char === "\r" && source[index + 1] === "\n") index += 1;
+        row.push(field);
+        if (row.some(value => value.trim())) rows.push(row);
+        row = [];
+        field = "";
+      } else {
+        field += char;
+      }
+    }
+    row.push(field);
+    if (row.some(value => value.trim())) rows.push(row);
+    return rows;
+  }
+
+  function exportInventoryCsv() {
+    const header = ["actor","alias","category","nominal","availability_pct","reserve_pct","consumption_per_action","recovery_per_turn","replenishment","delay_turns","reliability_pct","note"];
+    const lines = [header.join(",")];
+    readDetailedInventoryRows().forEach(row => {
+      lines.push([
+        row.actor, row.alias, row.category, row.nominal, row.availability, row.reserve,
+        row.consumption, row.recovery, row.replenishment, row.delay, row.reliability, row.note
+      ].map(csvEscape).join(","));
+    });
+    download("synthetic-resource-inventory.csv", "\ufeff" + lines.join("\n"), "text/csv;charset=utf-8");
+  }
+
+  function importInventoryCsv(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const [header, ...data] = parseCsvRows(reader.result);
+        const keys = header.map(value => value.trim().toLowerCase());
+        const required = ["actor", "alias", "category", "nominal"];
+        if (!required.every(key => keys.includes(key))) throw new Error(`缺少必要欄位：${required.join(", ")}`);
+        const get = (row, key, fallback = "") => {
+          const index = keys.indexOf(key);
+          return index >= 0 ? row[index] : fallback;
+        };
+        const rows = data.slice(0, 200).map((values, index) => sanitizeInventoryRow({
+          actor: get(values, "actor"),
+          alias: get(values, "alias"),
+          category: get(values, "category"),
+          nominal: get(values, "nominal"),
+          availability: get(values, "availability_pct", 100),
+          reserve: get(values, "reserve_pct", 20),
+          consumption: get(values, "consumption_per_action", 1),
+          recovery: get(values, "recovery_per_turn", 0),
+          replenishment: get(values, "replenishment", 0),
+          delay: get(values, "delay_turns", 0),
+          reliability: get(values, "reliability_pct", 85),
+          note: get(values, "note", "")
+        }, index));
+        if (!rows.length) throw new Error("CSV 沒有可匯入的資料列");
+        renderDetailedInventoryRows(rows);
+        toast(`已匯入 ${rows.length} 項資源。`);
+      } catch (error) {
+        toast(`資源 CSV 匯入失敗：${error.message}`);
+      } finally {
+        $("inventoryCsvInput").value = "";
+      }
+    };
+    reader.readAsText(file);
   }
 
   function escapeHtml(value) {
@@ -2820,7 +3568,7 @@
 
   function llmPrompt(formValues) {
     const baseline = generateScenario(formValues);
-    return `你是想定編輯器。只可使用下列「完全合成、虛構」資料，不能補入真實世界的部隊、武器型號、地點、座標、射程、性能、部署或目標資訊。請以繁體中文回傳嚴格 JSON，且不要使用 Markdown。\n\nJSON schema:\n{"name":"40字內、明確對應所選情境範本的想定名稱","overview":"120字內情境摘要","objectives":["3項"],"successCriteria":["3項"],"constraints":["3至5項"],"eventIdeas":["3項不涉及真實武器或地點的事件名稱"]}\n\n所選情境範本：${JSON.stringify({ key: formValues.template, templateName: SCENARIO_TEMPLATES[formValues.template]?.name, templateDescription: SCENARIO_TEMPLATES[formValues.template]?.overview })}\n想定設定：${JSON.stringify({ name: baseline.name, focus: baseline.focusTitle, difficulty: baseline.difficultyLabel, turns: baseline.turns, hoursPerTurn: baseline.hoursPerTurn, uncertainty: baseline.uncertainty, civilPressure: baseline.civilPressure, amberSupport: baseline.amberSupport, weather: baseline.weatherPreset, resources: baseline.resources, strategicParameters: baseline.strategicParameters, teacherConstraints: formValues.teacherConstraints })}\n\n額外指示：${$("llmInstruction").value.trim() || "無"}\n\n名稱與敘事必須維持所選範本的核心主題，不得改成無關情境。敘事要強調資源保存、資訊不確定性、民事影響與升級控制；不得提出可執行的現實作戰建議。`;
+    return `你是想定編輯器。只可使用下列「完全合成、虛構」資料，不能補入真實世界的部隊、武器型號、地點、座標、射程、性能、部署或目標資訊。請以繁體中文回傳嚴格 JSON，且不要使用 Markdown。\n\nJSON schema:\n{"name":"40字內、明確對應所選情境範本的想定名稱","overview":"120字內情境摘要","objectives":["3項"],"successCriteria":["3項"],"constraints":["3至5項"],"eventIdeas":["3項不涉及真實武器或地點的事件名稱"]}\n\n所選情境範本：${JSON.stringify({ key: formValues.template, templateName: SCENARIO_TEMPLATES[formValues.template]?.name, templateDescription: SCENARIO_TEMPLATES[formValues.template]?.overview })}\n想定設定：${JSON.stringify({ name: baseline.name, focus: baseline.focusTitle, difficulty: baseline.difficultyLabel, turns: baseline.turns, hoursPerTurn: baseline.hoursPerTurn, uncertainty: baseline.uncertainty, civilPressure: baseline.civilPressure, amberSupport: baseline.amberSupport, weather: baseline.weatherPreset, abstractResources: baseline.inventoryEnabled ? sanitizedAbstractSummary(baseline.abstractResources) : null, syntheticLegacyResources: baseline.inventoryEnabled ? null : baseline.resources, strategicParameters: baseline.strategicParameters, teacherConstraints: formValues.teacherConstraints })}\n\n額外指示：${$("llmInstruction").value.trim() || "無"}\n\n名稱與敘事必須維持所選範本的核心主題，不得改成無關情境。敘事要強調資源保存、資訊不確定性、民事影響與升級控制；不得提出可執行的現實作戰建議。`;
   }
 
   function extractJson(text) {
@@ -2951,6 +3699,11 @@
       $("redIncoming").value = 180;
       $("redVessels").value = 24;
       $("redLogistics").value = 84;
+      $("enableDetailedInventory").checked = true;
+      $("inventoryDataMode").value = "synthetic";
+      $("useLlmNextTurn").checked = true;
+      $("allowSanitizedLlm").checked = true;
+      renderDetailedInventoryRows(inventoryTemplateRows());
       updateRangeLabels();
       renderTemplateInfo();
       beginScenario(generateScenario(readScenarioForm()));
@@ -2959,6 +3712,27 @@
     $("civilPressure").addEventListener("input", updateRangeLabels);
     $("turnOrderMode").addEventListener("change", updateTurnOrderSettings);
     $("scenarioTemplate").addEventListener("change", applyScenarioTemplate);
+    $("detailedInventoryRows").addEventListener("input", syncDetailedInventoryPreview);
+    $("detailedInventoryRows").addEventListener("change", syncDetailedInventoryPreview);
+    $("detailedInventoryRows").addEventListener("click", event => {
+      const button = event.target.closest(".remove-inventory-row");
+      if (!button) return;
+      button.closest("tr").remove();
+      syncDetailedInventoryPreview();
+    });
+    $("addInventoryRowBtn").addEventListener("click", () => {
+      const rows = readDetailedInventoryRows();
+      rows.push(sanitizeInventoryRow({ actor: "BLUE", category: "logistics", nominal: 10, availability: 100, reserve: 20, consumption: 1, reliability: 85 }, rows.length));
+      renderDetailedInventoryRows(rows);
+    });
+    $("loadInventoryTemplateBtn").addEventListener("click", () => {
+      renderDetailedInventoryRows(inventoryTemplateRows());
+      toast("已載入合成資源範例。");
+    });
+    $("exportInventoryCsvBtn").addEventListener("click", exportInventoryCsv);
+    $("inventoryCsvInput").addEventListener("change", event => importInventoryCsv(event.target.files[0]));
+    ["enableDetailedInventory", "inventoryDataMode", "useLlmNextTurn", "allowSanitizedLlm"]
+      .forEach(id => $(id).addEventListener("change", syncInventoryPrivacy));
     $("llmProvider").addEventListener("change", () => { updateLlmProvider(false); saveLlmSettings(); });
     $("llmModel").addEventListener("input", saveLlmSettings);
     $("llmReasoning").addEventListener("change", saveLlmSettings);
@@ -3087,6 +3861,7 @@
     loadLlmSettings();
     updateRangeLabels();
     renderTemplateInfo();
+    renderDetailedInventoryRows(inventoryTemplateRows());
     updateActionOptions();
     renderLibrary();
     renderStorm();

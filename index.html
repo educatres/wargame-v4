@@ -195,6 +195,52 @@
               <label>紅方後勤補給批次<input id="redLogistics" type="number" min="0" max="240" value="84"></label>
             </div>
           </div>
+          <details class="full resource-builder detailed-inventory" open>
+            <summary>
+              <span>
+                <strong>詳細資源庫存與抽象換算</strong>
+                <small>以虛構代號輸入品項；系統換算為 0–100 能力指數並逐回合記帳</small>
+              </span>
+              <span class="badge">規則引擎計算</span>
+            </summary>
+            <div class="inventory-settings">
+              <label class="check-field"><input id="enableDetailedInventory" type="checkbox" checked> 啟用詳細資源帳本</label>
+              <label>
+                資料模式
+                <select id="inventoryDataMode">
+                  <option value="synthetic" selected>合成教學資料</option>
+                  <option value="sensitive_local">敏感資料／僅在本機處理</option>
+                </select>
+              </label>
+              <label class="check-field"><input id="useLlmNextTurn" type="checkbox" checked> 每回合以 LLM 生成次回合想定包</label>
+              <label class="check-field"><input id="allowSanitizedLlm" type="checkbox" checked> 僅允許送出匿名化摘要</label>
+            </div>
+            <p id="inventoryPrivacyStatus" class="inventory-privacy" aria-live="polite"></p>
+            <div class="actions inventory-actions">
+              <button type="button" id="addInventoryRowBtn" class="secondary">新增品項</button>
+              <button type="button" id="loadInventoryTemplateBtn" class="secondary">載入合成範例</button>
+              <label class="file-button secondary">匯入 CSV<input id="inventoryCsvInput" type="file" accept=".csv,text/csv" hidden></label>
+              <button type="button" id="exportInventoryCsvBtn" class="secondary">匯出 CSV</button>
+            </div>
+            <div class="table-wrap inventory-table-wrap">
+              <table class="inventory-table">
+                <thead>
+                  <tr>
+                    <th>方別</th><th>虛構代號</th><th>類別</th><th>名目量</th><th>可用率%</th>
+                    <th>保留%</th><th>每次消耗</th><th>每回合恢復</th><th>補充量</th><th>延遲回合</th><th>可靠度%</th><th>備註</th><th></th>
+                  </tr>
+                </thead>
+                <tbody id="detailedInventoryRows"></tbody>
+              </table>
+            </div>
+            <div>
+              <div class="subheading">
+                <h4>抽象資源預覽</h4>
+                <small>可投入量＝名目量 × 可用率 × 可靠度－保留量；數值只供本想定比較</small>
+              </div>
+              <div id="inventoryAbstractPreview" class="inventory-abstract-preview"></div>
+            </div>
+          </details>
           <label class="full">
             補充限制
             <textarea id="teacherConstraints" rows="3" placeholder="例如：避免升高衝突；不得以單純戰果作為唯一評分。">避免升高衝突；需保留後續回合資源；納入商船、人道與資訊環境。</textarea>
@@ -399,6 +445,23 @@
           <article class="card">
             <h3>事件／導調訊息</h3>
             <div id="eventPanel"></div>
+          </article>
+        </div>
+
+        <div class="resource-turn-grid">
+          <article class="card">
+            <div class="subheading">
+              <h3>詳細資源帳本</h3>
+              <span class="badge">固定規則</span>
+            </div>
+            <div id="resourceLedgerPanel"></div>
+          </article>
+          <article class="card">
+            <div class="subheading">
+              <h3>次回合想定包</h3>
+              <span id="nextTurnPackageSource" class="badge">尚未生成</span>
+            </div>
+            <div id="nextTurnPackagePanel"></div>
           </article>
         </div>
 
@@ -767,7 +830,7 @@
   </main>
 
   <footer>
-    <span>版本 2.0 · STORM實驗室 · 純 HTML/CSS/JavaScript · 可部署 GitHub Pages</span>
+    <span>版本 3.0 · 詳細資源帳本 · STORM實驗室 · 純 HTML/CSS/JavaScript · GitHub Pages</span>
     <span>資料只儲存在使用者瀏覽器，除非主動匯出。</span>
   </footer>
 
