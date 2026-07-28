@@ -417,6 +417,77 @@ output { color: var(--primary); font-weight: 800; }
 table { width: 100%; border-collapse: collapse; min-width: 860px; }
 th, td { text-align: left; padding: .7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
 th { background: #edf3f7; position: sticky; top: 0; }
+.decision-timeline-table { min-width: 1780px; }
+.decision-timeline-table > thead > tr > th:nth-child(1) { width: 72px; }
+.decision-timeline-table > thead > tr > th:nth-child(2) { width: 190px; }
+.decision-timeline-table > thead > tr > th:nth-child(3) { width: 820px; }
+.decision-timeline-table > thead > tr > th:nth-child(n+4) { width: 170px; }
+.faction-count-cell { min-width: 820px; padding: .55rem; background: #f4f7f9; }
+.faction-count-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(250px, 1fr));
+  gap: .55rem;
+  align-items: start;
+}
+.faction-count-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: .72rem;
+  background: #fff;
+  box-shadow: 0 3px 10px rgba(15,45,66,.07);
+}
+.faction-count-card > header {
+  display: flex;
+  justify-content: space-between;
+  gap: .45rem;
+  align-items: center;
+  padding: .48rem .58rem;
+  color: #fff;
+  background: var(--neutral);
+  font-size: .72rem;
+}
+.faction-count-card > header span { font-weight: 900; }
+.faction-count-card > header strong { font-size: .68rem; }
+.faction-count-card.blue > header { background: #0d6fc7; }
+.faction-count-card.red > header { background: #c83e37; }
+.faction-count-card.amber > header { color: #302700; background: #efc900; }
+.faction-count-table-wrap { overflow-x: auto; }
+.faction-count-card table { min-width: 0; table-layout: fixed; font-size: .66rem; }
+.faction-count-card th:nth-child(1) { width: 56px; }
+.faction-count-card th:nth-child(2) { width: 56px; }
+.faction-count-card th:nth-child(4) { width: 58px; }
+.faction-count-card th:nth-child(5) { width: 38px; }
+.faction-count-card th,
+.faction-count-card td { padding: .34rem .38rem; line-height: 1.3; }
+.faction-count-card th {
+  position: static;
+  color: #314454;
+  background: #eaf0f4;
+  white-space: nowrap;
+}
+.faction-count-card td:nth-child(1),
+.faction-count-card td:nth-child(2),
+.faction-count-card td:nth-child(4),
+.faction-count-card td:nth-child(5) { white-space: nowrap; }
+.faction-count-card td small {
+  display: block;
+  margin-top: .08rem;
+  color: var(--muted);
+  font-size: .58rem;
+}
+.faction-count-empty { color: var(--muted); text-align: center; }
+.faction-count-card > footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .25rem .45rem;
+  padding: .42rem .5rem;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  background: #f7f9fb;
+  font-size: .62rem;
+}
+.faction-count-card > footer strong { color: var(--text); }
 .real-row { background: var(--blue-soft); }
 .synthetic-row { background: var(--green-soft); }
 .library-tabs { display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: .8rem; }
@@ -600,6 +671,10 @@ footer {
   body { background: white; }
   main { max-width: none; padding: 0; }
   .card, .metric { box-shadow: none; break-inside: avoid; }
+  .decision-timeline-table { min-width: 0; font-size: 7pt; }
+  .faction-count-cell { min-width: 0; }
+  .faction-count-grid { grid-template-columns: 1fr; }
+  .faction-count-card { break-inside: avoid; }
 }
 
 

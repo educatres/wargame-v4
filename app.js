@@ -2777,6 +2777,7 @@
       turn: state.currentTurn,
       elapsedHours: (state.currentTurn - 1) * state.scenario.hoursPerTurn,
       event: events.length ? events.map(event => event.event_name).join("；") : "無預排事件",
+      events: JSON.parse(JSON.stringify(events)),
       orders: JSON.parse(JSON.stringify(orders)),
       blueScore: round1(blueScore),
       redScore: round1(redScore),
@@ -2945,12 +2946,101 @@
       return `<tr>
         <td>${log.turn}<br><small>T+${log.elapsedHours}h</small></td>
         <td>${escapeHtml(log.event)}</td>
+        <td class="faction-count-cell">${renderTurnFactionCountTables(log)}</td>
         <td>${formatOrder(o.BLUE)}</td>
         <td>${formatOrder(o.RED)}</td>
         <td>${formatOrder(o.AMBER)}</td>
         <td>${escapeHtml(log.outcome)}<br><small>${escapeHtml(log.keyRisk)}</small></td>
       </tr>`;
     }).join("");
+  }
+
+  function timelineEvents(log) {
+    if (Array.isArray(log.events)) return log.events;
+    const matching = (state.scenario?.events || []).filter(event => Number(event.trigger_turn) === Number(log.turn));
+    if (matching.length) return matching;
+    if (!log.event || log.event === "無預排事件") return [];
+    return String(log.event).split("；").filter(Boolean).map((eventName, index) => ({
+      event_id: `LEGACY-${log.turn}-${index}`,
+      event_name: eventName,
+      affected_actor: "ALL",
+      zone_id: "Z-ISL"
+    }));
+  }
+
+  function timelineEventsForActor(log, actor) {
+    return timelineEvents(log).filter(event =>
+      ["ALL", "WHITE", actor].includes(event.affected_actor || "ALL")
+    );
+  }
+
+  function timelineLedgerTotals(log, actor) {
+    const entries = log.resourceLedger?.entries?.filter(entry => entry.actor === actor) || [];
+    return {
+      consumed: round1(entries.reduce((sum, entry) => sum + Number(entry.actionConsumption || 0), 0)),
+      eventLoss: round1(entries.reduce((sum, entry) => sum + Number(entry.eventLoss || 0), 0))
+    };
+  }
+
+  function timelineWaveLabel(index) {
+    const labels = ["第一波", "第二波", "第三波", "第四波", "第五波", "第六波"];
+    return labels[index] || `第 ${index + 1} 波`;
+  }
+
+  function renderFactionCountTable(log, actor) {
+    const order = log.orders?.[actor];
+    const actions = orderItems(order);
+    const events = timelineEventsForActor(log, actor);
+    const ledger = timelineLedgerTotals(log, actor);
+    const startHour = Number(log.elapsedHours || 0);
+    const endHour = startHour + Number(state.scenario?.hoursPerTurn || 0);
+    const timeWindow = `T+${startHour}–${endHour}h`;
+    const rows = [
+      ...actions.map((item, index) => ({
+        sequence: timelineWaveLabel(index),
+        name: item.action,
+        zone: item.zone,
+        resource: Number(item.resource || 0),
+        kind: index === 0 ? "主要行動" : "支援行動"
+      })),
+      ...events.map((event, index) => ({
+        sequence: `事件 ${index + 1}`,
+        name: event.event_name || "未命名事件",
+        zone: event.zone_id || "Z-ISL",
+        resource: 0,
+        kind: event.affected_actor === "ALL" || event.affected_actor === "WHITE" ? "共同事件" : "影響事件"
+      }))
+    ];
+    const resourceTotal = orderTotalResource(order);
+    const actorClass = actor.toLowerCase();
+    const body = rows.length ? rows.map(row => `<tr>
+      <td>${timeWindow}</td>
+      <td><strong>${escapeHtml(row.sequence)}</strong><small>${escapeHtml(row.kind)}</small></td>
+      <td>${escapeHtml(row.name)}</td>
+      <td>${escapeHtml(zoneName(row.zone))}</td>
+      <td>${row.resource || "—"}</td>
+    </tr>`).join("") : `<tr><td colspan="5" class="faction-count-empty">本回合未投入行動，亦無適用事件。</td></tr>`;
+    return `<section class="faction-count-card ${actorClass}" aria-label="${actorLabel(actor)}第 ${log.turn} 回合事件計數表">
+      <header><span>${actorLabel(actor)}</span><strong>第 ${log.turn} 回合計數表</strong></header>
+      <div class="faction-count-table-wrap"><table>
+        <caption class="sr-only">${actorLabel(actor)}第 ${log.turn} 回合行動與事件計數</caption>
+        <thead><tr><th>作戰時序</th><th>波次</th><th>行動／事件</th><th>區域</th><th>投入</th></tr></thead>
+        <tbody>${body}</tbody>
+      </table></div>
+      <footer>
+        <span>行動 <strong>${actions.length}</strong></span>
+        <span>事件 <strong>${events.length}</strong></span>
+        <span>投入 <strong>${resourceTotal}</strong></span>
+        <span>消耗 <strong>${ledger.consumed}</strong></span>
+        <span>事件損失 <strong>${ledger.eventLoss}</strong></span>
+      </footer>
+    </section>`;
+  }
+
+  function renderTurnFactionCountTables(log) {
+    return `<div class="faction-count-grid">
+      ${["BLUE", "RED", "AMBER"].map(actor => renderFactionCountTable(log, actor)).join("")}
+    </div>`;
   }
 
   function formatOrder(order) {
