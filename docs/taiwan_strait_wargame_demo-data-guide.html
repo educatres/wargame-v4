@@ -147,7 +147,7 @@
   <header class="hero">
     <p class="eyebrow">Data Sheet Reference · 2026-07-28</p>
     <h1>taiwan_strait_wargame_demo.xlsx<br>完整資料說明</h1>
-    <p class="lead">逐張解釋 22 個工作表、欄位語意、資料關聯、公式，以及它們在「想定生成、回合推演、STORM、事後檢討、資料庫、LLM」中的實際用途。</p>
+    <p class="lead">逐張解釋 25 個工作表、欄位語意、資料關聯、公式，以及它們在「想定生成、具名資源、回合推演、三方動畫、STORM、事後檢討、資料庫、LLM」中的實際用途。</p>
     <div class="hero-meta"><span>教育用合成資料</span><span>不含精確座標</span><span>來源：reference/taiwan_strait_wargame_demo.xlsx</span></div>
   </header>
 
@@ -174,18 +174,18 @@
         <h2 class="section-title">先理解：Excel 不是瀏覽器的即時資料源</h2>
         <p class="section-intro">這份 Excel 是可攜式資料庫、欄位字典、教學樣本與分析儀表板。網頁開啟時不會讀取 <code>.xlsx</code>；實際執行資料來自 <code>data/demo-data.js</code>，部分設定則直接寫在 <code>app.js</code> 與 <code>index.html</code>。</p>
         <div class="stats">
-          <div class="stat"><strong>22</strong><span>工作表</span></div>
-          <div class="stat"><strong>5</strong><span>直接影響回合引擎的資料表</span></div>
-          <div class="stat"><strong>4</strong><span>資料庫頁面可搜尋目錄</span></div>
-          <div class="stat"><strong>2</strong><span>含 Excel 教學公式的工作表</span></div>
+          <div class="stat"><strong>25</strong><span>工作表</span></div>
+          <div class="stat"><strong>33</strong><span>三方具名教學資源</span></div>
+          <div class="stat"><strong>41</strong><span>公開與研究參考來源</span></div>
+          <div class="stat"><strong>3</strong><span>含 Excel 教學公式／分析的工作表</span></div>
         </div>
         <div class="callout">
           <h3>三種「被系統使用」的層次</h3>
           <p><span class="badge core">核心執行</span> 對應資料會在想定生成或回合結算中讀取。<span class="badge library">資料庫展示</span> 只在「五、資料庫」頁面搜尋與顯示。<span class="badge mirror">設定鏡像</span> Excel 有同一份目錄，但目前網頁使用 <code>app.js</code>/<code>index.html</code> 內建常數，而不是讀取這張工作表。</p>
         </div>
         <div class="callout warning">
-          <h3>抽象作戰類型的安全邊界</h3>
-          <p>20_Actions 現有38項行動，其中12項以【航空】、【防空】、【遠程火力】、【海上】或【水下】標示抽象任務類型。這些資料只提供準備度、持續性、指管、情報與民事風險的合成修正；不保存真實武器型號、射程、座標、目標、彈藥量、命中率或交戰程序。</p>
+          <h3>具名資源仍是合成教學模型</h3>
+          <p>22_Named_Resources 使用 F-16V、F-CK-1、C-130H、雄風三型、J-20、DF-17、F-35A、SM-6、Starlink 等公開名稱增添敘事臨場感。名稱可追溯至公開來源；庫存、可用率、保留率、消耗、恢復、補充、延遲、可靠度與分數全部是遊戲平衡值，不代表真實能力、部署或作戰建議。</p>
         </div>
       </section>
 
@@ -200,23 +200,23 @@
         </div>
         <div class="grid-2" style="margin-top:1rem">
           <article class="card"><h3>由 data/demo-data.js 讀取</h3><p><code>zones</code>、<code>forcePackages</code>、<code>weather</code>、<code>intelligenceReports</code>、<code>eventCards</code> 會直接參與生成或推演；<code>publicSources</code>、<code>capabilities</code>、<code>publicActivitySample</code> 用於資料庫頁面。</p></article>
-          <article class="card"><h3>由 app.js / index.html 讀取</h3><p><code>SCENARIO_TEMPLATES</code>、<code>ACTIONS</code>、<code>RESOURCE_DEFAULTS</code>、<code>LLM_PRESETS</code> 與全部表單控制項目前是程式內建。工作表 17–21 是同步目錄與文件，不是執行時唯一真相來源；抽象作戰類型也必須同步更新 <code>ACTIONS</code>、<code>actionCatalog</code>、SQLite 與 Excel。</p></article>
+          <article class="card"><h3>由 app.js / index.html 讀取</h3><p><code>SCENARIO_TEMPLATES</code>、<code>ACTIONS</code>、<code>INVENTORY_TEMPLATE</code>、<code>INVENTORY_BASELINES</code>、<code>LLM_PRESETS</code>、動畫圖標映射與全部表單控制項目前是程式內建。工作表 17–24 是同步目錄與文件，不是執行時唯一真相來源。</p></article>
         </div>
       </section>
 
       <section id="quality" class="section">
-        <h2 class="section-title">目前資料品質與同步注意</h2>
-        <div class="callout danger">
-          <h3>17_Scenario_Templates 的 Q–W 欄標題與內容錯位</h3>
-          <p>目前實際內容依序是：Q＝目標、R＝成功條件、S＝限制、T＝參考資料、U＝戰略參數、V＝資源、W＝事件；但表頭顯示的順序不同。解析此表時應依本文件的「實際內容」欄，不可直接相信 Q–W 表頭。</p>
+        <h2 class="section-title">目前資料品質與同步狀態</h2>
+        <div class="callout">
+          <h3>情境範本欄位已校正</h3>
+          <p>17_Scenario_Templates 的 Q–W 欄現已依序正名為目標、成功條件、限制、參考資料、戰略參數、資源與事件 JSON。</p>
+        </div>
+        <div class="callout">
+          <h3>Dashboard 改為動態統計</h3>
+          <p>16_Dashboard 現以公式統計 41 筆來源、23 個兵力包、9 個情境範本、33 項具名資源與 15 張事件卡，避免資料新增後再次失準。</p>
         </div>
         <div class="callout warning">
-          <h3>16_Dashboard 有舊版統計</h3>
-          <p>Dashboard 顯示兵力包 20 個、事件卡 12 張，但工作表實際已有兵力包 23 筆、事件卡 15 筆。該 Dashboard 是 Excel 靜態分析頁，不會被網頁回合引擎讀取。</p>
-        </div>
-        <div class="callout warning">
-          <h3>公開來源筆數在副本間不同</h3>
-          <p>Excel / SQLite 的 <code>01_Public_Sources</code> 有 16 筆；目前 <code>data/demo-data.js</code> 有 19 筆，因此網頁「資料庫」頁面會顯示 19 筆。修改任何副本後應重新執行同步流程。</p>
+          <h3>仍須留意執行時來源</h3>
+          <p>Excel 已收齊 19 筆 <code>demo-data.js</code> 來源、具名裝備／地圖來源及案例參考，共 41 筆；網頁「資料庫」目前仍只顯示 <code>demo-data.js</code> 的 19 筆。若要讓新增來源出現在網頁，仍須另外同步程式資料。</p>
         </div>
       </section>
 
@@ -237,7 +237,7 @@
           <article class="card"><h3>turn</h3><ul><li>情境回合數來自 03／17 或表單</li><li>串接 08、09、10、11、12、13</li><li>天候超過第 12 回合時會循環使用 1–12 回合資料</li><li>AAR 以回合紀錄重建時間線</li></ul></article>
           <article class="card"><h3>package_id</h3><ul><li>主檔：<code>06_Force_Packages.package_id</code></li><li>由 13_Attrition 引用</li><li>網頁只用兵力包的角色平均值初始化狀態</li><li>損耗樣本不會回寫網頁兵力包</li></ul></article>
           <article class="card"><h3>template_key</h3><ul><li>03 與 17 對應同一情境範本</li><li>網頁實際使用 <code>app.js/SCENARIO_TEMPLATES</code></li><li>切換範本時更新名稱、焦點、難度、回合與戰略參數</li></ul></article>
-          <article class="card"><h3>resource_id / action_id</h3><ul><li>19、20 是程式設定的可讀目錄</li><li>網頁實際使用 <code>RESOURCE_DEFAULTS</code> 與 <code>ACTIONS</code></li><li>資源影響初始平衡；行動修正回合狀態</li></ul></article>
+          <article class="card"><h3>resource_id / action_id</h3><ul><li>19 是舊版彙總資源；22 是現行 33 項具名資源</li><li>網頁實際使用 <code>INVENTORY_TEMPLATE</code>、<code>INVENTORY_BASELINES</code> 與 <code>ACTIONS</code></li><li>次回合 LLM 只應使用合成值或匿名化彙整</li></ul></article>
         </div>
       </section>
 
@@ -253,12 +253,18 @@
           <h3>期望剩餘目標</h3>
           <div class="formula">expected_residual = max(0, incoming_targets × (1 − at_least_one))</div>
           <p>是期望值而非單次裁決結果；不得解讀為真實攔截率或武器性能。</p>
+          <h3>具名資源可用點數與保留量</h3>
+          <div class="formula">usable = game_stock × availability_pct × reliability_pct　　reserve = game_stock × reserve_pct　　committable = max(0, usable − reserve)</div>
+          <p>百分比在 Excel 公式中除以 100。這些值只用於遊戲資源敘事與回合資源壓力。</p>
+          <h3>抽象持續性與分數</h3>
+          <div class="formula">endurance = committable ÷ consumption_per_action　　score = min(100, usable ÷ category_baseline × 70 + min(5, endurance) × 6)</div>
+          <p>類別基準記錄於 23_Model_Config；分數可供摘要與次回合 LLM 提示使用，不是裝備性能評比。</p>
         </article>
       </section>
     </main>
   </div>
 
-  <footer>本文件依 2026-07-28 工作區內的 taiwan_strait_wargame_demo.xlsx、app.js、index.html 與 demo-data.js 撰寫。</footer>
+  <footer>本文件依 2026-07-28 工作區內的 taiwan_strait_wargame_demo.xlsx、app.js、index.html、styles.css、demo-data.js、地圖素材與公開參考來源撰寫。</footer>
 
   <script>
     const F = (name, type, meaning, use) => ({ name, type, meaning, use });
@@ -274,9 +280,9 @@
         ]
       },
       {
-        id: "01_Public_Sources", title: "公開與商用資料來源目錄", range: "A1:M19", rows: "16 筆", badges: ["library", "issue"],
-        summary: "保存來源的出版者、授權、更新頻率、可用欄位、用途與限制；不是把外部原始資料完整複製進來。",
-        use: "對應 data/demo-data.js 的 publicSources；由 renderLibrary() 顯示在「五、資料庫 → 公開來源」。Excel 目前 16 筆，網頁資料副本目前 19 筆。",
+        id: "01_Public_Sources", title: "公開、研究、地圖與具名資源來源目錄", range: "A1:M44", rows: "41 筆", badges: ["library", "reference"],
+        summary: "收錄 19 筆網頁資料來源，以及具名裝備、台海地圖與情境案例參考；保存出版者、授權、用途、限制與明文 URL。",
+        use: "前 19 筆對應 data/demo-data.js 的 publicSources；新增來源供 Excel、欄位說明與人工查核。網頁資料庫目前仍顯示 19 筆。",
         flow: "公開來源目錄 → 資料庫頁面搜尋／外部連結；不直接參與回合裁決。",
         fields: [
           F("source_id", "TEXT / PK", "來源代碼，例如 SRC-001。", "辨識與同步來源項目。"),
@@ -543,26 +549,27 @@
         ]
       },
       {
-        id: "15_Data_Dictionary", title: "資料字典與分類", range: "A1:E28", rows: "25 筆", badges: ["reference"],
-        summary: "列出重要表／欄位、資料型別、說明與真實／合成分類；是摘要字典，不是每個欄位都收錄。",
+        id: "15_Data_Dictionary", title: "資料字典與分類", range: "A1:F48", rows: "45 筆", badges: ["reference"],
+        summary: "列出重要表／欄位、資料型別、允許值或公式、說明與資料分類；已補入具名資源、模型組態與專案索引。",
         use: "Excel／SQLite 維護文件；網頁不載入。完整欄位定義以本 HTML 與實際表頭為準。",
         flow: "表與欄位 → 說明／分類 → 維護與稽核。",
         fields: [
           F("table_name", "TEXT", "資料表名稱。", "定位欄位所屬表。"),
           F("field_name", "TEXT", "欄位名稱。", "定位被說明欄位。"),
           F("data_type", "TEXT", "TEXT、INTEGER、REAL、DATE、FORMULA、JSON 等。", "匯入與驗證參考。"),
+          F("allowed_or_formula", "TEXT", "允許值、鍵格式或公式摘要。", "驗證具名資源與衍生欄位。"),
           F("description", "TEXT", "欄位語意、尺度或限制。", "資料維護說明。"),
           F("data_class", "TEXT", "真實來源、真實公開資料、合成或系統設定。", "安全分類與使用界線。")
         ]
       },
       {
-        id: "16_Dashboard", title: "Excel 分析儀表板", range: "A1:L36", rows: "多區塊", badges: ["reference", "issue"],
-        summary: "彙整來源、兵力、情境、情報、交互作用、事件、損耗與準備度趨勢，包含圖表。",
-        use: "只在 Excel 中檢視；網頁有獨立的狀態卡與 AAR，不讀取此 Dashboard。當前兵力包與事件卡 KPI 尚未更新。",
+        id: "16_Dashboard", title: "Excel 分析儀表板", range: "A1:L36", rows: "多區塊", badges: ["reference"],
+        summary: "彙整 41 筆來源、23 個兵力包、9 個情境範本、33 項具名資源、15 張事件卡及準備度趨勢，包含圖表。",
+        use: "只在 Excel 中檢視；網頁有獨立的狀態卡與 AAR，不讀取此 Dashboard。主要 KPI 已改為資料表計數公式。",
         flow: "01／06／10／12／13 的樣本 → 靜態彙總區與圖表；不回饋到回合引擎。",
         fields: [
-          F("A3:D7 KPI 區", "區塊", "公開來源、兵力包、情境回合、情報報告的值／單位／說明。", "Excel 概覽；兵力包顯示 20，實際已 23。"),
-          F("H3:L7 交戰摘要", "區塊", "交互作用、成功裁決、事件卡、公開活動樣本。", "Excel 概覽；事件卡顯示 12，實際已 15。"),
+          F("A3:D7 KPI 區", "區塊／公式", "公開來源、兵力包、情境範本、具名教學資源的值／單位／說明。", "Excel 概覽；值由對應資料表 COUNTA 公式產生。"),
+          F("H3:L7 交戰摘要", "區塊", "交互作用、成功裁決、事件卡、公開活動樣本。", "事件卡數已由 10_Event_Cards 動態計數。"),
           F("A10:F13 損耗彙總", "區塊", "依 actor_id 彙總準備度前後、彈藥／燃料指數與事件數。", "支援損耗比較圖。"),
           F("H10:K21 準備度趨勢", "區塊", "每回合 BLUE、RED、AMBER 準備度。", "支援趨勢折線圖。"),
           F("圖表", "Excel Chart", "損耗比較與準備度趨勢。", "簡報與課後檢討。"),
@@ -570,11 +577,10 @@
         ]
       },
       {
-        id: "17_Scenario_Templates", title: "情境範本完整設定", range: "A1:X12", rows: "9 筆", badges: ["mirror", "issue"],
+        id: "17_Scenario_Templates", title: "情境範本完整設定", range: "A1:X12", rows: "9 筆", badges: ["mirror"],
         summary: "保存九種範本的名稱、回合、先手、支援、天候、案例來源、敘事、JSON 目標／參數／事件。",
         use: "對應 data.scenarioTemplates 的文件副本；網頁實際由 app.js 的 SCENARIO_TEMPLATES 與 FOCUS_LIBRARY 執行。",
         flow: "範本目錄 → 同步 app.js 常數 → applyScenarioTemplate() / generateScenario() / LLM prompt。",
-        warning: "Q–W 欄目前表頭錯位。下列欄位已按『欄位位置＋實際內容』說明。",
         fields: [
           F("template_key", "TEXT / PK", "範本鍵。", "對應 scenarioTemplate 選單。"),
           F("介面標籤", "TEXT", "選單顯示名稱。", "同步 index.html option。"),
@@ -592,19 +598,19 @@
           F("先手公開", "ENUM", "sealed／public。", "後手是否看得到先手命令。"),
           F("來源/案例", "TEXT", "案例來源標籤。", "想定預覽顯示來源。"),
           F("簡介", "TEXT", "範本情境摘要。", "預覽、LLM prompt 與 scenario.overview。"),
-          F("Q欄：表頭『戰略參數JSON』", "JSON（實際為 objectives_json）", "實際保存教學目標陣列。", "同步後成為 scenario.objectives。"),
-          F("R欄：表頭『資源JSON』", "JSON（實際為 success_criteria_json）", "實際保存成功條件陣列。", "同步後成為 scenario.successCriteria。"),
-          F("S欄：表頭『目標JSON』", "JSON（實際為 constraints_json）", "實際保存額外限制陣列。", "追加到 scenario.constraints。"),
-          F("T欄：表頭『成功條件JSON』", "JSON（實際為 references_json）", "實際保存參考資料陣列。", "範本說明區顯示參考連結。"),
-          F("U欄：表頭『限制JSON』", "JSON（實際為 strategic_parameters_json）", "實際保存封控型態、能源、彈藥、核升級與經濟衝擊參數。", "applyStrategicPressure() 的設定來源概念。"),
-          F("V欄：表頭『參考資料JSON』", "JSON（實際為 resources_json）", "實際保存 11 項合成資源。", "同步後成為資源預設值。"),
-          F("W欄：事件JSON", "JSON", "範本專屬案例事件陣列。", "generateScenario() 追加至抽樣事件。"),
-          F("資料分類", "TEXT", "EDUCATIONAL_SYNTHETIC。", "安全分類。")
+          F("objectives_json", "JSON", "教學目標陣列。", "同步後成為 scenario.objectives。"),
+          F("success_criteria_json", "JSON", "成功條件陣列。", "同步後成為 scenario.successCriteria。"),
+          F("constraints_json", "JSON", "額外限制陣列。", "追加到 scenario.constraints。"),
+          F("references_json", "JSON", "參考資料陣列。", "範本說明區顯示參考連結。"),
+          F("strategic_parameters_json", "JSON", "封控型態、能源、彈藥、核升級與經濟衝擊參數。", "applyStrategicPressure() 的設定來源概念。"),
+          F("resources_json", "JSON", "舊版 11 項彙總資源。", "與 19_Resources 相容；詳細資源另見 22。"),
+          F("events_json", "JSON", "範本專屬案例事件陣列。", "generateScenario() 追加至抽樣事件。"),
+          F("data_class", "TEXT", "EDUCATIONAL_SYNTHETIC。", "安全分類。")
         ]
       },
       {
-        id: "18_Settings", title: "全部介面控制項目錄", range: "A1:N65", rows: "62 筆", badges: ["mirror"],
-        summary: "由 index.html 控制項同步產生的設定字典，涵蓋想定、LLM、命令、攔截實驗與 STORM。",
+        id: "18_Settings", title: "全部介面控制項目錄", range: "A1:N79", rows: "76 筆", badges: ["mirror"],
+        summary: "由 index.html 控制項同步產生的設定字典，涵蓋想定、詳細資源、LLM 隱私、命令、三方動畫、攔截實驗與 STORM。",
         use: "文件與 SQLite 設定目錄；網頁實際直接讀取 DOM 控制項，不會用 DATA.settingCatalog 建立表單。",
         flow: "index.html 控制項 → settingCatalog 快照；修改表格本身不會改變介面。",
         fields: [
@@ -625,9 +631,9 @@
         ]
       },
       {
-        id: "19_Resources", title: "合成資源目錄", range: "A1:J14", rows: "11 筆", badges: ["mirror"],
-        summary: "BLUE／RED 的航空、防空、海上、後勤、無人機、星鏈與高空通訊資源預設值及上下限。",
-        use: "文件目錄；網頁實際使用 app.js 的 RESOURCE_DEFAULTS、readResourceInventory() 與 calculateResourceBalance()。",
+        id: "19_Resources", title: "舊版彙總合成資源目錄", range: "A1:J14", rows: "11 筆", badges: ["mirror"],
+        summary: "保留 BLUE／RED 航空、防空、海上、後勤、無人機、星鏈與高空通訊的彙總資源預設值，供向後相容。",
+        use: "舊版文件目錄；詳細模式改由 app.js 的 INVENTORY_TEMPLATE 與 22_Named_Resources 表示。關閉詳細資源時仍可使用此彙總層。",
         flow: "介面輸入 → readResourceInventory() → resourceBalance；無人機修正初始情報，星鏈／高空平臺修正初始指管。",
         fields: [
           F("resource_id", "TEXT / PK", "程式資源鍵。", "對應表單 id 與 scenario.resources 屬性。"),
@@ -673,6 +679,64 @@
           F("API Endpoint", "HTTPS URL", "供應商 API 基底網址。", "依供應商組成 generateContent、responses 或 messages 路徑。"),
           F("模型清單JSON", "JSON", "模型建議清單。", "llmModelOptions datalist。"),
           F("API Key 保存政策", "TEXT", "瀏覽器本機；資料庫不保存。", "安全提醒；實際程式目前保存於 localStorage，可手動清除。")
+        ]
+      },
+      {
+        id: "22_Named_Resources", title: "三方具名教學資源", range: "A1:U36", rows: "33 筆", badges: ["mirror", "reference"],
+        summary: "依現行 app.js 的 INVENTORY_TEMPLATE 收錄藍、紅、琥珀三方各 11 項資源，並以 Excel 公式計算可用量、保留量、可投入量、持續性與抽象分數。",
+        use: "對應想定生成的詳細資源清單與次回合資源摘要；網頁執行時仍讀取 app.js／使用者輸入，不會即時讀取 Excel。",
+        flow: "公開名稱＋合成參數 → 可用／保留／可投入／持續性 → 類別摘要 → 回合消耗與 LLM 次回合敘事。",
+        warning: "名稱只作教學敘事標籤；所有數值與衍生分數均為合成值，不得解讀為真實庫存、戰備、可靠度或效能。",
+        fields: [
+          F("resource_id", "TEXT / PK", "NR-{actor}-{nn} 格式的唯一代碼。", "Excel 與資料字典識別。"),
+          F("actor_id", "ENUM / FK", "BLUE、RED 或 AMBER。", "三方分組與摘要。"),
+          F("equipment_name", "TEXT", "公開使用的裝備／平台名稱。", "提升敘事臨場感；來源由 source_ids 追溯。"),
+          F("category_key", "ENUM", "aviation、airDefense、longRange、maritime、subsurface、isr、communications、logistics、energy。", "對應 INVENTORY_CATEGORIES 與基準值。"),
+          F("category_name", "TEXT", "類別中文名稱。", "表格與 LLM 摘要顯示。"),
+          F("game_stock", "NUMBER", "合成遊戲存量。", "可用、保留及可投入量的基數。"),
+          F("availability_pct", "NUMBER 0–100", "合成可用比例。", "usable_points 公式輸入。"),
+          F("reserve_pct", "NUMBER 0–100", "合成保留比例。", "reserve_points 公式輸入。"),
+          F("consumption_per_action", "NUMBER", "每次行動的抽象消耗。", "endurance_turns 與回合資源壓力。"),
+          F("recovery_per_turn", "NUMBER", "每回合抽象恢復量。", "次回合資源更新。"),
+          F("replenishment", "NUMBER", "補充批次的抽象數量。", "延遲到達後的恢復。"),
+          F("delay_turns", "INTEGER", "補充延遲回合。", "次回合生成條件。"),
+          F("reliability_pct", "NUMBER 0–100", "合成可靠度。", "usable_points 公式輸入。"),
+          F("usable_points", "FORMULA", "stock × availability × reliability。", "本回合可用點數。"),
+          F("reserve_points", "FORMULA", "stock × reserve。", "保留點數。"),
+          F("committable_points", "FORMULA", "max(0, usable − reserve)。", "可投入點數。"),
+          F("endurance_turns", "FORMULA", "committable ÷ consumption。", "抽象持續回合。"),
+          F("abstract_score", "FORMULA 0–100", "類別基準化可用量＋最多五回合持續性。", "摘要、趨勢與次回合 LLM 提示。"),
+          F("narrative_role", "TEXT", "裝備在遊戲中的敘事角色。", "介面與教學說明。"),
+          F("source_ids", "TEXT / FK", "01_Public_Sources 的來源代碼。", "追溯名稱來源；不支持參數值。"),
+          F("data_class", "TEXT", "EDUCATIONAL_SYNTHETIC。", "安全分類。")
+        ]
+      },
+      {
+        id: "23_Model_Config", title: "現行模型組態與介面控制", range: "A1:H23", rows: "20 筆", badges: ["mirror"],
+        summary: "彙整九類資源基準、每方 35 點命令上限、2–4 項支援行動、詳細資源與 LLM 隱私開關，以及三方動畫／結算按鈕狀態。",
+        use: "可讀設定鏡像；網頁仍以 app.js、index.html 與 styles.css 為執行來源。",
+        flow: "程式常數與 DOM 控制 → Model_Config 快照 → Excel 公式、欄位說明與人工同步檢查。",
+        fields: [
+          F("config_key", "TEXT / PK", "常數名稱或控制項 id。", "設定識別。"),
+          F("section", "ENUM", "inventory_baseline、turn_rules、ui_control、llm_control、animation。", "依功能分組。"),
+          F("label", "TEXT", "人類可讀名稱。", "文件顯示。"),
+          F("current_value", "VARIANT", "數字、布林、列舉或顏色。", "記錄現行組態。"),
+          F("unit_or_options", "TEXT", "點、項、布林或允許選項。", "解讀數值與控制範圍。"),
+          F("source_file", "TEXT", "app.js、index.html 或 styles.css。", "追溯執行來源。"),
+          F("runtime_effect", "TEXT", "對想定、命令、LLM 或動畫的作用。", "同步與測試依據。"),
+          F("data_class", "TEXT", "EDUCATIONAL_SYNTHETIC 或 LOCAL_RUNTIME。", "區分遊戲參數與介面狀態。")
+        ]
+      },
+      {
+        id: "24_Project_Files", title: "專案檔案與參考資料索引", range: "A1:D15", rows: "12 筆", badges: ["reference"],
+        summary: "列出本次校對採用的程式、資料、地圖、Excel、HTML 與設計文件，並標示執行時來源或輔助參考。",
+        use: "提供維護者快速確認哪些檔案是瀏覽器執行真相、哪些是可攜鏡像與說明文件。",
+        flow: "工作區檔案 → 角色／內容／權威層次 → 同步與版本查核。",
+        fields: [
+          F("path", "TEXT / PK", "專案相對路徑。", "定位檔案。"),
+          F("role", "TEXT", "UI、核心邏輯、資料集、地圖、Excel 或文件。", "分類維護責任。"),
+          F("contents", "TEXT", "該檔案涵蓋的設定與資料。", "確認更新範圍。"),
+          F("authority", "TEXT", "執行時來源、本次同步輸出或輔助參考。", "避免把文件副本誤當即時資料源。")
         ]
       }
     ];
