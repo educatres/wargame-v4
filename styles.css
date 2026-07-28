@@ -74,7 +74,32 @@ main { width: min(1440px, 100%); margin: auto; padding: 1.2rem clamp(.8rem, 3vw,
   min-width: 0;
   line-height: 1.15;
   white-space: nowrap;
-  box-shadow: 0 5px 14px rgba(24, 103, 154, .24);
+  color: #fff;
+  border-color: #8a185f;
+  background: linear-gradient(135deg, #c2185b 0%, #7b1fa2 100%);
+  box-shadow: 0 7px 18px rgba(177, 28, 116, .34), 0 0 0 2px rgba(216, 27, 96, .08);
+  text-shadow: 0 1px 1px rgba(58, 8, 45, .32);
+  transition: transform .16s ease, box-shadow .16s ease, filter .16s ease;
+}
+.turn-controls #resolveTurnBtn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #d81b60 0%, #8e24aa 100%);
+  box-shadow: 0 9px 22px rgba(177, 28, 116, .42), 0 0 0 3px rgba(216, 27, 96, .12);
+  filter: saturate(1.08);
+  transform: translateY(-1px);
+}
+.turn-controls #resolveTurnBtn:focus-visible {
+  outline: 3px solid rgba(216, 27, 96, .3);
+  outline-offset: 3px;
+}
+.turn-controls #resolveTurnBtn:active:not(:disabled) {
+  box-shadow: 0 4px 11px rgba(177, 28, 116, .3);
+  transform: translateY(1px);
+}
+.turn-controls #resolveTurnBtn:disabled {
+  border-color: #b9a4b5;
+  background: linear-gradient(135deg, #b98da1, #9b83a5);
+  box-shadow: none;
+  text-shadow: none;
 }
 
 .card, .callout, .empty-state, .library-notice {
