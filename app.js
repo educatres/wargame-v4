@@ -1966,6 +1966,7 @@
     if (submitButton) submitButton.disabled = !canSubmit;
     $("orderSequenceHint").textContent = orderSequenceHint(current);
     $("resolveTurnBtn").disabled = finished;
+    syncLlmActionButtons();
   }
 
   function updateActionOptions() {
@@ -2325,31 +2326,47 @@
     return missingActors.filter(actor => !accepted.has(actor));
   }
 
-  async function autoFillOrders() {
+  function missingOrderActors() {
+    const actors = state.scenario.amberSupport === "none" ? ["BLUE", "RED"] : ["BLUE", "RED", "AMBER"];
+    return actors.filter(actor => !state.orders[state.currentTurn][actor]);
+  }
+
+  function autoFillOrders() {
     if (!state.scenario) return;
     state.orders[state.currentTurn] ||= {};
-    const actors = state.scenario.amberSupport === "none" ? ["BLUE", "RED"] : ["BLUE", "RED", "AMBER"];
-    let missingActors = actors.filter(actor => !state.orders[state.currentTurn][actor]);
+    const missingActors = missingOrderActors();
     if (!missingActors.length) return toast("所有角色本回合都已有命令。");
-    const apiKey = $("llmApiKey").value.trim();
-    let aiUsed = false;
-    if (apiKey) {
-      const initialMissing = missingActors.length;
-      const button = $("autoOrdersBtn");
-      button.disabled = true;
-      try {
-        const provider = $("llmProvider").value;
-        const result = extractJson(await requestLlm(provider, $("llmModel").value.trim(), apiKey, autoOrderPrompt(missingActors), $("llmReasoning").value));
-        missingActors = applyAiOrders(result, missingActors);
-        aiUsed = missingActors.length < initialMissing;
-      } catch (error) {
-        toast(`AI 補齊失敗，改用本機合成規則：${error.message}`);
-      } finally { button.disabled = false; }
-    }
-    if (missingActors.length) fallbackAutoFill(missingActors);
+    fallbackAutoFill(missingActors);
     saveState(false);
     renderSimulation();
-    toast(aiUsed ? "已由 AI 依當前狀態補齊命令與理由。" : "已以本機合成規則補齊尚未提交的角色命令。");
+    toast("已以本機合成規則補齊尚未提交的角色命令。");
+  }
+
+  async function autoFillOrdersWithLlm() {
+    if (!state.scenario) return;
+    state.orders[state.currentTurn] ||= {};
+    const missingActors = missingOrderActors();
+    if (!missingActors.length) return toast("所有角色本回合都已有命令。");
+    const apiKey = $("llmApiKey").value.trim();
+    if (!apiKey) return toast("請先輸入 API Key。");
+    const button = $("llmAutoOrdersBtn");
+    button.disabled = true;
+    try {
+      const provider = $("llmProvider").value;
+      const result = extractJson(await requestLlm(provider, $("llmModel").value.trim(), apiKey, autoOrderPrompt(missingActors), $("llmReasoning").value));
+      const remainingActors = applyAiOrders(result, missingActors);
+      const completedCount = missingActors.length - remainingActors.length;
+      if (!completedCount) throw new Error("LLM 回傳內容未包含有效的角色命令");
+      saveState(false);
+      renderSimulation();
+      toast(remainingActors.length
+        ? `LLM 已補齊 ${completedCount} 個角色，另有 ${remainingActors.length} 個角色未產生有效命令。`
+        : "已由 LLM 依當前狀態補齊命令與理由。");
+    } catch (error) {
+      toast(`LLM 補齊失敗：${error.message}`);
+    } finally {
+      syncLlmActionButtons();
+    }
   }
 
   function actionEffect(actor, actionName) {
@@ -4267,11 +4284,24 @@
       if (typeof saved.instruction === "string") $("llmInstruction").value = saved.instruction;
       $("llmPanel").open = true;
     } catch { /* Ignore malformed or unavailable browser storage. */ }
+    syncLlmActionButtons();
+  }
+
+  function syncLlmActionButtons() {
+    const hasApiKey = Boolean($("llmApiKey").value.trim());
+    const scenarioButton = $("generateWithLlmBtn");
+    const orderButton = $("llmAutoOrdersBtn");
+    const ordersFinished = Boolean(state.scenario && state.currentTurn > state.scenario.turns);
+    scenarioButton.disabled = !hasApiKey;
+    scenarioButton.title = hasApiKey ? "" : "請先輸入 API Key";
+    orderButton.disabled = !hasApiKey || ordersFinished;
+    orderButton.title = !hasApiKey ? "請先輸入 API Key" : ordersFinished ? "此想定已完成" : "";
   }
 
   function clearLlmKey() {
     $("llmApiKey").value = "";
     saveLlmSettings();
+    syncLlmActionButtons();
     $("llmStatus").textContent = "已清除儲存在此瀏覽器的 API Key。";
     toast("已清除 API Key。");
   }
@@ -4367,7 +4397,7 @@
     } catch (error) {
       status.textContent = "生成失敗。";
       toast(`LLM 生成失敗：${error.message}`);
-    } finally { button.disabled = false; }
+    } finally { syncLlmActionButtons(); }
   }
 
   function bindEvents() {
@@ -4457,7 +4487,10 @@
     $("llmProvider").addEventListener("change", () => { updateLlmProvider(false); saveLlmSettings(); });
     $("llmModel").addEventListener("input", saveLlmSettings);
     $("llmReasoning").addEventListener("change", saveLlmSettings);
-    $("llmApiKey").addEventListener("input", saveLlmSettings);
+    $("llmApiKey").addEventListener("input", () => {
+      saveLlmSettings();
+      syncLlmActionButtons();
+    });
     $("llmEndpoint").addEventListener("input", saveLlmSettings);
     $("llmInstruction").addEventListener("input", saveLlmSettings);
     $("llmPanel").addEventListener("toggle", saveLlmSettings);
@@ -4490,6 +4523,7 @@
       if (event.target.id === "whiteEventForm") publishWhiteEvent(event);
     });
     $("autoOrdersBtn").addEventListener("click", autoFillOrders);
+    $("llmAutoOrdersBtn").addEventListener("click", autoFillOrdersWithLlm);
     $("resolveTurnBtn").addEventListener("click", resolveTurn);
     $("operationToggleVisibilityBtn").addEventListener("click", toggleOperationTheaterVisibility);
     $("operationFullscreenBtn").disabled = !document.fullscreenEnabled;

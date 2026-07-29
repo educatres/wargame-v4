@@ -262,6 +262,7 @@
           </label>
           <div class="full actions">
             <button type="submit" class="primary">生成想定</button>
+            <button type="button" id="generateWithLlmBtn" class="primary" disabled>以 LLM 生成想定</button>
             <button type="button" id="loadDemoBtn" class="secondary">載入預設示範</button>
           </div>
         </form>
@@ -296,7 +297,6 @@
                 <label id="llmEndpointWrap">API Endpoint<input id="llmEndpoint" type="url" value="https://generativelanguage.googleapis.com/v1beta" placeholder="選擇供應商後自動帶入" autocomplete="off"></label>
                 <label class="full">額外敘事指示（選填）<textarea id="llmInstruction" rows="2" placeholder="例如：著重民事韌性與後勤取捨；不要描述真實地點或單位。"></textarea></label>
                 <div class="full actions">
-                  <button type="button" id="generateWithLlmBtn" class="primary">以 LLM 生成想定</button>
                   <button type="button" id="clearLlmKeyBtn" class="secondary">清除已儲存 API Key</button>
                   <span id="llmStatus" class="muted" aria-live="polite"></span>
                 </div>
@@ -438,7 +438,8 @@
             </label>
             <div class="full actions">
               <button type="submit" class="primary">提交／更新命令</button>
-              <button type="button" id="autoOrdersBtn" class="secondary">自動補齊其他角色（有 Key 時 AI）</button>
+              <button type="button" id="autoOrdersBtn" class="secondary">自動補齊</button>
+              <button type="button" id="llmAutoOrdersBtn" class="secondary" disabled>LLM自動補齊</button>
             </div>
             <p id="orderSequenceHint" class="full order-sequence-hint muted"></p>
             <div id="currentOrders" class="full order-list"></div>
