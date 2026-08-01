@@ -438,6 +438,7 @@
   const actorLabel = (id) => ({ BLUE: "藍方", RED: "紅方", AMBER: "黃方（支援）", WHITE: "白方" }[id] || id);
   const zoneName = (id) => DATA.zones.find(z => z.zone_id === id)?.zone_name || id;
   const ORDER_BUDGET = 35;
+  const SKIP_SPATIAL_PLACEMENT = "__NO_PLACEMENT__";
   const MIN_SUPPORT_ACTIONS = 2;
   const MAX_SUPPORT_ACTIONS = 4;
   const NATURAL_ACTION_ALIASES = {
@@ -2099,6 +2100,7 @@
   }
 
   function operationActionOrigin(action, scene, rows = null) {
+    if (action?.assetAllocationSkipped) return null;
     const inventory = rows || scene?.snapshot?.spatialInventoryBefore || state.scenario?.detailedInventory || [];
     const allocation = action.assetAllocations?.find(item => item.placementId) || action.assetAllocations?.[0];
     const row = inventory.find(item => item.id === allocation?.inventoryId);
@@ -3631,15 +3633,19 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
       const row = state.scenario.detailedInventory.find(candidate => candidate.id === allocation?.inventoryId);
       const eligible = row && item.target ? SPATIAL.eligiblePlacements(row, item.target, allocation.quantity) : [];
       const selectedPlacementId = allocation?.placementId || "";
-      const selectionValid = !item._spatialRequired || Boolean(item.target && eligible.some(candidate => candidate.placement.placementId === selectedPlacementId));
+      const allocationSkipped = Boolean(item.assetAllocationSkipped);
+      const selectionValid = !item._spatialRequired || Boolean(item.target && (
+        allocationSkipped || eligible.some(candidate => candidate.placement.placementId === selectedPlacementId)
+      ));
       if (selectionValid) completed += 1;
+      const skipOption = `<option value="${SKIP_SPATIAL_PLACEMENT}"${allocationSkipped ? " selected" : ""}>不選擇（不投入品項資源）</option>`;
       const placementOptions = eligible.length
-        ? `<option value="">請選擇出發配置點</option>${eligible.map((candidate, candidateIndex) =>
+        ? `<option value=""${!allocationSkipped && !selectedPlacementId ? " selected" : ""}>請選擇出發配置點</option>${skipOption}${eligible.map((candidate, candidateIndex) =>
           `<option value="${escapeAttr(candidate.placement.placementId)}"${candidate.placement.placementId === selectedPlacementId ? " selected" : ""}>${candidateIndex === 0 ? "最近建議 · " : ""}${escapeHtml(candidate.placement.label)} · ${round1(candidate.distanceKm)} km · 可用 ${round1(candidate.committable)}</option>`
         ).join("")}`
-        : `<option value="">${item.target ? "範圍內沒有數量足夠的配置點" : "設定目標後顯示可用配置點"}</option>`;
+        : `<option value=""${allocationSkipped ? "" : " selected"} disabled>${item.target ? "範圍內沒有數量足夠的配置點" : "設定目標後顯示可用配置點"}</option>${skipOption}`;
       return `<div class="spatial-target-row${index === pendingSpatialItemIndex ? " active" : ""}" data-spatial-item-index="${index}">
-        <div><strong>${index ? `支援 ${index}` : "主行動"}：${escapeHtml(item.action)}</strong><small>${item._spatialRequired ? (item.target ? `${Number(item.target.lat).toFixed(6)}, ${Number(item.target.lng).toFixed(6)} · ${escapeHtml(item.target.label)}` : "尚未設定目標；可點擊地圖或使用自動選擇") : "非空間行動，沿用抽象區域"}</small></div>
+        <div><strong>${index ? `支援 ${index}` : "主行動"}：${escapeHtml(item.action)}</strong><small>${item._spatialRequired ? (item.target ? `${Number(item.target.lat).toFixed(6)}, ${Number(item.target.lng).toFixed(6)} · ${escapeHtml(item.target.label)}${allocationSkipped ? " · 已選擇不投入品項資源" : ""}` : "尚未設定目標；可點擊地圖或使用自動選擇") : "非空間行動，沿用抽象區域"}</small></div>
         <select class="spatial-placement-select" ${item._spatialRequired ? "" : "disabled"} aria-label="出發配置點">
           ${placementOptions}
         </select>
@@ -3673,10 +3679,20 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
     const allocation = item.assetAllocations?.[0];
     const row = state.scenario.detailedInventory.find(candidate => candidate.id === allocation?.inventoryId);
     const eligible = row && allocation ? SPATIAL.eligiblePlacements(row, item.target, allocation.quantity) : [];
-    if (!allocation || !eligible.length) {
+    const placementsInRange = row && allocation ? row.placements.filter(placement =>
+      SPATIAL.haversineKm(placement, item.target) <= Number(row.gameRangeKm) + 0.000001
+    ) : [];
+    if (!allocation || !row || !row.placements.length || (placementsInRange.length && !eligible.length)) {
       if (allocation) allocation.placementId = "";
-      return { ok: false, reason: `「${item.action}」沒有可達且數量足夠的配置點` };
+      item.assetAllocationSkipped = true;
+      return { ok: true, resourceSkipped: true, reason: `「${item.action}」資源不足，已設為不選擇配置點` };
     }
+    if (!eligible.length) {
+      allocation.placementId = "";
+      item.assetAllocationSkipped = false;
+      return { ok: false, reason: `「${item.action}」沒有可達的配置點，請改選目標或人工選擇不投入品項資源` };
+    }
+    item.assetAllocationSkipped = false;
     allocation.placementId = eligible[0].placement.placementId;
     return { ok: true, placement: eligible[0].placement, distanceKm: eligible[0].distanceKm };
   }
@@ -3686,9 +3702,11 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
     const items = [pendingSpatialOrder.parsed.primary, ...pendingSpatialOrder.parsed.supports];
     const results = items.map((item, index) => autoSelectSpatialItem(index, true));
     const failures = results.filter(result => !result.ok);
+    const resourceSkipped = results.filter(result => result.resourceSkipped);
     pendingSpatialItemIndex = Math.max(0, results.findIndex(result => !result.ok));
     renderSpatialOrderTargetPanel();
     if (failures.length) toast(`已完成 ${results.length - failures.length}/${results.length} 項；${failures[0].reason}。`);
+    else if (resourceSkipped.length) toast(`已完成全部目標；其中 ${resourceSkipped.length} 項資源不足，已設為不選擇配置點。`);
     else toast("已自動選擇全部行動目標與最近可用配置點；請確認後提交。");
   }
 
@@ -3720,7 +3738,7 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
     const allocation = item.assetAllocations?.[0];
     const row = state.scenario.detailedInventory.find(candidate => candidate.id === allocation?.inventoryId);
     const eligible = row ? SPATIAL.eligiblePlacements(row, item.target, allocation.quantity) : [];
-    if (allocation) allocation.placementId = eligible[0]?.placement.placementId || "";
+    if (allocation && !item.assetAllocationSkipped) allocation.placementId = eligible[0]?.placement.placementId || "";
     const next = items.findIndex((candidate, candidateIndex) => candidateIndex > index && candidate._spatialRequired && !candidate.target);
     pendingSpatialItemIndex = next >= 0 ? next : index;
     renderSpatialOrderTargetPanel();
@@ -3734,6 +3752,11 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
       if (!item._spatialRequired) continue;
       const allocation = item.assetAllocations?.[0];
       if (!item.target) return toast(`請先設定「${item.action}」的目標位置。`);
+      if (item.assetAllocationSkipped) {
+        if (allocation) allocation.placementId = "";
+        delete item._spatialRequired;
+        continue;
+      }
       if (!allocation?.placementId) return toast(`「${item.action}」在作用半徑內沒有數量足夠的配置點。`);
       const row = state.scenario.detailedInventory.find(candidate => candidate.id === allocation.inventoryId);
       const eligible = row ? SPATIAL.eligiblePlacements(row, item.target, allocation.quantity) : [];
@@ -3976,7 +3999,8 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
       priority: Number(item?.priority) || 0,
       condition: item?.condition,
       risk: item?.risk,
-      assetAllocations: (item?.assetAllocations || []).map(allocation => ({
+      assetAllocationSkipped: Boolean(item?.assetAllocationSkipped),
+      assetAllocations: (item?.assetAllocationSkipped ? [] : (item?.assetAllocations || [])).map(allocation => ({
         inventoryId: allocation.inventoryId,
         alias: allocation.alias,
         quantity: allocation.quantity,
@@ -3990,8 +4014,12 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
   }
 
   function orderAllocationText(order) {
-    const allocations = orderItems(order).flatMap(item => Array.isArray(item.assetAllocations) ? item.assetAllocations : []);
-    return allocations.map(item => `${item.alias} ${item.quantity}${item.unit || "單位"}`).join("、");
+    return orderItems(order).flatMap(item => item.assetAllocationSkipped
+      ? [`${item.action}：不投入品項資源`]
+      : (Array.isArray(item.assetAllocations) ? item.assetAllocations.map(allocation =>
+        `${allocation.alias} ${allocation.quantity}${allocation.unit || "單位"}`
+      ) : [])
+    ).join("、");
   }
 
   function supportActionMarkup(actor, item, index, disabled) {
@@ -4328,9 +4356,13 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
       item.assetAllocations = prepareSpatialAllocations(order.actor, item);
       const allocation = item.assetAllocations[0];
       const row = state.scenario.detailedInventory.find(candidate => candidate.id === allocation?.inventoryId);
-      if (!row || !allocation) return;
       const zoneCenter = SPATIAL.ZONE_CENTERS[item.zone] || SPATIAL.ZONE_CENTERS["Z-CW"];
       let target = { lat: zoneCenter[0], lng: zoneCenter[1], zoneId: item.zone, label: `${zoneName(item.zone)}合成目標` };
+      if (!row || !allocation) {
+        item.target = target;
+        item.assetAllocationSkipped = true;
+        return;
+      }
       let eligible = SPATIAL.eligiblePlacements(row, target, allocation.quantity);
       if (!eligible.length && row.placements?.length) {
         const placement = row.placements[0];
@@ -4340,6 +4372,7 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
       item.target = target;
       item.zone = target.zoneId;
       allocation.placementId = eligible[0]?.placement.placementId || "";
+      item.assetAllocationSkipped = !eligible.length;
     });
   }
 
@@ -4386,6 +4419,7 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
 
   function weaponPowerForOrderItem(actor, item) {
     if (isStandbyAction(item?.action)) return 0;
+    if (item?.assetAllocationSkipped) return 0;
     if (!state.scenario?.inventoryEnabled) return null;
     const rows = state.scenario.detailedInventory.filter(row => row.actor === actor).map(sanitizeInventoryRow);
     const allocations = Array.isArray(item.assetAllocations) ? item.assetAllocations : [];
@@ -4612,6 +4646,7 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
     Object.entries(orders).forEach(([actor, order]) => {
       orderItems(order).forEach((item, index) => {
         if (isStandbyAction(item.action)) return;
+        if (item.assetAllocationSkipped) return;
         const allocations = Array.isArray(item.assetAllocations) ? item.assetAllocations : [];
         if (allocations.length) {
           allocations.forEach(allocation => {
@@ -5025,6 +5060,10 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
       orderItems(order).forEach(item => {
         const category = inventoryCategoryForAction(item.action);
         if (SPATIAL.OPTIONAL_LOCATION_CATEGORIES.has(category)) return;
+        if (item.assetAllocationSkipped) {
+          if (!item.target) spatialOrderErrors.push(`${actorLabel(order.actor)}「${item.action}」尚未設定目標`);
+          return;
+        }
         const allocation = item.assetAllocations?.[0];
         const row = state.scenario.detailedInventory.find(candidate => candidate.id === allocation?.inventoryId);
         if (!item.target) spatialOrderErrors.push(`${actorLabel(order.actor)}「${item.action}」尚未設定目標`);
@@ -7232,7 +7271,9 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
         const result = autoSelectSpatialItem(pendingSpatialItemIndex, true);
         renderSpatialOrderTargetPanel();
         toast(result.ok
-          ? result.skipped ? "此行動不需要空間配置。" : `已選擇最近可用配置點：${result.placement.label}。`
+          ? result.resourceSkipped ? result.reason
+            : result.skipped ? "此行動不需要空間配置。"
+              : `已選擇最近可用配置點：${result.placement.label}。`
           : result.reason);
         return;
       }
@@ -7243,7 +7284,12 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
       if (!select || !pendingSpatialOrder) return;
       const index = Number(select.closest("[data-spatial-item-index]").dataset.spatialItemIndex) || 0;
       const item = [pendingSpatialOrder.parsed.primary, ...pendingSpatialOrder.parsed.supports][index];
-      if (item?.assetAllocations?.[0]) item.assetAllocations[0].placementId = select.value;
+      if (!item) return;
+      item.assetAllocationSkipped = select.value === SKIP_SPATIAL_PLACEMENT;
+      if (item.assetAllocations?.[0]) {
+        item.assetAllocations[0].placementId = item.assetAllocationSkipped ? "" : select.value;
+      }
+      renderSpatialOrderTargetPanel();
     });
     $("autoSelectSpatialOrderBtn").addEventListener("click", autoSelectAllSpatialItems);
     $("confirmSpatialOrderBtn").addEventListener("click", confirmPendingSpatialOrder);

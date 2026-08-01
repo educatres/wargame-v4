@@ -35,6 +35,21 @@ test("spatial confirmation supports automatic target and nearest placement selec
   assert.match(html, /id="autoSelectSpatialOrderBtn"/);
 });
 
+test("spatial confirmation allows an explicit no-placement choice when resources are insufficient", () => {
+  assert.match(app, /SKIP_SPATIAL_PLACEMENT = "__NO_PLACEMENT__"/);
+  assert.match(app, /不選擇（不投入品項資源）/);
+  assert.match(app, /item\.assetAllocationSkipped = select\.value === SKIP_SPATIAL_PLACEMENT/);
+  assert.match(app, /item\.target && \(\s*allocationSkipped \|\|/);
+  assert.match(html, /資源不足時可選擇「不選擇」/);
+});
+
+test("a skipped placement has no item power, inventory consumption, or false route origin", () => {
+  assert.match(app, /function weaponPowerForOrderItem[\s\S]*?if \(item\?\.assetAllocationSkipped\) return 0;/);
+  assert.match(app, /if \(item\.assetAllocationSkipped\) return;\s*const allocations = Array\.isArray\(item\.assetAllocations\)/);
+  assert.match(app, /function operationActionOrigin[\s\S]*?if \(action\?\.assetAllocationSkipped\) return null;/);
+  assert.match(app, /assetAllocations: \(item\?\.assetAllocationSkipped \? \[\]/);
+});
+
 test("all Leaflet maps receive adaptive grid and zone reference layers", () => {
   assert.match(app, /attachMapReferenceLayers\(map/);
   assert.match(app, /SPATIAL\.gridLinesForBounds/);
