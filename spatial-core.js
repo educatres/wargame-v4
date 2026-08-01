@@ -24,6 +24,10 @@
     position: 80
   });
   const OPTIONAL_LOCATION_CATEGORIES = new Set(["communications", "energy"]);
+  const INTEGER_QUANTITY_CATEGORIES = new Set([
+    "aviation", "airDefense", "longRange", "maritime", "subsurface", "isr",
+    "communications", "logistics", "airport", "radarStation", "base", "powerPlant", "position"
+  ]);
   const ZONE_CENTERS = Object.freeze({
     "Z-NW": [25.15, 119.65],
     "Z-CW": [23.75, 119.55],
@@ -43,6 +47,37 @@
     const power = 10 ** digits;
     return Math.round(finite(value) * power) / power;
   };
+
+  function normalizeQuantity(value, category, mode = "round") {
+    const numeric = Math.max(0, finite(value));
+    if (!INTEGER_QUANTITY_CATEGORIES.has(String(category || ""))) return round(numeric, 2);
+    if (mode === "floor") return Math.floor(numeric + 1e-9);
+    if (mode === "ceil") return Math.ceil(numeric - 1e-9);
+    return Math.round(numeric);
+  }
+
+  function allocateIntegerTotal(weights, requestedTotal, capacities = []) {
+    const safeWeights = weights.map(value => Math.max(0, finite(value)));
+    const safeCapacities = safeWeights.map((_, index) => Math.max(0, Math.floor(finite(capacities[index], Infinity))));
+    const totalCapacity = safeCapacities.reduce((sum, value) => sum + value, 0);
+    const target = Math.min(Math.max(0, Math.round(finite(requestedTotal))), totalCapacity);
+    const weightTotal = safeWeights.reduce((sum, value) => sum + value, 0);
+    const shares = safeWeights.map((weight, index) => {
+      const exact = target * (weightTotal > 0 ? weight / weightTotal : 1 / Math.max(1, safeWeights.length));
+      return { index, exact, value: Math.min(safeCapacities[index], Math.floor(exact)) };
+    });
+    let remaining = target - shares.reduce((sum, share) => sum + share.value, 0);
+    const ranked = shares.slice().sort((a, b) =>
+      (b.exact - Math.floor(b.exact)) - (a.exact - Math.floor(a.exact)) || a.index - b.index
+    );
+    while (remaining > 0) {
+      const candidate = ranked.find(share => share.value < safeCapacities[share.index]);
+      if (!candidate) break;
+      candidate.value += 1;
+      remaining -= 1;
+    }
+    return shares.sort((a, b) => a.index - b.index).map(share => share.value);
+  }
 
   function chooseGridStep(bounds, maxLines = 10) {
     const south = Math.max(-90, Math.min(90, finite(bounds?.south, -90)));
@@ -173,8 +208,8 @@
     return selected;
   }
 
-  function sanitizePlacement(raw, index, rowId) {
-    const nominal = Math.max(0, finite(raw?.nominalQuantity ?? raw?.quantity, 0));
+  function sanitizePlacement(raw, index, rowId, category) {
+    const nominal = normalizeQuantity(raw?.nominalQuantity ?? raw?.quantity, category);
     return {
       placementId: String(raw?.placementId || `${rowId || "INV"}-P${index + 1}`).slice(0, 100),
       label: String(raw?.label || `配置點 ${index + 1}`).replace(/[\r\n]+/g, " ").trim().slice(0, 100),
@@ -182,7 +217,7 @@
       lng: round(Math.max(-180, Math.min(180, finite(raw?.lng, 120.95)))),
       zoneId: String(raw?.zoneId || nearestZoneId(raw || {})).slice(0, 20),
       nominalQuantity: nominal,
-      currentQuantity: Math.max(0, Math.min(nominal, finite(raw?.currentQuantity, nominal))),
+      currentQuantity: Math.min(nominal, normalizeQuantity(raw?.currentQuantity ?? nominal, category)),
       presetId: String(raw?.presetId || "").slice(0, 100),
       sourceUrl: /^https:\/\//.test(String(raw?.sourceUrl || "")) ? String(raw.sourceUrl).slice(0, 500) : "",
       sourceCheckedAt: /^\d{4}-\d{2}-\d{2}$/.test(String(raw?.sourceCheckedAt || "")) ? String(raw.sourceCheckedAt) : "",
@@ -198,10 +233,26 @@
     const locationRequired = raw?.locationRequired === undefined
       ? !OPTIONAL_LOCATION_CATEGORIES.has(category)
       : Boolean(raw.locationRequired);
-    const placements = Array.isArray(raw?.placements)
-      ? raw.placements.map((placement, placementIndex) => sanitizePlacement(placement, placementIndex, rowId))
+    let placements = Array.isArray(raw?.placements)
+      ? raw.placements.map((placement, placementIndex) => sanitizePlacement(placement, placementIndex, rowId, category))
       : [];
+    if (INTEGER_QUANTITY_CATEGORIES.has(category) && placements.length) {
+      const rawNominals = raw.placements.map(placement => Math.max(0, finite(placement?.nominalQuantity ?? placement?.quantity)));
+      const targetNominal = normalizeQuantity(rawNominals.reduce((sum, value) => sum + value, 0), category);
+      const nominalAllocations = allocateIntegerTotal(rawNominals, targetNominal, rawNominals.map(() => Infinity));
+      const rawCurrents = raw.placements.map((placement, placementIndex) =>
+        Math.max(0, finite(placement?.currentQuantity, rawNominals[placementIndex]))
+      );
+      const targetCurrent = Math.min(targetNominal, normalizeQuantity(rawCurrents.reduce((sum, value) => sum + value, 0), category));
+      const currentAllocations = allocateIntegerTotal(rawCurrents, targetCurrent, nominalAllocations);
+      placements = placements.map((placement, index) => ({
+        ...placement,
+        nominalQuantity: nominalAllocations[index],
+        currentQuantity: currentAllocations[index]
+      }));
+    }
     return {
+      category,
       gameRangeKm: Math.max(1, finite(raw?.gameRangeKm, RANGE_DEFAULTS_KM[category] || 100)),
       locationRequired,
       placements
@@ -237,11 +288,15 @@
     const reserveRate = Math.max(0, Math.min(100, finite(row?.reserve, 0))) / 100;
     return spatial.placements.map(placement => {
       const distanceKm = haversineKm(placement, target);
-      const committable = Math.max(0, finite(placement.currentQuantity) - finite(placement.nominalQuantity) * reserveRate);
+      const committable = normalizeQuantity(
+        Math.max(0, finite(placement.currentQuantity) - finite(placement.nominalQuantity) * reserveRate),
+        spatial.category,
+        "floor"
+      );
       return { placement, distanceKm, committable };
     }).filter(item =>
       item.distanceKm <= spatial.gameRangeKm + 0.000001
-      && item.committable + 0.000001 >= Math.max(0, finite(requestedQuantity))
+      && item.committable + 0.000001 >= normalizeQuantity(requestedQuantity, spatial.category)
     ).sort((a, b) => a.distanceKm - b.distanceKm);
   }
 
@@ -250,29 +305,59 @@
     const placement = spatial.placements.find(item => item.placementId === placementId);
     if (!placement) return { used: 0, spatial };
     const reserve = protectReserve ? finite(placement.nominalQuantity) * finite(row?.reserve) / 100 : 0;
-    const capacity = Math.max(0, finite(placement.currentQuantity) - reserve);
-    const used = Math.min(capacity, Math.max(0, finite(requestedQuantity)));
-    placement.currentQuantity = round(placement.currentQuantity - used, 2);
-    return { used: round(used, 2), spatial };
+    const capacity = normalizeQuantity(
+      Math.max(0, finite(placement.currentQuantity) - reserve),
+      spatial.category,
+      "floor"
+    );
+    const used = Math.min(capacity, normalizeQuantity(requestedQuantity, spatial.category));
+    placement.currentQuantity = normalizeQuantity(placement.currentQuantity - used, spatial.category);
+    return { used: normalizeQuantity(used, spatial.category), spatial };
   }
 
   function distributeRecovery(row, amount) {
     const spatial = normalizeSpatialRow(row);
-    let remaining = Math.max(0, finite(amount));
+    let remaining = normalizeQuantity(amount, spatial.category);
     const deficits = spatial.placements.map(placement => ({
       placement,
-      deficit: Math.max(0, finite(placement.nominalQuantity) - finite(placement.currentQuantity))
+      deficit: normalizeQuantity(
+        Math.max(0, finite(placement.nominalQuantity) - finite(placement.currentQuantity)),
+        spatial.category
+      )
     }));
     const totalDeficit = deficits.reduce((sum, item) => sum + item.deficit, 0);
-    deficits.forEach((item, index) => {
-      if (!remaining || !item.deficit) return;
-      const addition = index === deficits.length - 1
-        ? Math.min(item.deficit, remaining)
-        : Math.min(item.deficit, amount * item.deficit / Math.max(1, totalDeficit));
-      item.placement.currentQuantity = round(item.placement.currentQuantity + addition, 2);
-      remaining -= addition;
-    });
-    return { applied: round(Math.max(0, finite(amount)) - remaining, 2), spatial };
+    const target = Math.min(remaining, totalDeficit);
+    if (INTEGER_QUANTITY_CATEGORIES.has(spatial.category) && target > 0) {
+      const shares = deficits.map((item, index) => {
+        const exact = target * item.deficit / Math.max(1, totalDeficit);
+        const addition = Math.min(item.deficit, Math.floor(exact));
+        return { item, index, exact, addition };
+      });
+      let unassigned = target - shares.reduce((sum, share) => sum + share.addition, 0);
+      shares
+        .slice()
+        .sort((a, b) => (b.exact - b.addition) - (a.exact - a.addition) || a.index - b.index)
+        .forEach(share => {
+          if (unassigned > 0 && share.addition < share.item.deficit) {
+            share.addition += 1;
+            unassigned -= 1;
+          }
+        });
+      shares.forEach(share => {
+        share.item.placement.currentQuantity += share.addition;
+      });
+      remaining -= target;
+    } else {
+      deficits.forEach((item, index) => {
+        if (!remaining || !item.deficit) return;
+        const addition = index === deficits.length - 1
+          ? Math.min(item.deficit, remaining)
+          : Math.min(item.deficit, amount * item.deficit / Math.max(1, totalDeficit));
+        item.placement.currentQuantity = round(item.placement.currentQuantity + addition, 2);
+        remaining -= addition;
+      });
+    }
+    return { applied: normalizeQuantity(normalizeQuantity(amount, spatial.category) - remaining, spatial.category), spatial };
   }
 
   function clusterOpposedActions(actions, radiusKm = CONFLICT_RADIUS_KM) {
@@ -299,12 +384,14 @@
     CONFLICT_RADIUS_KM,
     RANGE_DEFAULTS_KM,
     OPTIONAL_LOCATION_CATEGORIES,
+    INTEGER_QUANTITY_CATEGORIES,
     ZONE_CENTERS,
     GRID_STEPS_DEGREES,
     chooseGridStep,
     gridCoordinateDecimals,
     formatGridCoordinate,
     gridLinesForBounds,
+    normalizeQuantity,
     normalizeCatalogText,
     canonicalizeCatalogNames,
     haversineKm,

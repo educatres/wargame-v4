@@ -74,6 +74,32 @@ test("placement consumption respects reserve", () => {
   assert.equal(result.spatial.placements[0].currentQuantity, 2);
 });
 
+test("discrete resource quantities remain integers through normalization and consumption", () => {
+  const row = {
+    id: "INTEGER", category: "aviation", reserve: 15,
+    placements: [{ placementId: "P1", lat: 23, lng: 121, nominalQuantity: 9.6, currentQuantity: 9.4 }]
+  };
+  const normalized = spatial.normalizeSpatialRow(row);
+  assert.equal(normalized.placements[0].nominalQuantity, 10);
+  assert.equal(normalized.placements[0].currentQuantity, 9);
+  const result = spatial.consumePlacement(row, "P1", 3.7, true);
+  assert.equal(result.used, 4);
+  assert.equal(result.spatial.placements[0].currentQuantity, 5);
+});
+
+test("legacy fractional placements migrate to integer counts without changing the row total", () => {
+  const normalized = spatial.normalizeSpatialRow({
+    id: "MIGRATE", category: "maritime", nominal: 10,
+    placements: [
+      { placementId: "P1", nominalQuantity: 4.5, currentQuantity: 3.4 },
+      { placementId: "P2", nominalQuantity: 5.5, currentQuantity: 4.4 }
+    ]
+  });
+  assert.deepEqual(spatial.placementTotals(normalized), { nominal: 10, current: 8 });
+  assert.deepEqual(normalized.placements.map(item => item.nominalQuantity), [5, 5]);
+  assert.ok(normalized.placements.every(item => Number.isInteger(item.currentQuantity)));
+});
+
 test("recovery is distributed without exceeding placement nominal", () => {
   const row = {
     id: "R4", category: "base",
@@ -85,6 +111,19 @@ test("recovery is distributed without exceeding placement nominal", () => {
   const result = spatial.distributeRecovery(row, 3);
   assert.equal(result.applied, 3);
   assert.equal(spatial.placementTotals(result.spatial).current, 9);
+});
+
+test("discrete recovery uses whole units with deterministic proportional distribution", () => {
+  const row = {
+    id: "R5", category: "logistics",
+    placements: [
+      { placementId: "P1", lat: 23, lng: 121, nominalQuantity: 7, currentQuantity: 2 },
+      { placementId: "P2", lat: 24, lng: 121, nominalQuantity: 3, currentQuantity: 1 }
+    ]
+  };
+  const result = spatial.distributeRecovery(row, 3.4);
+  assert.equal(result.applied, 3);
+  assert.deepEqual(result.spatial.placements.map(item => item.currentQuantity), [4, 2]);
 });
 
 test("only opposed targets within 50 km form a spatial conflict", () => {

@@ -303,6 +303,26 @@
     ["AMBER", "聯合防護陣地", "position", 14, 88, 25, 2, 2, 3, 3, 91, "防護與分散部署物件；預設遊戲參數"]
   ];
 
+  const SHOWCASE_INVENTORY_TEMPLATE = [
+    ["BLUE", "F-16V Viper「毒蛇」", "aviation", 30, 86, 25, 5, 2, 6, 4, 90, "展示用戰機；數量、效能與作用半徑均為合成遊戲參數"],
+    ["BLUE", "F-CK-1 Ching-kuo「經國號」", "aviation", 24, 82, 22, 4, 2, 5, 3, 87, "展示用戰機；數量、效能與作用半徑均為合成遊戲參數"],
+    ["BLUE", "Mirage 2000-5「幻象2000-5」", "aviation", 18, 78, 28, 4, 1, 3, 5, 86, "展示用戰機；數量、效能與作用半徑均為合成遊戲參數"],
+    ["BLUE", "天弓三型防空飛彈", "airDefense", 40, 90, 35, 6, 1, 8, 5, 92, "展示用導彈；數量、效能與作用半徑均為合成遊戲參數"],
+    ["BLUE", "雄風三型超音速反艦飛彈", "maritime", 36, 88, 32, 6, 1, 7, 5, 91, "展示用導彈；數量、效能與作用半徑均為合成遊戲參數"],
+
+    ["RED", "殲-20戰鬥機／J-20", "aviation", 26, 85, 28, 5, 2, 5, 5, 91, "展示用戰機；數量、效能與作用半徑均為合成遊戲參數"],
+    ["RED", "殲-16戰鬥機／J-16", "aviation", 36, 83, 22, 6, 2, 7, 4, 89, "展示用戰機；數量、效能與作用半徑均為合成遊戲參數"],
+    ["RED", "殲-10C戰鬥機／J-10C", "aviation", 40, 81, 20, 6, 3, 8, 3, 88, "展示用戰機；數量、效能與作用半徑均為合成遊戲參數"],
+    ["RED", "東風-17常規導彈／DF-17", "longRange", 42, 86, 32, 7, 1, 8, 5, 90, "展示用導彈；數量、效能與作用半徑均為合成遊戲參數"],
+    ["RED", "東風-26型導彈／DF-26", "longRange", 32, 84, 38, 7, 1, 6, 7, 89, "展示用導彈；數量、效能與作用半徑均為合成遊戲參數"],
+
+    ["AMBER", "Starlink 商用衛星通訊支援", "communications", 24, 92, 20, 3, 2, 5, 3, 93, "展示用星鏈通訊節點；合成遊戲參數，不代表即時服務狀態"],
+    ["AMBER", "MQ-9A Reaper「死神」無人機", "isr", 12, 84, 30, 2, 1, 2, 4, 91, "展示用無人機情監偵資源；合成遊戲參數"],
+    ["AMBER", "RQ-4B Global Hawk「全球鷹」無人偵察機", "isr", 8, 86, 35, 2, 1, 2, 5, 93, "展示用無人機情監偵資源；合成遊戲參數"],
+    ["AMBER", "C-17 Globemaster III「全球霸王III」人道空運機", "logistics", 10, 84, 30, 2, 2, 3, 4, 92, "展示用人道空運與物資投送資源；合成遊戲參數"],
+    ["AMBER", "UH-60M Black Hawk「黑鷹」人道救援直升機", "logistics", 16, 86, 25, 3, 2, 4, 3, 91, "展示用醫療疏運與人道救援資源；合成遊戲參數"]
+  ];
+
   const STORM_STAGES = {
     systems: {
       title: "系統：建立可追溯的資產與支援網路",
@@ -435,6 +455,7 @@
   const $ = (id) => document.getElementById(id);
   const clamp = (v, min = 0, max = 100) => Math.max(min, Math.min(max, v));
   const round1 = (v) => Math.round(v * 10) / 10;
+  const inventoryQuantity = (category, value, mode = "round") => SPATIAL.normalizeQuantity(value, category, mode);
   const actorLabel = (id) => ({ BLUE: "藍方", RED: "紅方", AMBER: "黃方（支援）", WHITE: "白方" }[id] || id);
   const zoneName = (id) => DATA.zones.find(z => z.zone_id === id)?.zone_name || id;
   const ORDER_BUDGET = 35;
@@ -837,10 +858,10 @@
     }];
   }
 
-  function inventoryTemplateRows() {
-    return INVENTORY_TEMPLATE.map((values, index) => {
+  function inventoryRowsFromTemplate(template, idPrefix = "INV") {
+    return template.map((values, index) => {
       const [actor, alias, category, nominal, availability, reserve, consumption, recovery, replenishment, delay, reliability, note] = values;
-      const id = `INV-${Date.now()}-${index + 1}`;
+      const id = `${idPrefix}-${Date.now()}-${index + 1}`;
       return {
         id,
         actor, alias, category, nominal, current: nominal, availability, reserve,
@@ -855,11 +876,19 @@
     });
   }
 
+  function inventoryTemplateRows() {
+    return inventoryRowsFromTemplate(INVENTORY_TEMPLATE);
+  }
+
+  function showcaseInventoryTemplateRows() {
+    return inventoryRowsFromTemplate(SHOWCASE_INVENTORY_TEMPLATE, "INV-SHOWCASE");
+  }
+
   function sanitizeInventoryRow(row, index = 0) {
     const actor = ["BLUE", "RED", "AMBER"].includes(row?.actor) ? row.actor : "BLUE";
     const category = Object.hasOwn(INVENTORY_CATEGORIES, row?.category) ? row.category : "logistics";
     const numeric = (key, fallback, max = 100000) => clamp(Number(row?.[key] ?? fallback) || 0, 0, max);
-    const nominal = numeric("nominal", 0);
+    const nominal = inventoryQuantity(category, numeric("nominal", 0));
     const id = String(row?.id || `INV-${Date.now()}-${index + 1}`).slice(0, 80);
     let spatial = SPATIAL.normalizeSpatialRow({ ...row, id, category }, index);
     if (!Array.isArray(row?.placements) && spatial.locationRequired && DEPLOYMENTS) {
@@ -882,12 +911,14 @@
       alias: String(row?.alias || `${actor}-RESOURCE-${index + 1}`).replace(/[\r\n]+/g, " ").trim().slice(0, 80),
       category,
       nominal,
-      current: spatial.placements.length ? clamp(placementCurrent, 0, 100000) : clamp(Number(row?.current ?? nominal) || 0, 0, 100000),
+      current: spatial.placements.length
+        ? inventoryQuantity(category, clamp(placementCurrent, 0, 100000))
+        : inventoryQuantity(category, clamp(Number(row?.current ?? nominal) || 0, 0, 100000)),
       availability: numeric("availability", 100, 100),
       reserve: numeric("reserve", 20, 100),
-      consumption: numeric("consumption", 1),
-      recovery: numeric("recovery", 0),
-      replenishment: numeric("replenishment", 0),
+      consumption: inventoryQuantity(category, numeric("consumption", 1)),
+      recovery: inventoryQuantity(category, numeric("recovery", 0)),
+      replenishment: inventoryQuantity(category, numeric("replenishment", 0)),
       delay: Math.round(numeric("delay", 0, 100)),
       reliability: numeric("reliability", 85, 100),
       effect: numeric("effect", INVENTORY_EFFECT_DEFAULTS[category], 100),
@@ -1196,7 +1227,7 @@
     host.innerHTML = row.placements.length ? row.placements.map(placement => `
       <div class="placement-list-row" data-placement-id="${escapeAttr(placement.placementId)}">
         <input class="placement-edit-label" maxlength="100" value="${escapeAttr(placement.label)}" aria-label="配置點名稱">
-        <input class="placement-edit-quantity" type="number" min="0.1" step="0.1" value="${round1(placement.nominalQuantity)}" aria-label="配置數量">
+        <input class="placement-edit-quantity" type="number" min="${SPATIAL.INTEGER_QUANTITY_CATEGORIES.has(row.category) ? "1" : "0.1"}" step="${SPATIAL.INTEGER_QUANTITY_CATEGORIES.has(row.category) ? "1" : "0.1"}" value="${SPATIAL.INTEGER_QUANTITY_CATEGORIES.has(row.category) ? Math.round(placement.nominalQuantity) : round1(placement.nominalQuantity)}" aria-label="配置數量">
         <input class="placement-edit-lat" type="number" min="-90" max="90" step="0.000001" value="${placement.lat}" aria-label="緯度">
         <input class="placement-edit-lng" type="number" min="-180" max="180" step="0.000001" value="${placement.lng}" aria-label="經度">
         <span class="placement-source-badge">${placement.precision === "facility-centroid" ? "公開中心點" : placement.precision === "regional-game-inference" ? "遊戲推定" : "使用者自訂"}${placement.sourceCheckedAt ? ` · ${escapeHtml(placement.sourceCheckedAt)}` : ""}${placement.sourceUrl ? ` · <a href="${escapeAttr(placement.sourceUrl)}" target="_blank" rel="noopener noreferrer">來源</a>` : ""}</span>
@@ -1255,9 +1286,11 @@
     const tr = selectedPlacementRowElement();
     if (!tr) return;
     const nominal = Number(tr.querySelector(".inventory-nominal").value) || 0;
+    const category = tr.querySelector(".inventory-category").value;
+    const minimum = SPATIAL.INTEGER_QUANTITY_CATEGORIES.has(category) ? 1 : .1;
     const assigned = (tr._placements || []).reduce((sum, placement) => sum + Number(placement.nominalQuantity || 0), 0);
-    const requested = Math.max(.1, Number($("placementQuantityInput").value) || Math.max(.1, nominal - assigned));
-    const quantity = Math.min(Math.max(.1, nominal - assigned || requested), requested);
+    const requested = Math.max(minimum, inventoryQuantity(category, Number($("placementQuantityInput").value) || Math.max(minimum, nominal - assigned)));
+    const quantity = inventoryQuantity(category, Math.min(Math.max(minimum, nominal - assigned || requested), requested));
     const placementId = `${tr.dataset.inventoryId}-P${Date.now()}`;
     tr._placements ||= [];
     tr._placements.push({
@@ -1283,11 +1316,13 @@
     const tr = selectedPlacementRowElement();
     const placement = tr?._placements?.find(item => item.placementId === placementId);
     if (!placement) return;
+    const category = tr.querySelector(".inventory-category").value;
+    const minimum = SPATIAL.INTEGER_QUANTITY_CATEGORIES.has(category) ? 1 : .1;
     Object.assign(placement, changes);
     placement.lat = clamp(Number(placement.lat), -90, 90);
     placement.lng = clamp(Number(placement.lng), -180, 180);
-    placement.nominalQuantity = Math.max(.1, Number(placement.nominalQuantity) || .1);
-    placement.currentQuantity = Math.min(placement.nominalQuantity, Number(placement.currentQuantity) || placement.nominalQuantity);
+    placement.nominalQuantity = Math.max(minimum, inventoryQuantity(category, placement.nominalQuantity));
+    placement.currentQuantity = Math.min(placement.nominalQuantity, inventoryQuantity(category, placement.currentQuantity || placement.nominalQuantity));
     placement.zoneId = SPATIAL.nearestZoneId(placement);
     if (changes.lat !== undefined || changes.lng !== undefined || changes.label !== undefined || changes.nominalQuantity !== undefined) {
       placement.isUserModified = true;
@@ -1346,11 +1381,11 @@
 
   function weaponRowMetrics(rawRow, requestedQuantity = null) {
     const row = sanitizeInventoryRow(rawRow);
-    const available = row.current * row.availability / 100;
-    const reserve = row.current * row.reserve / 100;
-    const committable = Math.max(0, available - reserve);
-    const requested = Math.max(0, Number(requestedQuantity ?? row.consumption) || 0);
-    const committed = Math.min(requested, committable);
+    const available = inventoryQuantity(row.category, row.current * row.availability / 100, "floor");
+    const reserve = inventoryQuantity(row.category, row.current * row.reserve / 100, "ceil");
+    const committable = inventoryQuantity(row.category, Math.max(0, available - reserve), "floor");
+    const requested = inventoryQuantity(row.category, requestedQuantity ?? row.consumption);
+    const committed = inventoryQuantity(row.category, Math.min(requested, committable), "floor");
     const fulfillment = requested > 0 ? committed / requested : 0;
     const quantityFactor = requested > 0
       ? clamp(Math.sqrt(committed / Math.max(1, row.consumption)), 0, 1.5)
@@ -3598,8 +3633,11 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
       .filter(candidate => candidate.actor === actor && candidate.category === category)
       .sort((a, b) => weaponRowMetrics(b).committable - weaponRowMetrics(a).committable)[0];
     if (!row) return [];
-    const quantity = Math.max(.1, Math.min(weaponRowMetrics(row).committable, row.consumption * Math.max(.35, Number(item.resource || 0) / 20)));
-    return [{ inventoryId: row.id, alias: row.alias, quantity: round1(quantity), unit: "單位" }];
+    const committable = weaponRowMetrics(row).committable;
+    if (committable <= 0) return [];
+    const minimum = SPATIAL.INTEGER_QUANTITY_CATEGORIES.has(row.category) ? 1 : .1;
+    const quantity = Math.max(minimum, Math.min(committable, row.consumption * Math.max(.35, Number(item.resource || 0) / 20)));
+    return [{ inventoryId: row.id, alias: row.alias, quantity: inventoryQuantity(row.category, quantity), unit: "單位" }];
   }
 
   function beginSpatialOrderTargeting(parsed, sourceText) {
@@ -4610,6 +4648,8 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
     const spend = (actor, category, demand, field, protectReserve) => {
       const matching = rows.filter(row => row.actor === actor && row.category === category);
       if (!matching.length || demand <= 0) return [];
+      demand = inventoryQuantity(category, demand);
+      if (demand <= 0) return [];
       const capacities = matching.map(row => protectReserve
         ? weaponRowMetrics(row).committable
         : Math.max(0, row.current));
@@ -4620,7 +4660,7 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
         const target = index === matching.length - 1
           ? remaining
           : Math.min(remaining, demand * (capacityTotal ? capacities[index] / capacityTotal : 0));
-        let used = Math.min(capacities[index], target);
+        let used = inventoryQuantity(category, Math.min(capacities[index], target), "floor");
         if (row.placements.length) {
           let placementDemand = used;
           let placementUsed = 0;
@@ -4638,7 +4678,7 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
         }
         entryById.get(row.id)[field] += used;
         remaining -= used;
-        if (used > 0) usedRows.push({ row, used: round1(used) });
+        if (used > 0) usedRows.push({ row, used: inventoryQuantity(row.category, used) });
       });
       return usedRows;
     };
@@ -4667,7 +4707,8 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
               actor, itemIndex: index, action: item.action, inventoryId: row.id,
               placementId: allocation.placementId || null,
               alias: row.alias, category: row.category,
-              requested: round1(Number(allocation.quantity) || 0), committed: round1(used),
+              requested: inventoryQuantity(row.category, allocation.quantity), committed: inventoryQuantity(row.category, used),
+              unit: allocation.unit || "單位",
               effect: row.effect, reliability: row.reliability
             });
           });
@@ -4684,7 +4725,7 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
           actionAllocations.push({
             actor, itemIndex: index, action: item.action, inventoryId: row.id,
             alias: row.alias, category: row.category,
-            requested: round1(demand), committed: round1(used),
+            requested: inventoryQuantity(row.category, demand), committed: inventoryQuantity(row.category, used),
             effect: row.effect, reliability: row.reliability
           });
         });
@@ -4707,10 +4748,10 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
     });
 
     rows.forEach(row => {
-      row.current = round1(row.current);
+      row.current = inventoryQuantity(row.category, row.current);
       const entry = entryById.get(row.id);
-      entry.actionConsumption = round1(entry.actionConsumption);
-      entry.eventLoss = round1(entry.eventLoss);
+      entry.actionConsumption = inventoryQuantity(row.category, entry.actionConsumption);
+      entry.eventLoss = inventoryQuantity(row.category, entry.eventLoss);
       entry.closing = row.current;
     });
 
@@ -5929,6 +5970,8 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
     return labels[index] || `第 ${index + 1} 波`;
   }
 
+  const TIMELINE_INTEGER_UNITS = new Set(["架次", "枚", "艘", "批", "節點", "處"]);
+
   function timelineQuantityLanguage(category, requestedUnit = "") {
     const unit = String(requestedUnit || "").trim();
     if (["架", "架次"].includes(unit)) return { verb: "出動", unit: "架次" };
@@ -5948,8 +5991,12 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
     return { verb: "投入", unit: "單位" };
   }
 
-  function formatTimelineQuantity(value) {
-    const rounded = round1(Math.max(0, Number(value) || 0));
+  function formatTimelineQuantity(value, unit = "單位") {
+    const numeric = Math.max(0, Number(value) || 0);
+    if (TIMELINE_INTEGER_UNITS.has(unit)) {
+      return String(Math.round(numeric));
+    }
+    const rounded = round1(numeric);
     return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
   }
 
@@ -5965,7 +6012,7 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
           candidate.inventoryId === entry.inventoryId || candidate.alias === entry.alias
         );
         const language = timelineQuantityLanguage(entry.category, allocation?.unit);
-        return `<span class="faction-quantity-line"><strong>${language.verb} ${formatTimelineQuantity(entry.committed)} ${language.unit}</strong><small>${escapeHtml(entry.alias || item.action)}${Number(entry.committed) + 0.000001 < Number(entry.requested) ? ` · 原要求 ${formatTimelineQuantity(entry.requested)} ${language.unit}` : ""}</small></span>`;
+        return `<span class="faction-quantity-line"><strong>${language.verb} ${formatTimelineQuantity(entry.committed, language.unit)} ${language.unit}</strong><small>${escapeHtml(entry.alias || item.action)}${Number(entry.committed) + 0.000001 < Number(entry.requested) ? ` · 原要求 ${formatTimelineQuantity(entry.requested, language.unit)} ${language.unit}` : ""}</small></span>`;
       });
       return { html: lines.join(""), records: committed.length };
     }
@@ -5975,7 +6022,7 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
       const lines = planned.map(allocation => {
         const row = inventory.find(candidate => candidate.id === allocation.inventoryId);
         const language = timelineQuantityLanguage(row?.category, allocation.unit);
-        return `<span class="faction-quantity-line planned"><strong>計畫${language.verb} ${formatTimelineQuantity(allocation.quantity)} ${language.unit}</strong><small>${escapeHtml(allocation.alias || item.action)} · 舊回合無實際扣帳</small></span>`;
+        return `<span class="faction-quantity-line planned"><strong>計畫${language.verb} ${formatTimelineQuantity(allocation.quantity, language.unit)} ${language.unit}</strong><small>${escapeHtml(allocation.alias || item.action)} · 舊回合無實際扣帳</small></span>`;
       });
       return { html: lines.join(""), records: planned.length };
     }
@@ -7257,6 +7304,11 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
     $("loadInventoryTemplateBtn").addEventListener("click", () => {
       renderDetailedInventoryRows(inventoryTemplateRows());
       toast("已載入公開裝備名稱與合成遊戲參數。");
+    });
+    $("loadShowcaseInventoryTemplateBtn").addEventListener("click", () => {
+      renderDetailedInventoryRows(showcaseInventoryTemplateRows());
+      setInventoryActorView("BLUE");
+      toast("已載入展示用裝備範本：藍紅各 5 項，黃方 5 項支援資源。");
     });
     $("generateInventoryWithLlmBtn").addEventListener("click", generateInventoryWithLlm);
     $("exportInventoryCsvBtn").addEventListener("click", exportInventoryCsv);
