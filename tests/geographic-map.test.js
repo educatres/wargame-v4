@@ -40,6 +40,7 @@ test("spatial confirmation allows an explicit no-placement choice when resources
   assert.match(app, /不選擇（不投入品項資源）/);
   assert.match(app, /item\.assetAllocationSkipped = select\.value === SKIP_SPATIAL_PLACEMENT/);
   assert.match(app, /item\.target && \(\s*allocationSkipped \|\|/);
+  assert.match(app, /if \(event\.target\.closest\("select, input, option, label"\)\) return;/);
   assert.match(html, /資源不足時可選擇「不選擇」/);
 });
 

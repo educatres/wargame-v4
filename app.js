@@ -5929,6 +5929,59 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
     return labels[index] || `第 ${index + 1} 波`;
   }
 
+  function timelineQuantityLanguage(category, requestedUnit = "") {
+    const unit = String(requestedUnit || "").trim();
+    if (["架", "架次"].includes(unit)) return { verb: "出動", unit: "架次" };
+    if (unit === "枚") return { verb: "發射", unit: "枚" };
+    if (unit === "艘") return { verb: "投入", unit: "艘" };
+    if (unit === "批") return { verb: "投入", unit: "批" };
+    if (unit === "節點") return { verb: "啟用", unit: "節點" };
+    if (unit && unit !== "單位") return { verb: "投入", unit };
+    if (category === "aviation" || category === "isr") return { verb: "出動", unit: "架次" };
+    if (category === "airDefense" || category === "longRange") return { verb: "發射", unit: "枚" };
+    if (category === "maritime" || category === "subsurface") return { verb: "投入", unit: "艘" };
+    if (category === "logistics") return { verb: "投入", unit: "批" };
+    if (category === "communications") return { verb: "啟用", unit: "節點" };
+    if (["airport", "radarStation", "base", "powerPlant", "position"].includes(category)) {
+      return { verb: "啟用", unit: "處" };
+    }
+    return { verb: "投入", unit: "單位" };
+  }
+
+  function formatTimelineQuantity(value) {
+    const rounded = round1(Math.max(0, Number(value) || 0));
+    return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  }
+
+  function timelineActionQuantity(log, actor, item, itemIndex) {
+    if (item.assetAllocationSkipped) {
+      return { html: `<span class="faction-quantity-none">未投入品項</span>`, records: 0 };
+    }
+    const committed = (log.resourceLedger?.actionAllocations || [])
+      .filter(entry => entry.actor === actor && Number(entry.itemIndex) === Number(itemIndex));
+    if (committed.length) {
+      const lines = committed.map(entry => {
+        const allocation = (item.assetAllocations || []).find(candidate =>
+          candidate.inventoryId === entry.inventoryId || candidate.alias === entry.alias
+        );
+        const language = timelineQuantityLanguage(entry.category, allocation?.unit);
+        return `<span class="faction-quantity-line"><strong>${language.verb} ${formatTimelineQuantity(entry.committed)} ${language.unit}</strong><small>${escapeHtml(entry.alias || item.action)}${Number(entry.committed) + 0.000001 < Number(entry.requested) ? ` · 原要求 ${formatTimelineQuantity(entry.requested)} ${language.unit}` : ""}</small></span>`;
+      });
+      return { html: lines.join(""), records: committed.length };
+    }
+    const planned = Array.isArray(item.assetAllocations) ? item.assetAllocations : [];
+    if (planned.length) {
+      const inventory = state.scenario?.detailedInventory || [];
+      const lines = planned.map(allocation => {
+        const row = inventory.find(candidate => candidate.id === allocation.inventoryId);
+        const language = timelineQuantityLanguage(row?.category, allocation.unit);
+        return `<span class="faction-quantity-line planned"><strong>計畫${language.verb} ${formatTimelineQuantity(allocation.quantity)} ${language.unit}</strong><small>${escapeHtml(allocation.alias || item.action)} · 舊回合無實際扣帳</small></span>`;
+      });
+      return { html: lines.join(""), records: planned.length };
+    }
+    return { html: `<span class="faction-quantity-none">無品項紀錄</span>`, records: 0 };
+  }
+
   function renderFactionCountTable(log, actor) {
     const order = log.orders?.[actor];
     const actions = orderItems(order);
@@ -5937,43 +5990,51 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
     const startHour = Number(log.elapsedHours || 0);
     const endHour = startHour + Number(state.scenario?.hoursPerTurn || 0);
     const timeWindow = `T+${startHour}–${endHour}h`;
-    const rows = [
-      ...actions.map((item, index) => ({
+    const actionRows = actions.map((item, index) => {
+      const quantity = timelineActionQuantity(log, actor, item, index);
+      return {
         sequence: timelineWaveLabel(index),
         name: item.action,
         zone: item.zone,
-        resource: Number(item.resource || 0),
+        quantity: quantity.html,
+        quantityRecords: quantity.records,
         kind: index === 0 ? "主要行動" : "支援行動"
-      })),
+      };
+    });
+    const rows = [
+      ...actionRows,
       ...events.map((event, index) => ({
         sequence: `事件 ${index + 1}`,
         name: event.event_name || "未命名事件",
         zone: event.zone_id || "Z-ISL",
-        resource: 0,
+        quantity: "—",
+        quantityRecords: 0,
         kind: event.affected_actor === "ALL" || event.affected_actor === "WHITE" ? "共同事件" : "影響事件"
       }))
     ];
     const resourceTotal = orderTotalResource(order);
+    const quantityRecordTotal = actionRows.reduce((sum, row) => sum + row.quantityRecords, 0);
     const actorClass = actor.toLowerCase();
     const body = rows.length ? rows.map(row => `<tr>
       <td>${timeWindow}</td>
       <td><strong>${escapeHtml(row.sequence)}</strong><small>${escapeHtml(row.kind)}</small></td>
       <td>${escapeHtml(row.name)}</td>
       <td>${escapeHtml(zoneName(row.zone))}</td>
-      <td>${row.resource || "—"}</td>
+      <td>${row.quantity}</td>
     </tr>`).join("") : `<tr><td colspan="5" class="faction-count-empty">本回合未投入行動，亦無適用事件。</td></tr>`;
     return `<section class="faction-count-card ${actorClass}" aria-label="${actorLabel(actor)}第 ${log.turn} 回合事件計數表">
       <header><span>${actorLabel(actor)}</span><strong>第 ${log.turn} 回合計數表</strong></header>
       <div class="faction-count-table-wrap"><table>
         <caption class="sr-only">${actorLabel(actor)}第 ${log.turn} 回合行動與事件計數</caption>
-        <thead><tr><th>作戰時序</th><th>波次</th><th>行動／事件</th><th>區域</th><th>投入</th></tr></thead>
+        <thead><tr><th>作戰時序</th><th>波次</th><th>行動／事件</th><th>區域</th><th>本回合實際數量（合成）</th></tr></thead>
         <tbody>${body}</tbody>
       </table></div>
       <footer>
         <span>行動 <strong>${actions.length}</strong></span>
         <span>事件 <strong>${events.length}</strong></span>
-        <span>投入 <strong>${resourceTotal}</strong></span>
-        <span>消耗 <strong>${ledger.consumed}</strong></span>
+        <span>指令點數 <strong>${resourceTotal}</strong></span>
+        <span>投入紀錄 <strong>${quantityRecordTotal}</strong></span>
+        <span>合成消耗 <strong>${ledger.consumed}</strong></span>
         <span>事件損失 <strong>${ledger.eventLoss}</strong></span>
       </footer>
     </section>`;
@@ -7264,6 +7325,7 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
       else operationLeafletMap.removeLayer(layer);
     });
     $("spatialOrderTargetItems").addEventListener("click", event => {
+      if (event.target.closest("select, input, option, label")) return;
       const row = event.target.closest("[data-spatial-item-index]");
       if (!row) return;
       pendingSpatialItemIndex = Number(row.dataset.spatialItemIndex) || 0;
