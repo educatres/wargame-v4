@@ -2,7 +2,11 @@
 
 ## 內建資料
 - `actors`：BLUE、RED、AMBER、WHITE。
-- `zones`：抽象區域，不含座標。
+- `zones`：供 LLM 與敘事使用的抽象區域；精確地圖點不會送入 LLM。
+- `detailedInventory[].gameRangeKm`：品項的合成遊戲作用半徑。
+- `detailedInventory[].placements[]`：使用者配置或公開預設的點位、抽象區域、起始數量與目前數量；另保存 `presetId`、來源網址、查核日期、精度與是否經使用者修改。
+- `orders.*.target` 與 `assetAllocations[].placementId`：回合目標點及實際出發配置點；只保存在本機狀態與匯出檔。
+- `turnSnapshot.spatialInventoryBefore`：回合結算前的不可變配置快照，供 Leaflet 經緯度回放使用；舊紀錄缺少此欄位時以保存目標及抽象區域中心重建。
 - `forcePackages`：合成兵力包及0–100狀態指數。
 - `capabilities`：合成能力類型及1–5能力指數。
 - `eventCards`：氣象、民事、情報、後勤、外交與指管事件。

@@ -2,6 +2,8 @@
   "use strict";
 
   const DATA = window.WARGAME_DATA;
+  const SPATIAL = window.WARGAME_SPATIAL;
+  const DEPLOYMENTS = window.WARGAME_DEPLOYMENTS;
   const STORAGE_KEY = "taiwan-strait-scenario-generator-v2";
   const LLM_SETTINGS_KEY = "taiwan-strait-scenario-generator-llm-v1";
   const SHOW_INTERCEPT_LAB = false;
@@ -22,7 +24,8 @@
       ["【防空】分層防空交戰", { readiness: 2, sustainment: -3, command: 2, intel: 1, civilian: 1 }],
       ["【遠程火力】遠程火力反制", { readiness: -1, sustainment: -3, command: 0, intel: 1, civilian: 4 }],
       ["【海上】海上拒止任務", { readiness: 1, sustainment: -2, command: 1, intel: 1, civilian: 2 }],
-      ["【水下】水下威懾與反潛警戒", { readiness: 1, sustainment: -2, command: 1, intel: 3, civilian: 1 }]
+      ["【水下】水下威懾與反潛警戒", { readiness: 1, sustainment: -2, command: 1, intel: 3, civilian: 1 }],
+      ["待命不做事", {}]
     ],
     RED: [
       ["增加空中施壓", { readiness: -1, command: 1, intel: 0, civilian: 3 }],
@@ -35,7 +38,8 @@
       ["【航空】空中攔截與護航", { readiness: 1, sustainment: -2, command: 1, intel: 1, civilian: 3 }],
       ["【遠程火力】遠程火力施壓", { readiness: -2, sustainment: -3, command: 0, intel: 0, civilian: 7 }],
       ["【海上】海上拒止行動", { readiness: 1, sustainment: -2, command: 1, intel: 1, civilian: 4 }],
-      ["【水下】水下封控與反潛警戒", { readiness: 1, sustainment: -2, command: 1, intel: 2, civilian: 4 }]
+      ["【水下】水下封控與反潛警戒", { readiness: 1, sustainment: -2, command: 1, intel: 2, civilian: 4 }],
+      ["待命不做事", {}]
     ],
     AMBER: [
       ["提供ISR支援", { readiness: 0, command: 1, intel: 6, civilian: 0 }],
@@ -49,7 +53,8 @@
       ["工業補充與供應鏈動員", { readiness: 0, sustainment: 5, command: 1, intel: 0, civilian: -1 }],
       ["【航空】區域空中攔截支援", { readiness: 2, sustainment: -2, command: 2, intel: 3, civilian: 1 }],
       ["【海上】多國海上防護協調", { readiness: 1, sustainment: -2, command: 3, intel: 2, civilian: -1 }],
-      ["【水下】水下監視與反潛支援", { readiness: 1, sustainment: -1, command: 2, intel: 5, civilian: 0 }]
+      ["【水下】水下監視與反潛支援", { readiness: 1, sustainment: -1, command: 2, intel: 5, civilian: 0 }],
+      ["待命不做事", {}]
     ]
   };
 
@@ -188,7 +193,12 @@
     isr: "ISR／感測",
     communications: "通訊／指管",
     logistics: "後勤／維修",
-    energy: "能源／基礎設施"
+    energy: "能源／基礎設施",
+    airport: "機場／跑道",
+    radarStation: "雷達站",
+    base: "基地／指揮設施",
+    powerPlant: "電廠／電力節點",
+    position: "陣地／防護工事"
   };
 
   const INVENTORY_BASELINES = {
@@ -200,7 +210,46 @@
     isr: 55,
     communications: 42,
     logistics: 105,
-    energy: 100
+    energy: 100,
+    airport: 48,
+    radarStation: 36,
+    base: 55,
+    powerPlant: 45,
+    position: 70
+  };
+
+  const INVENTORY_EFFECT_DEFAULTS = {
+    aviation: 78,
+    airDefense: 82,
+    longRange: 80,
+    maritime: 74,
+    subsurface: 79,
+    isr: 76,
+    communications: 72,
+    logistics: 68,
+    energy: 66,
+    airport: 74,
+    radarStation: 82,
+    base: 76,
+    powerPlant: 70,
+    position: 72
+  };
+
+  const INVENTORY_CATEGORY_DEFAULTS = {
+    aviation: { nominal: 24, availability: 82, reserve: 25, consumption: 4, recovery: 2, replenishment: 5, delay: 4, reliability: 88 },
+    airDefense: { nominal: 48, availability: 88, reserve: 30, consumption: 7, recovery: 1, replenishment: 9, delay: 5, reliability: 90 },
+    longRange: { nominal: 36, availability: 84, reserve: 32, consumption: 6, recovery: 1, replenishment: 7, delay: 6, reliability: 88 },
+    maritime: { nominal: 18, availability: 80, reserve: 28, consumption: 3, recovery: 1, replenishment: 3, delay: 6, reliability: 88 },
+    subsurface: { nominal: 12, availability: 80, reserve: 34, consumption: 2, recovery: 1, replenishment: 2, delay: 7, reliability: 90 },
+    isr: { nominal: 16, availability: 86, reserve: 30, consumption: 2, recovery: 1, replenishment: 3, delay: 4, reliability: 92 },
+    communications: { nominal: 24, availability: 88, reserve: 24, consumption: 2, recovery: 2, replenishment: 4, delay: 3, reliability: 91 },
+    logistics: { nominal: 30, availability: 82, reserve: 25, consumption: 3, recovery: 3, replenishment: 6, delay: 3, reliability: 87 },
+    energy: { nominal: 28, availability: 86, reserve: 22, consumption: 2, recovery: 2, replenishment: 5, delay: 4, reliability: 89 },
+    airport: { nominal: 6, availability: 82, reserve: 16, consumption: 1, recovery: 1, replenishment: 1, delay: 5, reliability: 88 },
+    radarStation: { nominal: 8, availability: 86, reserve: 18, consumption: 1, recovery: 1, replenishment: 2, delay: 4, reliability: 92 },
+    base: { nominal: 10, availability: 84, reserve: 20, consumption: 1, recovery: 1, replenishment: 2, delay: 5, reliability: 90 },
+    powerPlant: { nominal: 8, availability: 88, reserve: 15, consumption: 1, recovery: 1, replenishment: 2, delay: 4, reliability: 91 },
+    position: { nominal: 18, availability: 84, reserve: 20, consumption: 2, recovery: 2, replenishment: 3, delay: 3, reliability: 88 }
   };
 
   const INVENTORY_TEMPLATE = [
@@ -236,7 +285,22 @@
     ["AMBER", "Virginia級攻擊核潛艦", "subsurface", 14, 88, 40, 3, 1, 2, 7, 93, "水下警戒支援；參數為遊戲平衡值"],
     ["AMBER", "SM-6標準六型飛彈", "airDefense", 72, 89, 36, 8, 1, 12, 6, 93, "艦隊防空資源；參數為遊戲平衡值"],
     ["AMBER", "Tomahawk「戰斧」巡弋飛彈", "longRange", 44, 86, 38, 6, 1, 8, 7, 91, "遠程火力資源；參數為遊戲平衡值"],
-    ["AMBER", "Starlink商用衛星通訊支援", "communications", 32, 90, 22, 3, 2, 6, 3, 92, "備援通訊節點；參數為遊戲平衡值"]
+    ["AMBER", "Starlink商用衛星通訊支援", "communications", 32, 90, 22, 3, 2, 6, 3, 92, "備援通訊節點；參數為遊戲平衡值"],
+    ["BLUE", "北部航空基地群", "airport", 6, 84, 16, 1, 1, 1, 5, 89, "機場與跑道節點；預設遊戲參數"],
+    ["BLUE", "區域預警雷達站", "radarStation", 8, 88, 18, 1, 1, 2, 4, 93, "固定與機動感測節點；預設遊戲參數"],
+    ["BLUE", "聯合作戰基地", "base", 10, 85, 20, 1, 1, 2, 5, 91, "指揮、維修與集結設施；預設遊戲參數"],
+    ["BLUE", "備援電力節點", "powerPlant", 8, 90, 15, 1, 1, 2, 4, 92, "電廠與分散式電力設施；預設遊戲參數"],
+    ["BLUE", "機動防禦陣地", "position", 18, 86, 20, 2, 2, 3, 3, 89, "防護與分散部署物件；預設遊戲參數"],
+    ["RED", "沿岸航空基地群", "airport", 9, 85, 18, 1, 1, 2, 5, 90, "機場與跑道節點；預設遊戲參數"],
+    ["RED", "沿岸遠程雷達站", "radarStation", 10, 89, 20, 1, 1, 2, 4, 93, "固定與機動感測節點；預設遊戲參數"],
+    ["RED", "聯合指揮基地", "base", 12, 86, 22, 1, 1, 2, 5, 91, "指揮、維修與集結設施；預設遊戲參數"],
+    ["RED", "區域電力保障節點", "powerPlant", 10, 90, 16, 1, 1, 2, 4, 92, "電廠與備援供電設施；預設遊戲參數"],
+    ["RED", "沿岸防護陣地", "position", 22, 87, 22, 2, 2, 4, 3, 90, "防護與火力支援物件；預設遊戲參數"],
+    ["AMBER", "前進支援機場", "airport", 5, 86, 22, 1, 1, 1, 5, 91, "外部支援航空節點；預設遊戲參數"],
+    ["AMBER", "遠程預警雷達站", "radarStation", 7, 90, 24, 1, 1, 2, 4, 94, "外部感測與預警節點；預設遊戲參數"],
+    ["AMBER", "聯合支援基地", "base", 8, 88, 25, 1, 1, 2, 5, 92, "聯合後勤與指揮設施；預設遊戲參數"],
+    ["AMBER", "備援電力支援節點", "powerPlant", 6, 91, 18, 1, 1, 2, 4, 93, "分散式電力與修復支援；預設遊戲參數"],
+    ["AMBER", "聯合防護陣地", "position", 14, 88, 25, 2, 2, 3, 3, 91, "防護與分散部署物件；預設遊戲參數"]
   ];
 
   const STORM_STAGES = {
@@ -340,6 +404,7 @@
     logs: [],
     revealedIntel: [],
     currentLibrary: "sources",
+    simulationPanel: "command",
     aarReview: {
       turn: null,
       tab: "intel"
@@ -352,19 +417,78 @@
       doe: null
     }
   };
+  let inventoryActorView = "BLUE";
+  let inventoryPreviewActorView = "BLUE";
+  let selectedInventoryPlacementId = null;
+  let inventoryPlacementMap = null;
+  let inventoryPlacementLayer = null;
+  let operationLeafletMap = null;
+  let operationPlacementLayers = {};
+  let operationTargetLayer = null;
+  let operationResourceMarkers = [];
+  let aarReplayLeafletMap = null;
+  let aarReplayLayers = {};
+  const mapReferenceStates = new WeakMap();
+  let pendingSpatialOrder = null;
+  let pendingSpatialItemIndex = 0;
 
   const $ = (id) => document.getElementById(id);
   const clamp = (v, min = 0, max = 100) => Math.max(min, Math.min(max, v));
   const round1 = (v) => Math.round(v * 10) / 10;
-  const actorLabel = (id) => ({ BLUE: "藍方", RED: "紅方", AMBER: "美軍支援", WHITE: "白方" }[id] || id);
+  const actorLabel = (id) => ({ BLUE: "藍方", RED: "紅方", AMBER: "黃方（支援）", WHITE: "白方" }[id] || id);
   const zoneName = (id) => DATA.zones.find(z => z.zone_id === id)?.zone_name || id;
   const ORDER_BUDGET = 35;
   const MIN_SUPPORT_ACTIONS = 2;
   const MAX_SUPPORT_ACTIONS = 4;
+  const NATURAL_ACTION_ALIASES = {
+    "強化防空警戒": ["防空警戒", "防空", "空防", "警戒", "戒備", "戰備"],
+    "商船護航": ["商船護航", "商船", "護航", "航運", "護船"],
+    "分散部署": ["分散部署", "分散", "疏散", "機動部署"],
+    "備援通訊": ["備援通訊", "備援通信", "通訊", "通信", "指管", "c2"],
+    "後勤修復": ["後勤修復", "後勤", "修復", "維修", "補給"],
+    "情報融合": ["情報融合", "情資融合", "情監偵", "預警", "isr"],
+    "無人機偵察與通訊中繼": ["無人機", "偵察", "偵查", "通訊中繼", "通信中繼", "uav", "uas"],
+    "星鏈與高空平臺備援通訊": ["星鏈", "starlink", "高空平臺", "高空平台", "衛星通訊", "衛星通信"],
+    "能源配給與電網調度": ["能源", "電網", "電力", "配給"],
+    "經濟持續運作協調": ["經濟", "持續運作", "供應鏈"],
+    "【航空】空中攔截任務": ["空中攔截", "攔截", "截擊", "起飛", "升空", "航空", "戰機"],
+    "【防空】分層防空交戰": ["分層防空", "防空交戰", "攔截飛彈", "飛彈防禦"],
+    "【遠程火力】遠程火力反制": ["遠程火力", "遠距火力", "火力反制", "遠程反制", "打擊"],
+    "【海上】海上拒止任務": ["海上拒止", "海上任務", "制海", "艦隊"],
+    "【水下】水下威懾與反潛警戒": ["水下威懾", "反潛", "潛艦", "潛艇", "水下"],
+    "增加空中施壓": ["空中施壓", "空中壓力", "航空施壓"],
+    "海上臨檢演示": ["海上臨檢", "臨檢", "登檢"],
+    "電磁壓制": ["電磁壓制", "電子干擾", "電戰", "干擾"],
+    "遠程火力展示": ["遠程火力展示", "火力展示", "遠距展示"],
+    "調整封控區": ["調整封控", "封控區", "封鎖區", "封控"],
+    "外交訊息操作": ["外交訊息", "訊息操作", "輿論", "宣傳"],
+    "海警與海上民兵執法封控": ["海警", "海上民兵", "執法封控", "執法"],
+    "【航空】空中攔截與護航": ["空中攔截", "攔截", "截擊", "起飛", "升空", "航空護航", "戰機"],
+    "【遠程火力】遠程火力施壓": ["遠程火力施壓", "遠距火力", "火力施壓", "打擊"],
+    "【海上】海上拒止行動": ["海上拒止", "海上行動", "制海", "艦隊"],
+    "【水下】水下封控與反潛警戒": ["水下封控", "反潛", "潛艦", "潛艇", "水下"],
+    "提供ISR支援": ["isr支援", "情監偵支援", "情報支援", "預警支援", "偵察支援"],
+    "提升後勤準備": ["後勤準備", "後勤支援", "補給", "運補"],
+    "網路防護支援": ["網路防護", "網路支援", "資安", "網路"],
+    "外交協調": ["外交協調", "外交", "協調盟友"],
+    "遠距海上存在": ["海上存在", "遠距海上", "艦隊存在"],
+    "人道支援準備": ["人道支援", "人道", "救援", "疏散"],
+    "提供衛星與高空通訊支援": ["衛星支援", "衛星通訊", "衛星通信", "高空通訊", "高空通信", "starlink", "星鏈"],
+    "多國商船護航協調": ["多國護航", "商船護航", "護航協調"],
+    "工業補充與供應鏈動員": ["工業補充", "供應鏈", "工業動員", "補充"],
+    "【航空】區域空中攔截支援": ["區域空中攔截", "空中攔截", "攔截", "截擊", "起飛", "升空", "戰機"],
+    "【海上】多國海上防護協調": ["海上防護", "多國海上", "海上護航", "艦隊"],
+    "【水下】水下監視與反潛支援": ["水下監視", "反潛", "潛艦", "潛艇", "水下"]
+  };
+  const NATURAL_SUPPORT_PREFERENCES = {
+    BLUE: ["情報融合", "強化防空警戒", "備援通訊", "後勤修復", "分散部署"],
+    RED: ["電磁壓制", "調整封控區", "外交訊息操作", "海上臨檢演示"],
+    AMBER: ["提供ISR支援", "網路防護支援", "提升後勤準備", "外交協調"]
+  };
   const OPERATION_ACTORS = {
     BLUE: { color: "#39a0ff", glow: "rgba(57,160,255,.42)", home: [0.585, 0.53], label: "藍方" },
     RED: { color: "#ff5b52", glow: "rgba(255,91,82,.42)", home: [0.12, 0.47], label: "紅方" },
-    AMBER: { color: "#ffd84a", glow: "rgba(255,216,74,.42)", home: [0.93, 0.42], label: "琥珀方" }
+    AMBER: { color: "#ffd84a", glow: "rgba(255,216,74,.42)", home: [0.93, 0.42], label: "美軍支援" }
   };
   const OPERATION_ZONE_ANCHORS = {
     "Z-NW": [0.43, 0.2],
@@ -391,40 +515,8 @@
     energy: "閃電／能源電網",
     diplomacy: "對話框／外交協調",
     humanitarian: "十字符號／人道支援",
-    disperse: "分岔箭頭／分散部署"
-  };
-  const OPERATION_EQUIPMENT_LABELS = {
-    BLUE: {
-      aviation: ["F-16V「毒蛇」", "F-CK-1「經國號」", "Mirage 2000-5"],
-      airdefense: ["天劍二型／TC-2", "天弓三型"],
-      maritime: ["雄風三型"],
-      subsurface: ["P-3C「獵戶座」"],
-      longrange: ["萬劍飛彈", "雷霆2000"],
-      intelligence: ["E-2K「鷹眼」", "P-3C「獵戶座」"],
-      drone: ["E-2K「鷹眼」"],
-      logistics: ["C-130H「力士」"]
-    },
-    RED: {
-      aviation: ["殲-20／J-20", "殲-16／J-16", "殲-10C／J-10C"],
-      maritime: ["055型驅逐艦", "052D型驅逐艦", "075型兩棲攻擊艦"],
-      longrange: ["東風-17／DF-17", "東風-26／DF-26", "轟-6K／H-6K"],
-      intelligence: ["空警-500／KJ-500"],
-      drone: ["空警-500／KJ-500"],
-      logistics: ["運-20／Y-20"]
-    },
-    AMBER: {
-      aviation: ["F-35A「閃電II」", "F/A-18E/F「超級大黃蜂」"],
-      airdefense: ["SM-6標準六型"],
-      convoy: ["Arleigh Burke級驅逐艦"],
-      maritime: ["Arleigh Burke級驅逐艦"],
-      subsurface: ["Virginia級潛艦", "P-8A「海神」"],
-      longrange: ["Tomahawk「戰斧」"],
-      intelligence: ["E-2D Advanced Hawkeye", "P-8A「海神」"],
-      drone: ["E-2D Advanced Hawkeye"],
-      satellite: ["Starlink衛星通訊"],
-      communications: ["Starlink衛星通訊"],
-      logistics: ["KC-46A「飛馬」", "C-17 Globemaster III"]
-    }
+    disperse: "分岔箭頭／分散部署",
+    standby: "暫停符號／待命"
   };
   const operationAnimation = {
     scene: null,
@@ -438,6 +530,7 @@
     pendingAutoplayTurn: null,
     autoPlayedKey: ""
   };
+  const redInitiativeRequests = new Set();
   const aarReplayAnimation = {
     scene: null,
     sceneKey: "",
@@ -454,8 +547,8 @@
   operationMapImage.decoding = "async";
   operationMapImage.onload = () => {
     operationMapReady = true;
-    if ($("operationCanvas")) drawOperationFrame(operationAnimation.elapsed, operationAnimation.scene);
-    if ($("aarReplayCanvas")) drawAarReplayFrame();
+    if ($("operationMap")) updateGeographicAnimation(operationAnimation.scene, operationAnimation.elapsed);
+    if ($("aarReplayMap")) drawAarReplayFrame();
   };
   operationMapImage.onerror = () => {
     operationMapReady = false;
@@ -557,12 +650,11 @@
 
   function renderSectionNavigator(tabId) {
     const navigator = $("sectionNavigator");
-    const supported = ["builder", "simulation", "storm"].includes(tabId);
+    const supported = ["builder", "storm"].includes(tabId);
     const panel = supported ? $(tabId) : null;
     const sections = panel
-      ? [...panel.querySelectorAll("[data-section-nav-label]")].filter(section => !section.hidden)
+      ? [...panel.querySelectorAll("[data-section-nav-label]")].filter(section => !section.hidden && !section.closest("[hidden]"))
       : [];
-    $("sectionNavigatorTurnControls").hidden = tabId !== "simulation";
     navigator.hidden = !sections.length;
     document.body.classList.toggle("has-section-navigator", sections.length > 0);
     if (!sections.length) {
@@ -570,9 +662,9 @@
       return;
     }
     $("sectionNavigatorTitle").textContent = ({
-      builder: "一、想定區塊",
-      simulation: "二、推演區塊",
-      storm: "三、STORM 區塊"
+      builder: "一、建立想定區塊",
+      simulation: "三、推演區塊",
+      storm: "六、STORM 區塊"
     })[tabId];
     $("sectionNavigatorLinks").innerHTML = sections.map((section, index) => `
       <button type="button" data-section-target="${escapeAttr(section.id)}">
@@ -595,7 +687,52 @@
     if (tabId === "simulation") renderSimulation();
     if (tabId === "storm") renderStorm();
     if (tabId === "aar") renderAAR();
+    if (tabId === "timeline") renderDecisionTimeline();
     if (tabId === "library") renderLibrary();
+  }
+
+  function setBuilderPanel(panelId) {
+    const allowed = new Set(["template", "strategic", "resources", "inventory", "weapon-preview", "constraints", "llm"]);
+    const next = allowed.has(panelId) ? panelId : "template";
+    document.querySelectorAll("[data-builder-panel]").forEach(button => {
+      const active = button.dataset.builderPanel === next;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-selected", String(active));
+      button.tabIndex = active ? 0 : -1;
+    });
+    document.querySelectorAll("[data-builder-panel-body]").forEach(panel => {
+      const active = panel.dataset.builderPanelBody === next;
+      panel.hidden = !active;
+      panel.classList.toggle("active", active);
+    });
+    if (next === "weapon-preview") {
+      syncDetailedInventoryPreview();
+      setInventoryPreviewActorView(inventoryPreviewActorView);
+    }
+    if (next === "inventory") requestAnimationFrame(() => inventoryPlacementMap?.invalidateSize());
+  }
+
+  function setSimulationPanel(panelId) {
+    const allowed = new Set(["command", "battle", "intel", "resources", "next", "white", "history"]);
+    const next = allowed.has(panelId) ? panelId : "command";
+    state.simulationPanel = next;
+    document.querySelectorAll("[data-simulation-panel]").forEach(button => {
+      const active = button.dataset.simulationPanel === next;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-selected", String(active));
+      button.tabIndex = active ? 0 : -1;
+    });
+    document.querySelectorAll("[data-simulation-panel-body]").forEach(panel => {
+      const active = panel.dataset.simulationPanelBody === next;
+      panel.hidden = !active;
+      panel.classList.toggle("active", active);
+    });
+    if (next === "battle") {
+      requestAnimationFrame(() => {
+        operationLeafletMap?.invalidateSize();
+        updateGeographicAnimation(operationAnimation.scene, operationAnimation.elapsed);
+      });
+    }
   }
 
   function averageForActor(actorId, field) {
@@ -607,25 +744,27 @@
   function initialStatus(scenario) {
     const amberEnabled = scenario.amberSupport !== "none";
     const resourceBalance = scenario.resourceBalance || { blue: 0, red: 0 };
+    const blueWeaponModifier = scenario.inventoryEnabled ? weaponActorReadinessModifier(scenario.detailedInventory, "BLUE") : resourceBalance.blue * 0.12;
+    const redWeaponModifier = scenario.inventoryEnabled ? weaponActorReadinessModifier(scenario.detailedInventory, "RED") : resourceBalance.red * 0.12;
     const resources = { ...RESOURCE_DEFAULTS, ...(scenario.resources || {}) };
     const droneIntelBonus = clamp((resources.blueDrones / RESOURCE_DEFAULTS.blueDrones - 1) * 3, -4, 4);
     const networkCommandBonus = clamp(((resources.starlinkNodes / RESOURCE_DEFAULTS.starlinkNodes) + (resources.highAltitudePlatforms / RESOURCE_DEFAULTS.highAltitudePlatforms) - 2) * 2, -5, 5);
     return {
       BLUE: {
-        readiness: round1(clamp(averageForActor("BLUE", "readiness") + resourceBalance.blue * 0.12)),
+        readiness: round1(clamp(averageForActor("BLUE", "readiness") + blueWeaponModifier)),
         sustainment: round1(averageForActor("BLUE", "sustainment")),
         command: round1(clamp(averageForActor("BLUE", "command_quality") + networkCommandBonus)),
         intel: round1(clamp(64 - scenario.uncertainty * 3 + droneIntelBonus)),
-        resources: scenario.inventoryEnabled ? scenario.abstractResources?.byActor?.BLUE?.overall ?? 100 : 100,
+        resources: scenario.inventoryEnabled ? inventoryHealthForActor(scenario.detailedInventory, "BLUE") : 100,
         civilianRisk: 25 + scenario.civilPressure * 5,
         powerAvailability: 100
       },
       RED: {
-        readiness: round1(clamp(averageForActor("RED", "readiness") + resourceBalance.red * 0.12)),
+        readiness: round1(clamp(averageForActor("RED", "readiness") + redWeaponModifier)),
         sustainment: round1(averageForActor("RED", "sustainment")),
         command: round1(averageForActor("RED", "command_quality")),
         intel: 68 - scenario.uncertainty * 2,
-        resources: scenario.inventoryEnabled ? scenario.abstractResources?.byActor?.RED?.overall ?? 100 : 100,
+        resources: scenario.inventoryEnabled ? inventoryHealthForActor(scenario.detailedInventory, "RED") : 100,
         civilianRisk: 0
       },
       AMBER: {
@@ -634,7 +773,7 @@
         command: amberEnabled ? round1(averageForActor("AMBER", "command_quality")) : 0,
         intel: amberEnabled ? 82 : 0,
         resources: amberEnabled && scenario.inventoryEnabled
-          ? scenario.abstractResources?.byActor?.AMBER?.overall ?? 0
+          ? inventoryHealthForActor(scenario.detailedInventory, "AMBER")
           : scenario.amberSupport === "limited" ? 80 : scenario.amberSupport === "indirect" ? 60 : 0,
         civilianRisk: 0,
         precisionStockpile: 100
@@ -654,13 +793,62 @@
     };
   }
 
+  function defaultPlacementPoint(actor, category, index = 0) {
+    const origins = {
+      BLUE: [23.7, 120.95],
+      RED: [24.65, 119.25],
+      AMBER: [24.3, 126.0]
+    };
+    const origin = origins[actor] || origins.BLUE;
+    const categoryOffset = Object.keys(INVENTORY_CATEGORIES).indexOf(category);
+    return {
+      lat: Math.round((origin[0] + ((index + categoryOffset) % 7 - 3) * .12) * 1e6) / 1e6,
+      lng: Math.round((origin[1] + ((index * 2 + categoryOffset) % 7 - 3) * .13) * 1e6) / 1e6
+    };
+  }
+
+  function defaultPlacements(actor, category, nominal, rowId, index = 0, alias = "") {
+    const preset = DEPLOYMENTS?.placementsForRow({
+      id: rowId,
+      actor,
+      alias,
+      category,
+      nominal,
+      placements: []
+    }, { preserveExisting: false });
+    if (preset?.length) return preset;
+    if (SPATIAL.OPTIONAL_LOCATION_CATEGORIES.has(category)) return [];
+    const point = defaultPlacementPoint(actor, category, index);
+    return [{
+      placementId: `${rowId}-P1`,
+      label: `${actorLabel(actor)}${INVENTORY_CATEGORIES[category]}遊戲推定點`,
+      lat: point.lat,
+      lng: point.lng,
+      zoneId: SPATIAL.nearestZoneId(point),
+      nominalQuantity: Number(nominal) || 0,
+      currentQuantity: Number(nominal) || 0,
+      presetId: "",
+      sourceUrl: "https://www.openstreetmap.org/copyright",
+      sourceCheckedAt: DEPLOYMENTS?.SOURCE_CHECKED_AT || "",
+      precision: "regional-game-inference",
+      isLive: false,
+      isUserModified: false
+    }];
+  }
+
   function inventoryTemplateRows() {
     return INVENTORY_TEMPLATE.map((values, index) => {
       const [actor, alias, category, nominal, availability, reserve, consumption, recovery, replenishment, delay, reliability, note] = values;
+      const id = `INV-${Date.now()}-${index + 1}`;
       return {
-        id: `INV-${Date.now()}-${index + 1}`,
+        id,
         actor, alias, category, nominal, current: nominal, availability, reserve,
-        consumption, recovery, replenishment, delay, reliability, note,
+        consumption, recovery, replenishment, delay, reliability,
+        effect: clamp(INVENTORY_EFFECT_DEFAULTS[category] + (hashText(alias) % 11) - 5, 50, 95),
+        note,
+        gameRangeKm: SPATIAL.RANGE_DEFAULTS_KM[category],
+        locationRequired: !SPATIAL.OPTIONAL_LOCATION_CATEGORIES.has(category),
+        placements: defaultPlacements(actor, category, nominal, id, index, alias),
         replenishmentApplied: false
       };
     });
@@ -671,13 +859,29 @@
     const category = Object.hasOwn(INVENTORY_CATEGORIES, row?.category) ? row.category : "logistics";
     const numeric = (key, fallback, max = 100000) => clamp(Number(row?.[key] ?? fallback) || 0, 0, max);
     const nominal = numeric("nominal", 0);
+    const id = String(row?.id || `INV-${Date.now()}-${index + 1}`).slice(0, 80);
+    let spatial = SPATIAL.normalizeSpatialRow({ ...row, id, category }, index);
+    if (!Array.isArray(row?.placements) && spatial.locationRequired && DEPLOYMENTS) {
+      spatial = {
+        ...spatial,
+        placements: DEPLOYMENTS.placementsForRow({
+          id,
+          actor,
+          alias: row?.alias,
+          category,
+          nominal,
+          placements: []
+        }, { preserveExisting: false })
+      };
+    }
+    const placementCurrent = SPATIAL.placementTotals(spatial).current;
     return {
-      id: String(row?.id || `INV-${Date.now()}-${index + 1}`).slice(0, 80),
+      id,
       actor,
       alias: String(row?.alias || `${actor}-RESOURCE-${index + 1}`).replace(/[\r\n]+/g, " ").trim().slice(0, 80),
       category,
       nominal,
-      current: clamp(Number(row?.current ?? nominal) || 0, 0, 100000),
+      current: spatial.placements.length ? clamp(placementCurrent, 0, 100000) : clamp(Number(row?.current ?? nominal) || 0, 0, 100000),
       availability: numeric("availability", 100, 100),
       reserve: numeric("reserve", 20, 100),
       consumption: numeric("consumption", 1),
@@ -685,18 +889,54 @@
       replenishment: numeric("replenishment", 0),
       delay: Math.round(numeric("delay", 0, 100)),
       reliability: numeric("reliability", 85, 100),
+      effect: numeric("effect", INVENTORY_EFFECT_DEFAULTS[category], 100),
+      gameRangeKm: spatial.gameRangeKm,
+      locationRequired: spatial.locationRequired,
+      placements: spatial.placements,
       note: String(row?.note || "").replace(/[\r\n]+/g, " ").trim().slice(0, 160),
       replenishmentApplied: Boolean(row?.replenishmentApplied)
     };
   }
 
+  function defaultInventoryRow(actor, category, index = 0) {
+    const defaults = INVENTORY_CATEGORY_DEFAULTS[category] || INVENTORY_CATEGORY_DEFAULTS.logistics;
+    const id = `INV-${Date.now()}-${index + 1}`;
+    return sanitizeInventoryRow({
+      id,
+      actor,
+      category,
+      alias: `${actorLabel(actor)}${INVENTORY_CATEGORIES[category]}項目`,
+      ...defaults,
+      effect: INVENTORY_EFFECT_DEFAULTS[category],
+      gameRangeKm: SPATIAL.RANGE_DEFAULTS_KM[category],
+      locationRequired: !SPATIAL.OPTIONAL_LOCATION_CATEGORIES.has(category),
+      placements: defaultPlacements(actor, category, defaults.nominal, id, index, `${actorLabel(actor)}${INVENTORY_CATEGORIES[category]}項目`),
+      note: "依分類套用的預設遊戲參數，可自行調整。"
+    }, index);
+  }
+
+  function setInventoryActorView(actor) {
+    inventoryActorView = ["BLUE", "RED", "AMBER"].includes(actor) ? actor : "BLUE";
+    document.querySelectorAll("[data-inventory-actor]").forEach(button => {
+      const active = button.dataset.inventoryActor === inventoryActorView;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-selected", String(active));
+      button.tabIndex = active ? 0 : -1;
+    });
+    $("detailedInventoryRows")?.querySelectorAll("tr").forEach(row => {
+      row.hidden = row.dataset.inventoryActor !== inventoryActorView;
+    });
+  }
+
   function renderDetailedInventoryRows(rows = inventoryTemplateRows()) {
     const host = $("detailedInventoryRows");
     if (!host) return;
-    host.innerHTML = rows.map((raw, index) => {
-      const row = sanitizeInventoryRow(raw, index);
+    const sanitizedRows = rows.map((raw, index) => sanitizeInventoryRow(raw, index));
+    host.innerHTML = sanitizedRows.map(row => {
       const numberInput = (field, value, max = 100000) => `<input class="inventory-${field}" type="number" min="0" max="${max}" step="1" value="${round1(value)}">`;
-      return `<tr data-inventory-id="${escapeAttr(row.id)}">
+      const placementErrors = SPATIAL.validateSpatialRow(row);
+      const totals = SPATIAL.placementTotals(row);
+      return `<tr data-inventory-id="${escapeAttr(row.id)}" data-inventory-actor="${row.actor}"${row.actor === inventoryActorView ? "" : " hidden"}>
         <td><select class="inventory-actor">
           ${["BLUE", "RED", "AMBER"].map(actor => `<option value="${actor}"${row.actor === actor ? " selected" : ""}>${actorLabel(actor)}</option>`).join("")}
         </select></td>
@@ -712,11 +952,20 @@
         <td>${numberInput("replenishment", row.replenishment)}</td>
         <td>${numberInput("delay", row.delay, 100)}</td>
         <td>${numberInput("reliability", row.reliability, 100)}</td>
+        <td>${numberInput("effect", row.effect, 100)}</td>
+        <td><input class="inventory-game-range" type="number" min="1" max="5000" step="1" value="${round1(row.gameRangeKm)}" title="合成遊戲作用半徑，不代表真實性能"></td>
+        <td><div class="inventory-placement-summary"><button type="button" class="secondary inventory-location-button${row.id === selectedInventoryPlacementId ? " active" : ""}">配置</button><small>${row.locationRequired ? `${totals.nominal}/${row.nominal}` : "選填"}${placementErrors.length ? " · 待補" : ""}</small></div></td>
         <td><input class="inventory-note" maxlength="160" value="${escapeAttr(row.note)}" placeholder="僅填合成說明"></td>
         <td><button type="button" class="danger remove-inventory-row" aria-label="移除此品項">×</button></td>
       </tr>`;
     }).join("");
+    [...host.querySelectorAll("tr")].forEach((tr, index) => {
+      tr._placements = JSON.parse(JSON.stringify(sanitizedRows[index].placements));
+      tr._locationRequired = sanitizedRows[index].locationRequired;
+    });
+    setInventoryActorView(inventoryActorView);
     syncDetailedInventoryPreview();
+    renderInventoryPlacementEditor();
   }
 
   function readDetailedInventoryRows() {
@@ -734,8 +983,334 @@
       replenishment: tr.querySelector(".inventory-replenishment").value,
       delay: tr.querySelector(".inventory-delay").value,
       reliability: tr.querySelector(".inventory-reliability").value,
+      effect: tr.querySelector(".inventory-effect").value,
+      gameRangeKm: tr.querySelector(".inventory-game-range").value,
+      locationRequired: tr._locationRequired,
+      placements: tr._placements || [],
       note: tr.querySelector(".inventory-note").value
     }, index));
+  }
+
+  function createOsmMap(elementId, options = {}) {
+    if (!window.L || !$(elementId)) return null;
+    const map = L.map(elementId, {
+      center: options.center || [23.7, 120.95],
+      zoom: options.zoom || 6,
+      minZoom: 2,
+      maxZoom: 19,
+      worldCopyJump: true,
+      zoomControl: true
+    });
+    const tiles = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
+    }).addTo(map);
+    if (options.offlineElementId) {
+      tiles.on("tileerror", () => { $(options.offlineElementId).hidden = false; });
+      tiles.on("load", () => { $(options.offlineElementId).hidden = true; });
+    }
+    attachMapReferenceLayers(map, { control: options.referenceControl !== false });
+    return map;
+  }
+
+  function attachMapReferenceLayers(map, options = {}) {
+    if (!map || mapReferenceStates.has(map)) return mapReferenceStates.get(map) || null;
+    ["reference-grid-pane", "reference-zone-pane"].forEach((paneName, index) => {
+      if (!map.getPane(paneName)) map.createPane(paneName);
+      map.getPane(paneName).style.zIndex = String(310 + index * 20);
+      map.getPane(paneName).style.pointerEvents = "none";
+    });
+    const reference = {
+      grid: L.layerGroup().addTo(map),
+      zones: L.layerGroup().addTo(map),
+      enabled: { grid: true, zones: true },
+      control: null
+    };
+    mapReferenceStates.set(map, reference);
+    const refresh = () => renderMapReferenceLayers(map);
+    map.on("moveend zoomend resize", refresh);
+    if (options.control) reference.control = addMapReferenceControl(map);
+    refresh();
+    return reference;
+  }
+
+  function addMapReferenceControl(map) {
+    const control = L.control({ position: "topright" });
+    control.onAdd = () => {
+      const container = L.DomUtil.create("div", "leaflet-control map-reference-control");
+      container.setAttribute("role", "group");
+      container.setAttribute("aria-label", "地圖定位圖層");
+      container.innerHTML = `
+        <label><input type="checkbox" data-map-reference-layer="grid" checked> 經緯格線</label>
+        <label><input type="checkbox" data-map-reference-layer="zones" checked> 區域編號</label>`;
+      L.DomEvent.disableClickPropagation(container);
+      L.DomEvent.disableScrollPropagation(container);
+      container.addEventListener("change", event => {
+        const input = event.target.closest("[data-map-reference-layer]");
+        if (input) setMapReferenceLayerVisibility(map, input.dataset.mapReferenceLayer, input.checked);
+      });
+      return container;
+    };
+    control.addTo(map);
+    return control;
+  }
+
+  function setMapReferenceLayerVisibility(map, key, visible) {
+    const reference = mapReferenceStates.get(map);
+    const layer = reference?.[key];
+    if (!reference || !layer || !["grid", "zones"].includes(key)) return;
+    reference.enabled[key] = Boolean(visible);
+    if (visible && !map.hasLayer(layer)) layer.addTo(map);
+    if (!visible && map.hasLayer(layer)) map.removeLayer(layer);
+    reference.control?._container?.querySelectorAll(`[data-map-reference-layer="${key}"]`)
+      .forEach(input => { input.checked = Boolean(visible); });
+    if (visible) renderMapReferenceLayers(map);
+  }
+
+  function mapReferenceDivIcon(className, html, size, anchor) {
+    return L.divIcon({
+      className: "",
+      html: `<div class="${className}">${html}</div>`,
+      iconSize: size,
+      iconAnchor: anchor
+    });
+  }
+
+  function renderMapReferenceLayers(map) {
+    const reference = mapReferenceStates.get(map);
+    if (!reference) return;
+    const bounds = map.getBounds();
+    const compact = map.getContainer().clientWidth < 600;
+    const grid = SPATIAL.gridLinesForBounds({
+      south: bounds.getSouth(),
+      west: bounds.getWest(),
+      north: bounds.getNorth(),
+      east: bounds.getEast()
+    }, compact ? 7 : 10);
+    reference.grid.clearLayers();
+    reference.zones.clearLayers();
+    if (reference.enabled.grid) {
+      grid.latitudes.forEach(lat => {
+        L.polyline([[lat, grid.west], [lat, grid.east]], {
+          pane: "reference-grid-pane",
+          className: "map-reference-grid-line",
+          color: "#345466",
+          weight: 1,
+          opacity: .42,
+          interactive: false
+        }).addTo(reference.grid);
+        L.marker([lat, grid.west], {
+          pane: "reference-grid-pane",
+          interactive: false,
+          keyboard: false,
+          icon: mapReferenceDivIcon(
+            "map-reference-coordinate map-reference-latitude",
+            escapeHtml(SPATIAL.formatGridCoordinate(lat, "lat", grid.step)),
+            [58, 20],
+            [-4, 10]
+          )
+        }).addTo(reference.grid);
+      });
+      grid.longitudes.forEach(lng => {
+        L.polyline([[grid.south, lng], [grid.north, lng]], {
+          pane: "reference-grid-pane",
+          className: "map-reference-grid-line",
+          color: "#345466",
+          weight: 1,
+          opacity: .42,
+          interactive: false
+        }).addTo(reference.grid);
+        L.marker([grid.south, lng], {
+          pane: "reference-grid-pane",
+          interactive: false,
+          keyboard: false,
+          icon: mapReferenceDivIcon(
+            "map-reference-coordinate map-reference-longitude",
+            escapeHtml(SPATIAL.formatGridCoordinate(lng, "lng", grid.step)),
+            [64, 20],
+            [32, 21]
+          )
+        }).addTo(reference.grid);
+      });
+    }
+    if (reference.enabled.zones) {
+      const detailed = map.getZoom() >= 7;
+      Object.entries(SPATIAL.ZONE_CENTERS).forEach(([zoneId, center]) => {
+        const name = detailed ? `<span>${escapeHtml(zoneName(zoneId))}</span>` : "";
+        L.marker(center, {
+          pane: "reference-zone-pane",
+          interactive: false,
+          keyboard: false,
+          icon: mapReferenceDivIcon(
+            `map-reference-zone${detailed ? " detailed" : ""}`,
+            `<strong>${escapeHtml(zoneId)}</strong>${name}`,
+            detailed ? [132, 42] : [70, 28],
+            detailed ? [66, 21] : [35, 14]
+          )
+        }).addTo(reference.zones);
+      });
+    }
+  }
+
+  function spatialDivIcon(actor, text = "●", extraClass = "") {
+    return L.divIcon({
+      className: "",
+      html: `<div class="spatial-marker ${escapeAttr(actor)} ${escapeAttr(extraClass)}"><span>${escapeHtml(text)}</span></div>`,
+      iconSize: [30, 30],
+      iconAnchor: [15, 29],
+      popupAnchor: [0, -28]
+    });
+  }
+
+  function selectedPlacementRowElement() {
+    if (!selectedInventoryPlacementId) return null;
+    return [...$("detailedInventoryRows").querySelectorAll("tr")]
+      .find(tr => tr.dataset.inventoryId === selectedInventoryPlacementId) || null;
+  }
+
+  function renderInventoryPlacementEditor() {
+    const host = $("inventoryPlacementList");
+    if (!host) return;
+    const tr = selectedPlacementRowElement();
+    if (!tr) {
+      $("inventoryPlacementSelection").textContent = "請從上方選擇品項";
+      $("inventoryPlacementStatus").textContent = "尚未選擇品項";
+      host.innerHTML = `<p class="muted">尚未選擇品項。</p>`;
+      if (inventoryPlacementLayer) inventoryPlacementLayer.clearLayers();
+      return;
+    }
+    const row = readDetailedInventoryRows().find(item => item.id === tr.dataset.inventoryId);
+    const totals = SPATIAL.placementTotals(row);
+    const errors = SPATIAL.validateSpatialRow(row);
+    $("inventoryPlacementSelection").textContent = `${actorLabel(row.actor)} · ${row.alias}`;
+    $("inventoryPlacementStatus").textContent = errors.length ? `待補：${errors[0]}` : `已配置 ${totals.nominal}/${row.nominal}`;
+    const sourceNotice = $("inventoryPlacementSourceNotice");
+    if (sourceNotice) {
+      const inferredCount = row.placements.filter(item => item.precision === "regional-game-inference").length;
+      const publicCount = row.placements.filter(item => item.presetId && item.precision === "facility-centroid").length;
+      sourceNotice.textContent = publicCount || inferredCount
+        ? `公開設施中心點 ${publicCount} 個 · 遊戲推定點 ${inferredCount} 個 · 固定版本、非即時部署資料。`
+        : "目前為使用者自訂位置；精確座標只保存在本機與匯出檔。";
+    }
+    host.innerHTML = row.placements.length ? row.placements.map(placement => `
+      <div class="placement-list-row" data-placement-id="${escapeAttr(placement.placementId)}">
+        <input class="placement-edit-label" maxlength="100" value="${escapeAttr(placement.label)}" aria-label="配置點名稱">
+        <input class="placement-edit-quantity" type="number" min="0.1" step="0.1" value="${round1(placement.nominalQuantity)}" aria-label="配置數量">
+        <input class="placement-edit-lat" type="number" min="-90" max="90" step="0.000001" value="${placement.lat}" aria-label="緯度">
+        <input class="placement-edit-lng" type="number" min="-180" max="180" step="0.000001" value="${placement.lng}" aria-label="經度">
+        <span class="placement-source-badge">${placement.precision === "facility-centroid" ? "公開中心點" : placement.precision === "regional-game-inference" ? "遊戲推定" : "使用者自訂"}${placement.sourceCheckedAt ? ` · ${escapeHtml(placement.sourceCheckedAt)}` : ""}${placement.sourceUrl ? ` · <a href="${escapeAttr(placement.sourceUrl)}" target="_blank" rel="noopener noreferrer">來源</a>` : ""}</span>
+        <button type="button" class="danger remove-placement-button">刪除</button>
+      </div>`).join("") : `<p class="muted">尚無配置點；請點擊地圖或輸入座標新增。</p>`;
+    renderInventoryPlacementMap(row);
+  }
+
+  function ensureInventoryPlacementMap() {
+    if (inventoryPlacementMap || !$("inventoryPlacementMap")) return inventoryPlacementMap;
+    inventoryPlacementMap = createOsmMap("inventoryPlacementMap", { offlineElementId: "inventoryMapOffline" });
+    if (!inventoryPlacementMap) return null;
+    inventoryPlacementLayer = L.layerGroup().addTo(inventoryPlacementMap);
+    inventoryPlacementMap.on("click", event => {
+      if (!selectedPlacementRowElement()) return toast("請先從資源表選擇要配置的品項。");
+      addPlacementToSelectedRow(event.latlng.lat, event.latlng.lng);
+    });
+    return inventoryPlacementMap;
+  }
+
+  function renderInventoryPlacementMap(row) {
+    const map = ensureInventoryPlacementMap();
+    if (!map || !inventoryPlacementLayer) return;
+    inventoryPlacementLayer.clearLayers();
+    const bounds = [];
+    row.placements.forEach(placement => {
+      const marker = L.marker([placement.lat, placement.lng], {
+        draggable: true,
+        icon: spatialDivIcon(row.actor, String(Math.round(placement.nominalQuantity)))
+      }).addTo(inventoryPlacementLayer);
+      marker.bindPopup(`<strong>${escapeHtml(row.alias)}</strong><br>${escapeHtml(placement.label)}<br>配置 ${round1(placement.nominalQuantity)} · 半徑 ${round1(row.gameRangeKm)} km<br>${placement.lat.toFixed(6)}, ${placement.lng.toFixed(6)}`);
+      marker.on("dragend", () => {
+        const point = marker.getLatLng();
+        updatePlacementOnSelectedRow(placement.placementId, {
+          lat: point.lat,
+          lng: point.lng,
+          precision: "user-selected",
+          isUserModified: true
+        });
+      });
+      L.circle([placement.lat, placement.lng], {
+        radius: row.gameRangeKm * 1000,
+        color: row.actor === "RED" ? "#d8443b" : row.actor === "AMBER" ? "#b99700" : "#1976d2",
+        weight: 1,
+        opacity: .55,
+        fillOpacity: .04,
+        interactive: false
+      }).addTo(inventoryPlacementLayer);
+      bounds.push([placement.lat, placement.lng]);
+    });
+    setTimeout(() => map.invalidateSize(), 0);
+    if (bounds.length) map.fitBounds(bounds, { padding: [35, 35], maxZoom: 8 });
+  }
+
+  function addPlacementToSelectedRow(lat, lng) {
+    const tr = selectedPlacementRowElement();
+    if (!tr) return;
+    const nominal = Number(tr.querySelector(".inventory-nominal").value) || 0;
+    const assigned = (tr._placements || []).reduce((sum, placement) => sum + Number(placement.nominalQuantity || 0), 0);
+    const requested = Math.max(.1, Number($("placementQuantityInput").value) || Math.max(.1, nominal - assigned));
+    const quantity = Math.min(Math.max(.1, nominal - assigned || requested), requested);
+    const placementId = `${tr.dataset.inventoryId}-P${Date.now()}`;
+    tr._placements ||= [];
+    tr._placements.push({
+      placementId,
+      label: $("placementLabelInput").value.trim() || `配置點 ${tr._placements.length + 1}`,
+      lat: Number(lat.toFixed(6)),
+      lng: Number(lng.toFixed(6)),
+      zoneId: SPATIAL.nearestZoneId({ lat, lng }),
+      nominalQuantity: quantity,
+      currentQuantity: quantity,
+      presetId: "",
+      sourceUrl: "",
+      sourceCheckedAt: "",
+      precision: "user-selected",
+      isLive: false,
+      isUserModified: true
+    });
+    renderInventoryPlacementEditor();
+    syncDetailedInventoryPreview();
+  }
+
+  function updatePlacementOnSelectedRow(placementId, changes) {
+    const tr = selectedPlacementRowElement();
+    const placement = tr?._placements?.find(item => item.placementId === placementId);
+    if (!placement) return;
+    Object.assign(placement, changes);
+    placement.lat = clamp(Number(placement.lat), -90, 90);
+    placement.lng = clamp(Number(placement.lng), -180, 180);
+    placement.nominalQuantity = Math.max(.1, Number(placement.nominalQuantity) || .1);
+    placement.currentQuantity = Math.min(placement.nominalQuantity, Number(placement.currentQuantity) || placement.nominalQuantity);
+    placement.zoneId = SPATIAL.nearestZoneId(placement);
+    if (changes.lat !== undefined || changes.lng !== undefined || changes.label !== undefined || changes.nominalQuantity !== undefined) {
+      placement.isUserModified = true;
+      if (changes.lat !== undefined || changes.lng !== undefined) placement.precision = "user-selected";
+    }
+    renderInventoryPlacementEditor();
+    syncDetailedInventoryPreview();
+  }
+
+  function applyPlacementPresetToSelectedRow(force = false) {
+    const tr = selectedPlacementRowElement();
+    if (!tr || !DEPLOYMENTS) return toast("請先從資源表選擇要配置的品項。");
+    if (tr._placements?.length && !force) return toast("已有配置點；使用「清除後重設」才會覆寫。");
+    const row = readDetailedInventoryRows().find(item => item.id === tr.dataset.inventoryId);
+    const placements = DEPLOYMENTS.placementsForRow({ ...row, placements: [] }, { preserveExisting: false });
+    if (!placements.length && row.locationRequired) return toast("此品項沒有可用預設，請在地圖點選位置。");
+    tr._placements = placements;
+    renderInventoryPlacementEditor();
+    syncDetailedInventoryPreview();
+    toast(placements.length ? `已套用 ${placements.length} 個公開／遊戲預設位置。` : "此類別不要求空間位置。");
+  }
+
+  function validateAllInventoryPlacements(rows = readDetailedInventoryRows()) {
+    return rows.flatMap(row => SPATIAL.validateSpatialRow(row).map(message => `${actorLabel(row.actor)}「${row.alias}」：${message}`));
   }
 
   function calculateAbstractInventory(rows, previous = null) {
@@ -768,47 +1343,189 @@
     return { byActor, generatedAt: new Date().toISOString(), scale: "SYNTHETIC_0_100" };
   }
 
-  function renderInventoryAbstractPreview(abstractInventory) {
+  function weaponRowMetrics(rawRow, requestedQuantity = null) {
+    const row = sanitizeInventoryRow(rawRow);
+    const available = row.current * row.availability / 100;
+    const reserve = row.current * row.reserve / 100;
+    const committable = Math.max(0, available - reserve);
+    const requested = Math.max(0, Number(requestedQuantity ?? row.consumption) || 0);
+    const committed = Math.min(requested, committable);
+    const fulfillment = requested > 0 ? committed / requested : 0;
+    const quantityFactor = requested > 0
+      ? clamp(Math.sqrt(committed / Math.max(1, row.consumption)), 0, 1.5)
+      : 0;
+    const power = row.effect * row.reliability / 100 * fulfillment * quantityFactor;
+    return {
+      available: round1(available),
+      reserve: round1(reserve),
+      committable: round1(committable),
+      requested: round1(requested),
+      committed: round1(committed),
+      fulfillment: round1(fulfillment * 100),
+      power: round1(power)
+    };
+  }
+
+  function inventoryHealthForActor(rows, actor) {
+    const matching = (rows || []).filter(row => row.actor === actor);
+    const nominal = matching.reduce((sum, row) => sum + Number(row.nominal || 0), 0);
+    const current = matching.reduce((sum, row) => sum + Number(row.current || 0), 0);
+    return nominal > 0 ? round1(clamp(current / nominal * 100)) : 0;
+  }
+
+  function weaponRosterSummary(rows, actor) {
+    const matching = (rows || []).filter(row => row.actor === actor).map(sanitizeInventoryRow);
+    if (!matching.length) return { health: 0, committable: 0, power: 0, items: 0 };
+    const metrics = matching.map(row => weaponRowMetrics(row));
+    const weightTotal = matching.reduce((sum, row) => sum + Math.max(1, row.nominal), 0);
+    return {
+      health: inventoryHealthForActor(matching, actor),
+      committable: round1(metrics.reduce((sum, item) => sum + item.committable, 0)),
+      power: round1(matching.reduce((sum, row, index) =>
+        sum + metrics[index].power * Math.max(1, row.nominal) / weightTotal, 0)),
+      items: matching.length
+    };
+  }
+
+  function weaponActorReadinessModifier(rows, actor) {
+    const summary = weaponRosterSummary(rows, actor);
+    return round1(clamp((summary.power - 60) * .12, -6, 6));
+  }
+
+  function renderInventoryWeaponPreview(rows) {
     const host = $("inventoryAbstractPreview");
     if (!host) return;
     host.innerHTML = ["BLUE", "RED", "AMBER"].map(actor => {
-      const entry = abstractInventory.byActor[actor];
-      const categories = Object.entries(entry.categories);
-      return `<article class="inventory-actor-card ${actor}">
-        <h5>${actorLabel(actor)} · 綜合 ${entry.overall}</h5>
-        ${categories.length ? categories.map(([key, value]) => `<div class="inventory-score-row">
-          <span>${INVENTORY_CATEGORIES[key]}</span>
-          <span class="inventory-score-bar"><i style="width:${value.score}%"></i></span>
-          <strong>${value.score}</strong>
-        </div>`).join("") : `<p class="muted">尚無品項</p>`}
+      const actorRows = rows.filter(row => row.actor === actor).map(sanitizeInventoryRow);
+      return `<article class="inventory-actor-card weapon-value-card ${actor}" data-inventory-preview-card="${actor}"${actor === inventoryPreviewActorView ? "" : " hidden"}>
+        <h5>${actorLabel(actor)} · 庫存完整度 ${inventoryHealthForActor(actorRows, actor)}%</h5>
+        ${actorRows.length ? `<div class="weapon-value-list">${actorRows.map(row => {
+          const metrics = weaponRowMetrics(row);
+          return `<div class="weapon-value-row">
+            <div><strong>${escapeHtml(row.alias)}</strong><small>${escapeHtml(INVENTORY_CATEGORIES[row.category])}</small></div>
+            <span title="目前／起始存量">存量 ${round1(row.current)}/${round1(row.nominal)}</span>
+            <span title="本回合最多可投入">可投入 ${metrics.committable}</span>
+            <span title="使用每次消耗量時的品項戰力">效能 ${round1(row.effect)} · 可靠 ${round1(row.reliability)}%</span>
+            <strong title="典型一次行動的遊戲戰力">戰力 ${metrics.power}</strong>
+          </div>`;
+        }).join("")}</div>` : `<p class="muted">尚無品項</p>`}
       </article>`;
     }).join("");
+    setInventoryPreviewActorView(inventoryPreviewActorView);
+  }
+
+  function setInventoryPreviewActorView(actor) {
+    inventoryPreviewActorView = ["BLUE", "RED", "AMBER"].includes(actor) ? actor : "BLUE";
+    document.querySelectorAll("[data-inventory-preview-actor]").forEach(button => {
+      const active = button.dataset.inventoryPreviewActor === inventoryPreviewActorView;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-selected", String(active));
+      button.tabIndex = active ? 0 : -1;
+    });
+    document.querySelectorAll("[data-inventory-preview-card]").forEach(card => {
+      card.hidden = card.dataset.inventoryPreviewCard !== inventoryPreviewActorView;
+    });
   }
 
   function syncInventoryPrivacy() {
     const mode = $("inventoryDataMode").value;
-    const allow = $("allowSanitizedLlm").checked;
     const enabled = $("enableDetailedInventory").checked;
     const status = $("inventoryPrivacyStatus");
-    status.classList.toggle("warning", mode === "sensitive_local" || !allow);
+    status.classList.toggle("warning", mode === "sensitive_local");
     if (!enabled) {
       status.textContent = "詳細帳本已停用；推演會沿用舊版合成資源指數。";
-    } else if (mode === "sensitive_local" && !allow) {
-      status.textContent = "本機隔離：品項明細與匿名摘要都不會送給 LLM；次回合想定包改由固定規則生成。";
     } else if (mode === "sensitive_local") {
-      status.textContent = "敏感模式：原始名稱、數量、備註不離開瀏覽器；LLM 只能收到方別、類別、0–100 分數與趨勢。";
-    } else if (!allow) {
-      status.textContent = "LLM 摘要分享已關閉；次回合想定包改由固定規則生成。";
+      status.textContent = "敏感模式：原始名稱、數量、備註不離開瀏覽器；固定使用 LLM，但只傳送方別、類別、匿名分數與趨勢。";
     } else {
-      status.textContent = "公開名稱教學模式：裝備名稱只在本機增加臨場感；所有參數均為合成遊戲值。即使啟用 LLM，也只送出匿名化的 0–100 類別摘要。";
+      status.textContent = "LLM 必要模式：次回合想定只送匿名化摘要；自然語言命令轉換會送出藍方公開名稱與合成可用量，以便把「5架次F16V」對應到資源帳本。";
     }
   }
 
   function syncDetailedInventoryPreview() {
     if (!$("detailedInventoryRows")) return;
     const rows = readDetailedInventoryRows();
-    renderInventoryAbstractPreview(calculateAbstractInventory(rows));
+    const scenarioRows = state.scenario?.detailedInventory || [];
+    const sameScenarioRows = scenarioRows.length === rows.length
+      && scenarioRows.every(item => rows.some(row => row.id === item.id));
+    if (sameScenarioRows) {
+      state.scenario.detailedInventory = rows;
+      state.scenario.spatialPlacementPending = validateAllInventoryPlacements(rows);
+      state.scenario.abstractResources = calculateAbstractInventory(rows, state.scenario.abstractResources);
+    }
+    renderInventoryWeaponPreview(rows);
     syncInventoryPrivacy();
+  }
+
+  function inventoryLlmPrompt(actor) {
+    const defaults = Object.fromEntries(Object.entries(INVENTORY_CATEGORY_DEFAULTS).map(([category, values]) => [
+      category,
+      { ...values, effect: INVENTORY_EFFECT_DEFAULTS[category] }
+    ]));
+    const existing = readDetailedInventoryRows()
+      .filter(row => row.actor === actor)
+      .map(row => ({ alias: row.alias, category: row.category }));
+    return `你是個人娛樂兵推遊戲的品項資料設計器。請為${actorLabel(actor)}補充 6–10 個不同的武器、設施或支援物件，優先補足現有清單缺少的類別。所有數值只能是遊戲平衡參數，不得聲稱是真實性能、庫存或部署。請只回傳嚴格 JSON，不要使用 Markdown。
+
+格式：{"items":[{"alias":"80字內名稱","category":"允許類別","nominal":正整數,"availability":0到100,"reserve":0到100,"consumption":非負數,"recovery":非負數,"replenishment":非負數,"delay":0到100整數,"reliability":0到100,"effect":0到100,"note":"80字內遊戲用途"}]}
+
+允許類別：${JSON.stringify(INVENTORY_CATEGORIES)}
+分類預設值：${JSON.stringify(defaults)}
+現有${actorLabel(actor)}品項：${JSON.stringify(existing)}
+規則：每個物件必須完整提供所有欄位；機場、雷達站、基地、電廠、陣地等設施可使用概略名稱，不加入座標；數值應接近分類預設值並保有合理差異。`;
+  }
+
+  async function generateInventoryWithLlm() {
+    const status = $("inventoryLlmStatus");
+    const button = $("generateInventoryWithLlmBtn");
+    const apiKey = $("llmApiKey").value.trim();
+    const actor = inventoryActorView;
+    if (!apiKey) {
+      status.textContent = "請先到「LLM 必要設定」輸入 API Key。";
+      return;
+    }
+    const originalLabel = button.textContent;
+    button.disabled = true;
+    button.textContent = "LLM 產生中…";
+    status.textContent = `正在補充${actorLabel(actor)}品項與預設參數…`;
+    try {
+      saveLlmSettings();
+      const provider = $("llmProvider").value;
+      const result = extractJson(await requestLlm(
+        provider,
+        $("llmModel").value.trim(),
+        apiKey,
+        inventoryLlmPrompt(actor),
+        $("llmReasoning").value
+      ));
+      const rawItems = Array.isArray(result?.items) ? result.items.slice(0, 12) : [];
+      const generated = rawItems.filter(item => String(item?.alias || "").trim()).map((item, index) => {
+        const category = Object.hasOwn(INVENTORY_CATEGORIES, item?.category) ? item.category : "logistics";
+        const defaults = INVENTORY_CATEGORY_DEFAULTS[category];
+        return sanitizeInventoryRow({
+          ...defaults,
+          ...item,
+          id: `INV-LLM-${Date.now()}-${index + 1}`,
+          actor,
+          category,
+          effect: item?.effect ?? INVENTORY_EFFECT_DEFAULTS[category],
+          note: `LLM 遊戲參數：${String(item?.note || INVENTORY_CATEGORIES[category]).slice(0, 120)}`
+        }, index);
+      });
+      if (!generated.length) throw new Error("LLM 未回傳有效品項");
+      const existing = readDetailedInventoryRows();
+      const aliases = new Set(existing.map(row => normalizeNaturalOrderText(row.alias)));
+      const additions = generated.filter(row => !aliases.has(normalizeNaturalOrderText(row.alias)));
+      if (!additions.length) throw new Error("LLM 回傳品項均已存在");
+      renderDetailedInventoryRows([...existing, ...additions]);
+      setInventoryActorView(actor);
+      status.textContent = `已為${actorLabel(actor)}新增 ${additions.length} 項；所有參數仍可直接調整。`;
+      toast(`LLM 已補充 ${additions.length} 個遊戲品項。`);
+    } catch (error) {
+      status.textContent = `LLM 品項生成失敗：${error.message}`;
+    } finally {
+      button.textContent = originalLabel;
+      syncLlmActionButtons();
+    }
   }
 
   function calculateCombinedResourceBalance(resources, abstractResources) {
@@ -832,11 +1549,14 @@
 
   function ensureScenarioResources(scenario) {
     scenario.resources = { ...RESOURCE_DEFAULTS, ...(scenario.resources || readResourceInventory()) };
-    scenario.inventoryEnabled = Boolean(scenario.inventoryEnabled && Array.isArray(scenario.detailedInventory));
+    scenario.inventoryEnabled = Boolean(Array.isArray(scenario.detailedInventory) && scenario.detailedInventory.length);
     scenario.inventoryMode ||= "synthetic";
-    scenario.allowSanitizedLlm = scenario.allowSanitizedLlm !== false;
-    scenario.useLlmNextTurn = scenario.useLlmNextTurn !== false;
+    scenario.allowSanitizedLlm = true;
+    scenario.useLlmNextTurn = true;
+    scenario.llmRequired = true;
     scenario.detailedInventory = (scenario.detailedInventory || []).map(sanitizeInventoryRow);
+    scenario.spatialModelVersion = SPATIAL.MODEL_VERSION;
+    scenario.spatialPlacementPending = validateAllInventoryPlacements(scenario.detailedInventory);
     scenario.initialDetailedInventory ||= JSON.parse(JSON.stringify(scenario.detailedInventory));
     scenario.resourceLedger ||= [];
     scenario.nextTurnPackages ||= [];
@@ -849,8 +1569,8 @@
       ? calculateCombinedResourceBalance(scenario.resources, scenario.abstractResources)
       : (scenario.resourceBalance || calculateResourceBalance(scenario.resources));
     scenario.strategicParameters = { ...STRATEGIC_DEFAULTS, ...(scenario.strategicParameters || {}) };
-    scenario.turnOrderMode ||= "simultaneous";
-    scenario.firstOrderVisibility ||= "sealed";
+    scenario.turnOrderMode = "red_first";
+    scenario.firstOrderVisibility = "public";
     return scenario;
   }
 
@@ -935,8 +1655,8 @@
       civilPressure: formValues.civilPressure,
       amberSupport: formValues.amberSupport,
       weatherPreset: formValues.weatherPreset,
-      turnOrderMode: formValues.turnOrderMode,
-      firstOrderVisibility: formValues.firstOrderVisibility,
+      turnOrderMode: "red_first",
+      firstOrderVisibility: "public",
       templateKey: formValues.template,
       sourceLabel: template?.sourceLabel || "自訂合成想定",
       strategicParameters: formValues.strategicParameters,
@@ -983,14 +1703,32 @@
       resources: readResourceInventory(),
       inventoryEnabled: $("enableDetailedInventory").checked,
       inventoryMode: $("inventoryDataMode").value,
-      useLlmNextTurn: $("useLlmNextTurn").checked,
-      allowSanitizedLlm: $("allowSanitizedLlm").checked,
+      useLlmNextTurn: true,
+      allowSanitizedLlm: true,
       detailedInventory: readDetailedInventoryRows(),
       teacherConstraints: $("teacherConstraints").value.trim()
     };
   }
 
+  function hasLlmApiKey() {
+    return Boolean($("llmApiKey")?.value.trim());
+  }
+
+  function isLlmScenario(scenario) {
+    return Boolean(scenario?.llmNarrative?.provider && scenario?.llmNarrative?.model);
+  }
+
   function beginScenario(scenario) {
+    if (!hasLlmApiKey()) {
+      toast("請先輸入 API Key；未設定時不能建立或使用想定。");
+      setTab("builder");
+      return false;
+    }
+    if (!isLlmScenario(scenario)) {
+      toast("此想定不是由 LLM 生成，請重新使用「以 LLM 生成想定」。");
+      setTab("builder");
+      return false;
+    }
     state.scenario = ensureScenarioResources(scenario);
     state.currentTurn = 1;
     state.status = initialStatus(scenario);
@@ -1002,7 +1740,9 @@
     renderScenario();
     renderSimulation();
     renderAAR();
+    setTab("scenario");
     toast("想定已生成，可進入回合推演。");
+    return true;
   }
 
   function renderScenario() {
@@ -1023,13 +1763,16 @@
     const strategic = { ...STRATEGIC_DEFAULTS, ...(s.strategicParameters || {}) };
     const detailedSummary = s.inventoryEnabled ? `
       <article class="card" style="margin-top:1rem">
-        <div class="subheading"><h3>詳細庫存抽象換算</h3><span class="badge">${s.inventoryMode === "sensitive_local" ? "敏感／本機" : "公開名稱／合成參數"}</span></div>
+        <div class="subheading"><h3>品項級武器遊戲數值</h3><span class="badge">${s.inventoryMode === "sensitive_local" ? "敏感／本機" : "公開名稱／遊戲參數"}</span></div>
         <div class="ledger-summary">
-          ${["BLUE", "RED", "AMBER"].map(actor => `<span class="ledger-chip"><strong>${actorLabel(actor)}</strong> ${s.abstractResources?.byActor?.[actor]?.overall ?? 0}/100</span>`).join("")}
+          ${["BLUE", "RED", "AMBER"].map(actor => {
+            const summary = weaponRosterSummary(s.detailedInventory, actor);
+            return `<span class="ledger-chip"><strong>${actorLabel(actor)}</strong> ${summary.items} 項 · 可投入 ${summary.committable} · 典型戰力 ${summary.power}</span>`;
+          }).join("")}
           <span class="ledger-chip">${s.detailedInventory.length} 個品項</span>
           <span class="ledger-chip">LLM：${s.useLlmNextTurn && s.allowSanitizedLlm ? "僅匿名摘要" : "不分享資源摘要"}</span>
         </div>
-        <p class="muted">品項明細由固定規則換算並逐回合記帳；LLM 不負責數量計算，也不接收品項名稱、原始數量或備註。</p>
+        <p class="muted">回合裁決直接讀取各品項的存量、可用率、保留量、每次消耗、可靠度與單位效能；不再以類別 0–100 分數決定勝負。</p>
       </article>` : "";
     container.className = "preview";
     container.innerHTML = `
@@ -1051,6 +1794,7 @@
           <span class="tag">${weatherLabel(s.weatherPreset)}</span>
           <span class="tag">${escapeHtml(turnOrderModeLabel(s.turnOrderMode))}</span>
           <span class="tag">${s.turnOrderMode === "simultaneous" ? "命令密封" : s.firstOrderVisibility === "public" ? "先手命令公開" : "先手命令不公開"}</span>
+          <span class="tag">LLM ${escapeHtml(s.llmNarrative?.provider || "未驗證")}／${escapeHtml(s.llmNarrative?.model || "未驗證")}</span>
         </div>
       </div>
       <div class="preview-grid">
@@ -1080,7 +1824,7 @@
         <div class="preview-grid">
           <div><strong>藍方</strong><p class="muted">航空架次 ${s.resources.blueAircraft} · 攔截彈 ${s.resources.blueInterceptors}<br>巡防平台 ${s.resources.blueVessels} · 補給批次 ${s.resources.blueLogistics}<br>無人機任務批次 ${s.resources.blueDrones}</p></div>
           <div><strong>紅方</strong><p class="muted">航空架次 ${s.resources.redAircraft} · 合成來襲目標 ${s.resources.redIncoming}<br>海上平台 ${s.resources.redVessels} · 補給批次 ${s.resources.redLogistics}</p></div>
-          <div><strong>通訊與資源壓力</strong><p class="muted">星鏈節點 ${s.resources.starlinkNodes} · 高空通訊平臺 ${s.resources.highAltitudePlatforms}<br>藍方資源修正 ${s.resourceBalance.blue >= 0 ? "+" : ""}${s.resourceBalance.blue}<br>紅方資源修正 ${s.resourceBalance.red >= 0 ? "+" : ""}${s.resourceBalance.red}</p></div>
+          <div><strong>品項級資源</strong><p class="muted">星鏈節點 ${s.resources.starlinkNodes} · 高空通訊平臺 ${s.resources.highAltitudePlatforms}<br>藍方庫存完整度 ${inventoryHealthForActor(s.detailedInventory, "BLUE")}%<br>紅方庫存完整度 ${inventoryHealthForActor(s.detailedInventory, "RED")}%</p></div>
         </div>
       </article>
       ${detailedSummary}
@@ -1093,7 +1837,7 @@
     $("goSimulationBtn").addEventListener("click", () => setTab("simulation"));
     $("regenerateEventsBtn").addEventListener("click", () => {
       $("scenarioSeed").value = Number($("scenarioSeed").value) + 1;
-      beginScenario(generateScenario(readScenarioForm()));
+      generateWithLlm();
     });
     $("clearScenarioBtn").addEventListener("click", clearScenario);
   }
@@ -1125,14 +1869,26 @@
 
   function renderSimulation() {
     const hasScenario = !!state.scenario;
-    $("simulationEmpty").hidden = hasScenario;
-    $("simulationContent").hidden = !hasScenario;
-    $("resolveTurnBtn").disabled = !hasScenario || state.currentTurn > (state.scenario?.turns || 0);
-    if (!hasScenario) {
-      scheduleSectionNavigatorUpdate();
+    const hasApiKey = hasLlmApiKey();
+    const llmScenario = isLlmScenario(state.scenario);
+    const usable = hasScenario && hasApiKey && llmScenario;
+    $("simulationEmpty").hidden = usable;
+    $("simulationContent").hidden = !usable;
+    $("simulationEmpty").textContent = !hasScenario
+      ? "請先至「一、建立想定」輸入 API Key，並以 LLM 建立或載入一個想定。"
+      : !hasApiKey
+        ? "此系統固定使用 LLM；請先至「一、建立想定」輸入 API Key，才能使用目前想定。"
+        : !llmScenario
+          ? "目前想定不是由 LLM 生成，請回到「一、建立想定」重新建立。"
+          : "";
+    $("resolveTurnBtn").disabled = !usable || state.currentTurn > (state.scenario?.turns || 0);
+    if (!usable) {
+      if ($("simulation").classList.contains("active")) renderSectionNavigator("simulation");
+      else scheduleSectionNavigatorUpdate();
       return;
     }
 
+    ensureRedInitiativeForTurn();
     $("turnBadge").textContent = state.currentTurn > state.scenario.turns
       ? "推演完成"
       : `第 ${state.currentTurn} / ${state.scenario.turns} 回合（T+${(state.currentTurn - 1) * state.scenario.hoursPerTurn}h）`;
@@ -1140,6 +1896,7 @@
     renderStatusCards();
     renderZoneMap();
     renderOperationTheater();
+    renderRedInitiativeBanner();
     renderOrderControls();
     renderCurrentOrders();
     renderTurnPanels();
@@ -1147,7 +1904,9 @@
     renderNextTurnPackage();
     renderNarrative();
     updateLab();
-    scheduleSectionNavigatorUpdate();
+    setSimulationPanel(state.simulationPanel);
+    if ($("simulation").classList.contains("active")) renderSectionNavigator("simulation");
+    else scheduleSectionNavigatorUpdate();
   }
 
   function renderStatusCards() {
@@ -1170,7 +1929,7 @@
       return `<article class="metric ${id.toLowerCase()}">
         <small>${label}</small>
         <strong>${round1(actor.readiness)}</strong>
-        <small>後勤 ${round1(actor.sustainment)} · 指管 ${round1(actor.command)} · 資源 ${round1(actor.resources)}${strategicNote}</small>
+        <small>後勤 ${round1(actor.sustainment)} · 指管 ${round1(actor.command)} · ${state.scenario.inventoryEnabled ? "庫存完整度" : "資源"} ${round1(actor.resources)}${state.scenario.inventoryEnabled ? "%" : ""}${strategicNote}</small>
       </article>`;
     }).join("");
   }
@@ -1202,8 +1961,173 @@
     }).join("");
   }
 
+  function ensureOperationLeafletMap() {
+    if (operationLeafletMap || !$("operationMap")) return operationLeafletMap;
+    operationLeafletMap = createOsmMap("operationMap", {
+      center: [23.7, 120.8],
+      zoom: 6,
+      offlineElementId: "operationMapOffline",
+      referenceControl: false
+    });
+    if (!operationLeafletMap) return null;
+    ["BLUE", "RED", "AMBER", "ranges", "actions", "events", "conflicts"].forEach(key => {
+      operationPlacementLayers[key] = L.layerGroup().addTo(operationLeafletMap);
+    });
+    operationTargetLayer = L.layerGroup().addTo(operationLeafletMap);
+    operationLeafletMap.on("click", event => {
+      if (!pendingSpatialOrder) return;
+      setPendingSpatialTarget(pendingSpatialItemIndex, event.latlng);
+    });
+    renderOperationMapFilters();
+    return operationLeafletMap;
+  }
+
+  function renderOperationMapFilters() {
+    const host = $("operationMapFilters");
+    if (!host) return;
+    const labels = {
+      BLUE: "藍方", RED: "紅方", AMBER: "黃方",
+      "cat-air": "航空／感測", "cat-sea": "海上／水下", "cat-fires": "防空／火力",
+      "cat-support": "支援資源", "cat-facilities": "固定設施", ranges: "作用半徑",
+      actions: "回合行動", events: "事件", conflicts: "衝突"
+    };
+    labels.grid = "經緯格線";
+    labels.zones = "區域編號";
+    host.innerHTML = Object.entries(labels).map(([key, label]) =>
+      `<label><input type="checkbox" data-operation-layer="${key}" checked> ${label}</label>`
+    ).join("");
+  }
+
+  function renderOperationLeafletLayers(scene = latestOperationScene()) {
+    const map = ensureOperationLeafletMap();
+    if (!map) return;
+    Object.values(operationPlacementLayers).forEach(layer => layer.clearLayers());
+    operationResourceMarkers = [];
+    const rows = state.scenario?.detailedInventory || [];
+    rows.map(sanitizeInventoryRow).forEach(row => {
+      row.placements.forEach(placement => {
+        const marker = L.marker([placement.lat, placement.lng], {
+          icon: spatialDivIcon(row.actor, String(Math.round(placement.currentQuantity)))
+        }).addTo(operationPlacementLayers[row.actor]);
+        marker.bindPopup(`<strong>${escapeHtml(row.alias)}</strong><br>${escapeHtml(placement.label)}<br>${actorLabel(row.actor)} · ${escapeHtml(INVENTORY_CATEGORIES[row.category])}<br>目前 ${round1(placement.currentQuantity)}/${round1(placement.nominalQuantity)} · 合成半徑 ${round1(row.gameRangeKm)} km<br>${placement.lat.toFixed(6)}, ${placement.lng.toFixed(6)}<br>${placement.precision === "facility-centroid" ? "公開設施中心點" : placement.precision === "regional-game-inference" ? "遊戲推定位置" : "使用者自訂位置"}${placement.sourceUrl ? ` · <a href="${escapeAttr(placement.sourceUrl)}" target="_blank" rel="noopener noreferrer">來源</a>` : ""}<br><small>固定版本、非即時部署資料</small>`);
+        operationResourceMarkers.push({ marker, actor: row.actor, group: operationCategoryGroup(row.category) });
+        L.circle([placement.lat, placement.lng], {
+          radius: row.gameRangeKm * 1000,
+          color: OPERATION_ACTORS[row.actor]?.color || "#666",
+          weight: 1,
+          opacity: .32,
+          fillOpacity: .025,
+          interactive: false
+        }).addTo(operationPlacementLayers.ranges);
+      });
+    });
+    (scene?.actions || []).forEach(action => {
+      if (!action.target) return;
+      const placement = operationActionOrigin(action, scene);
+      L.marker([action.target.lat, action.target.lng], {
+        icon: spatialDivIcon(action.actor, action.primary ? "主" : "支")
+      }).bindPopup(`<strong>${escapeHtml(action.action)}</strong><br>${escapeHtml(action.target.label || zoneName(action.zone))}`).addTo(operationPlacementLayers.actions);
+      if (placement) {
+        L.polyline([[placement.lat, placement.lng], [action.target.lat, action.target.lng]], {
+          color: OPERATION_ACTORS[action.actor].color,
+          weight: action.primary ? 3 : 2,
+          dashArray: action.primary ? null : "7 7",
+          opacity: .75
+        }).addTo(operationPlacementLayers.actions);
+        const moving = L.marker([placement.lat, placement.lng], {
+          icon: spatialDivIcon(action.actor, operationAnimationGlyph(action), "operation-moving-marker"),
+          keyboard: false,
+          zIndexOffset: action.primary ? 1000 : 600
+        }).bindTooltip(`${actorLabel(action.actor)} · ${action.action}`, { direction: "top", offset: [0, -24] })
+          .addTo(operationPlacementLayers.actions);
+        action._leafletMarker = moving;
+        action._origin = { lat: placement.lat, lng: placement.lng };
+      }
+    });
+    (scene?.snapshot?.events || []).forEach(event => {
+      const center = SPATIAL.ZONE_CENTERS[event.zone_id];
+      if (!center) return;
+      L.circleMarker(center, { radius: 7, color: "#666", fillColor: "#fff", fillOpacity: .9 })
+        .bindPopup(`<strong>${escapeHtml(event.event_name)}</strong><br>${escapeHtml(zoneName(event.zone_id))}`)
+        .addTo(operationPlacementLayers.events);
+    });
+    (scene?.conflicts || []).forEach(conflict => {
+      const point = conflict.target || (SPATIAL.ZONE_CENTERS[conflict.zone]
+        ? { lat: SPATIAL.ZONE_CENTERS[conflict.zone][0], lng: SPATIAL.ZONE_CENTERS[conflict.zone][1] }
+        : null);
+      if (!point) return;
+      L.circle([point.lat, point.lng], {
+        radius: SPATIAL.CONFLICT_RADIUS_KM * 1000,
+        color: "#ff4b3e",
+        weight: 2,
+        fillOpacity: .12
+      }).bindPopup(`空間衝突群 · ${round1(conflict.intensity || 0)}`).addTo(operationPlacementLayers.conflicts);
+    });
+    setTimeout(() => map.invalidateSize(), 0);
+    applyOperationResourceFilters();
+    updateGeographicAnimation(scene, operationAnimation.elapsed);
+  }
+
+  function operationCategoryGroup(category) {
+    if (["aviation", "isr"].includes(category)) return "cat-air";
+    if (["maritime", "subsurface"].includes(category)) return "cat-sea";
+    if (["airDefense", "longRange"].includes(category)) return "cat-fires";
+    if (["airport", "radarStation", "base", "powerPlant", "position"].includes(category)) return "cat-facilities";
+    return "cat-support";
+  }
+
+  function operationFilterChecked(key) {
+    return $("operationMapFilters")?.querySelector(`[data-operation-layer="${key}"]`)?.checked !== false;
+  }
+
+  function applyOperationResourceFilters() {
+    operationResourceMarkers.forEach(entry => {
+      const visible = operationFilterChecked(entry.actor) && operationFilterChecked(entry.group);
+      entry.marker.setOpacity(visible ? 1 : 0);
+      const element = entry.marker.getElement();
+      if (element) element.style.pointerEvents = visible ? "" : "none";
+    });
+  }
+
+  function operationAnimationGlyph(action) {
+    return ({
+      aviation: "✈", airdefense: "盾", longrange: "火", maritime: "艦",
+      convoy: "護", subsurface: "潛", intelligence: "偵", logistics: "補",
+      communications: "訊", satellite: "星", energy: "電", humanitarian: "援",
+      diplomacy: "談", disperse: "散", drone: "無", standby: "待"
+    })[action.type] || (action.primary ? "主" : "支");
+  }
+
+  function operationActionOrigin(action, scene, rows = null) {
+    const inventory = rows || scene?.snapshot?.spatialInventoryBefore || state.scenario?.detailedInventory || [];
+    const allocation = action.assetAllocations?.find(item => item.placementId) || action.assetAllocations?.[0];
+    const row = inventory.find(item => item.id === allocation?.inventoryId);
+    const placement = row?.placements?.find(item => item.placementId === allocation?.placementId);
+    if (placement && Number.isFinite(Number(placement.lat)) && Number.isFinite(Number(placement.lng))) return placement;
+    const center = SPATIAL.ZONE_CENTERS[action.zone];
+    return center ? { lat: center[0], lng: center[1], label: zoneName(action.zone) } : null;
+  }
+
+  function geographicActionProgress(action, elapsed) {
+    return clamp((Number(elapsed) - Number(action.start || 0)) / (action.primary ? 3600 : 3000), 0, 1);
+  }
+
+  function updateGeographicAnimation(scene, elapsed) {
+    (scene?.actions || []).forEach(action => {
+      if (!action._leafletMarker || !action._origin || !action.target) return;
+      const progress = geographicActionProgress(action, elapsed);
+      const eased = progress * progress * (3 - 2 * progress);
+      action._leafletMarker.setLatLng([
+        action._origin.lat + (Number(action.target.lat) - action._origin.lat) * eased,
+        action._origin.lng + (Number(action.target.lng) - action._origin.lng) * eased
+      ]);
+      action._leafletMarker.setOpacity(progress <= 0 ? .25 : 1);
+    });
+  }
+
   function operationType(action) {
     const text = String(action || "");
+    if (isStandbyAction(text)) return { type: "standby", combat: false };
     if (/商船護航|多國商船護航/.test(text)) return { type: "convoy", combat: false };
     if (/防空|強化防空警戒/.test(text)) return { type: "airdefense", combat: /交戰/.test(text) };
     if (/航空|空中|空中施壓/.test(text)) return { type: "aviation", combat: true };
@@ -1225,34 +2149,76 @@
     return { type: "communications", combat: false };
   }
 
-  function operationEquipmentOptions(actor, type) {
-    return OPERATION_EQUIPMENT_LABELS[actor]?.[type] || [];
+  function isStandbyAction(action) {
+    return /待命不做事|保持待命|原地待命|本回合待命/.test(String(action || ""));
   }
 
-  function operationEquipmentLabel(actor, type, seedText = "") {
-    const options = operationEquipmentOptions(actor, type);
-    if (!options.length) return "";
-    return options[hashText(`${actor}-${type}-${seedText}`) % options.length];
+  function selectedOperationIconType(item, requested = item?.iconChoice) {
+    const fallback = operationType(item?.action).type;
+    return requested && requested !== "auto" && Object.hasOwn(OPERATION_TYPE_LABELS, requested)
+      ? requested
+      : fallback;
+  }
+
+  function renderOrderIconPreview() {
+    const canvas = $("orderIconPreview");
+    if (!canvas) return;
+    const action = $("orderAction")?.value || $("naturalOrderInput")?._llmParsed?.primary?.action || "";
+    const type = selectedOperationIconType({ action }, $("orderIcon")?.value || "auto");
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const size = 48;
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, size, size);
+    drawOperationPictogram(ctx, type, size / 2, size / 2, 16, OPERATION_ACTORS.BLUE.color, 0);
+    canvas.setAttribute("aria-label", `所選主命令圖標：${OPERATION_TYPE_LABELS[type] || type}`);
+  }
+
+  function operationEquipmentEntries(actor, action, resourceLedger) {
+    const category = inventoryCategoryForAction(action);
+    return (resourceLedger?.entries || [])
+      .filter(entry => entry.actor === actor && entry.category === category && Number(entry.actionConsumption || 0) > 0)
+      .sort((a, b) => Number(b.actionConsumption || 0) - Number(a.actionConsumption || 0));
+  }
+
+  function operationEquipmentLabel(actor, action, resourceLedger) {
+    const entries = operationEquipmentEntries(actor, action, resourceLedger);
+    const aliases = [...new Set(entries.map(entry => String(entry.alias || "").trim()).filter(Boolean))];
+    if (!aliases.length) return "";
+    if (aliases.length <= 2) return aliases.join("／");
+    return `${aliases.slice(0, 2).join("／")} 等 ${aliases.length} 項`;
+  }
+
+  function operationEquipmentLabelForItem(actor, item, itemIndex, resourceLedger) {
+    const allocations = (resourceLedger?.actionAllocations || [])
+      .filter(entry => entry.actor === actor && Number(entry.itemIndex) === Number(itemIndex) && Number(entry.committed || 0) > 0);
+    if (!allocations.length) return operationEquipmentLabel(actor, item.action, resourceLedger);
+    const labels = allocations.map(entry => `${entry.alias} ×${round1(entry.committed)}`);
+    return labels.length <= 2 ? labels.join("／") : `${labels.slice(0, 2).join("／")} 等 ${labels.length} 項`;
   }
 
   function renderOperationIconLegend() {
     const legend = $("operationIconLegend");
-    if (!legend || legend.dataset.rendered === "true") return;
+    if (!legend) return;
+    const supportMode = state.scenario?.amberSupport || "none";
+    if (legend.dataset.supportMode === supportMode) return;
     const factionLabels = {
       BLUE: "藍方（臺灣）",
       RED: "紅方（中國大陸）",
-      AMBER: "黃方（外部支援）"
+      AMBER: "美軍支援（外部支援）"
     };
-    legend.innerHTML = ["BLUE", "RED", "AMBER"].map(actor => `
+    const actors = supportMode === "none" ? ["BLUE", "RED"] : ["BLUE", "RED", "AMBER"];
+    legend.innerHTML = actors.map(actor => `
       <section class="operation-icon-faction ${actor}" aria-label="${factionLabels[actor]}圖標">
         <h6>${factionLabels[actor]}</h6>
         <div class="operation-icon-list">
           ${ACTIONS[actor].map(([action]) => {
             const type = operationType(action).type;
-            const equipment = operationEquipmentOptions(actor, type);
             return `<div class="operation-icon-item" title="${escapeAttr(action)}">
               <canvas data-operation-icon="${type}" data-operation-actor="${actor}" aria-hidden="true"></canvas>
-              <div><strong>${escapeHtml(action)}</strong><span>${escapeHtml(equipment.length ? `敘事裝備：${equipment.join("／")}` : OPERATION_TYPE_LABELS[type] || "抽象行動圖標")}</span></div>
+              <div><strong>${escapeHtml(action)}</strong><span>${escapeHtml(OPERATION_TYPE_LABELS[type] || "抽象行動圖標")}</span></div>
             </div>`;
           }).join("")}
         </div>
@@ -1268,14 +2234,13 @@
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       drawOperationPictogram(ctx, canvas.dataset.operationIcon, size / 2, size / 2, 11, actor.color, 0);
     });
-    legend.dataset.rendered = "true";
+    legend.dataset.supportMode = supportMode;
   }
 
-  function operationSceneForLog(log) {
-    if (!log?.orders) return null;
+  function operationActionsFromOrders(orders, turn, resourceLedger) {
     const actions = [];
     ["BLUE", "RED", "AMBER"].forEach((actor, actorIndex) => {
-      const order = log.orders[actor];
+      const order = orders?.[actor];
       if (!order) return;
       orderItems(order).forEach((item, itemIndex) => {
         const kind = operationType(item.action);
@@ -1288,18 +2253,48 @@
           zone: item.zone,
           resource: Number(item.resource) || 0,
           priority: Number(item.priority) || 3,
-          type: kind.type,
-          equipment: operationEquipmentLabel(actor, kind.type, `${log.turn}-${item.action}-${itemIndex}`),
+          risk: item.risk || "medium",
+          condition: item.condition || "",
+          target: item.target || null,
+          assetAllocations: Array.isArray(item.assetAllocations) ? item.assetAllocations : [],
+          type: selectedOperationIconType(item),
+          equipment: operationEquipmentLabelForItem(actor, item, itemIndex, resourceLedger),
           combat: kind.combat,
-          start: 650 + actorIndex * 450 + itemIndex * 380
+          start: 650 + actorIndex * 450 + itemIndex * 380,
+          key: `${turn}-${actor}-${itemIndex}-${item.action}-${item.zone}`
         });
       });
     });
-    const conflicts = detectOperationConflicts(actions);
-    const key = `${state.scenario?.seed || 0}-${log.turn}-${hashText(JSON.stringify(log.orders))}`;
+    return actions;
+  }
+
+  function operationSceneForLog(log) {
+    if (!log?.orders) return null;
+    const sourceSnapshot = turnReviewSnapshot(log);
+    const snapshot = {
+      ...sourceSnapshot,
+      statusAfter: sourceSnapshot.statusAfter || log.statusAfter || {},
+      environment: sourceSnapshot.environment || log.environment || {},
+      outcome: sourceSnapshot.outcome || log.outcome || "",
+      keyRisk: sourceSnapshot.keyRisk || log.keyRisk || "",
+      adjudication: sourceSnapshot.adjudication || log.adjudication || null
+    };
+    const orders = snapshot.orders || log.orders;
+    const resourceLedger = snapshot.resourceLedger || log.resourceLedger;
+    const actions = operationActionsFromOrders(orders, log.turn, resourceLedger);
+    const conflicts = Array.isArray(snapshot.adjudication?.operationConflicts)
+      ? snapshot.adjudication.operationConflicts
+      : [];
+    const key = `${state.scenario?.seed || 0}-${log.turn}-${hashText(JSON.stringify({
+      orders,
+      conflicts,
+      status: snapshot.statusAfter,
+      ledger: resourceLedger?.totals
+    }))}`;
     return {
       key,
       log,
+      snapshot,
       actions,
       conflicts,
       duration: conflicts.length ? 14500 : 12000
@@ -1310,41 +2305,189 @@
     return operationSceneForLog(state.logs[state.logs.length - 1]);
   }
 
-  function detectOperationConflicts(actions) {
+  function adjudicateOperationConflicts(orders, events, weather, adjudicationContext = {}, resourceLedger) {
+    const actions = operationActionsFromOrders(orders, state.currentTurn, resourceLedger);
+    const spatialGroups = SPATIAL.clusterOpposedActions(actions, SPATIAL.CONFLICT_RADIUS_KM);
+    if (spatialGroups.length) {
+      return spatialGroups.map(group => {
+        const target = {
+          lat: group.actions.reduce((sum, action) => sum + Number(action.target.lat), 0) / group.actions.length,
+          lng: group.actions.reduce((sum, action) => sum + Number(action.target.lng), 0) / group.actions.length
+        };
+        const intensity = group.actions.reduce((sum, item) =>
+          sum + Math.max(3, item.resource) * (.72 + item.priority * .13), 0)
+          + (Number(adjudicationContext.blueLoss || 0) + Number(adjudicationContext.redLoss || 0)) * .22;
+        return {
+          zone: SPATIAL.nearestZoneId(target),
+          target,
+          intensity: round1(intensity),
+          actors: [...new Set(group.actions.map(item => item.actor))],
+          severity: intensity >= 58 || group.actions.length >= 3 ? "high" : "medium",
+          theaterWide: false,
+          source: "SPATIAL_RULE_ENGINE",
+          drivers: [`目標點相距 ${SPATIAL.CONFLICT_RADIUS_KM} km 內`, `對抗行動 ${group.actions.length} 項`],
+          actionKeys: group.actions.map(item => item.key)
+        };
+      });
+    }
+    const combatActionsWithSpatialModel = actions.filter(action => action.combat);
+    if (combatActionsWithSpatialModel.length && combatActionsWithSpatialModel.every(action => action.target)) return [];
     const byZone = new Map();
     actions.filter(action => action.combat).forEach(action => {
       if (!byZone.has(action.zone)) byZone.set(action.zone, []);
       byZone.get(action.zone).push(action);
+    });
+    const weatherByZone = new Map((weather || []).map(item => [item.zone_id, item]));
+    const eventPressureByZone = new Map();
+    (events || []).forEach(event => {
+      const deltaPressure = [
+        event.readiness_delta,
+        event.sustainment_delta,
+        event.command_delta,
+        event.civilian_risk_delta
+      ].reduce((sum, value) => sum + Math.abs(Number(value || 0)), 0);
+      const severityPressure = ({ low: 2, medium: 5, high: 9 })[event.severity] || 0;
+      eventPressureByZone.set(event.zone_id, (eventPressureByZone.get(event.zone_id) || 0) + deltaPressure * .22 + severityPressure);
     });
     const conflicts = [];
     byZone.forEach((items, zone) => {
       const actors = new Set(items.map(item => item.actor));
       const opposed = actors.has("RED") && (actors.has("BLUE") || actors.has("AMBER"));
       if (!opposed) return;
-      const intensity = items.reduce((sum, item) => sum + Math.max(3, item.resource) * (.72 + item.priority * .13), 0);
+      const weatherItem = weatherByZone.get(zone);
+      const weatherPressure = weatherItem
+        ? Math.max(0, Number(weatherItem.sea_state_1_5 || 0) - 2) * 1.5
+          + Math.max(0, 4 - Number(weatherItem.visibility_1_5 || 0)) * 1.2
+        : 0;
+      const eventPressure = eventPressureByZone.get(zone) || 0;
+      const lossPressure = (Number(adjudicationContext.blueLoss || 0) + Number(adjudicationContext.redLoss || 0)) * .22;
+      const intensity = items.reduce((sum, item) => sum + Math.max(3, item.resource) * (.72 + item.priority * .13), 0)
+        + weatherPressure + eventPressure + lossPressure;
       const explicitEngagement = items.some(item => /交戰|攔截|拒止|反制/.test(item.action));
       if (actors.size >= 3 || intensity >= 38 || (explicitEngagement && intensity >= 28)) {
-        conflicts.push({ zone, items, intensity: round1(intensity), actors: [...actors] });
+        conflicts.push({
+          zone,
+          intensity: round1(intensity),
+          actors: [...actors],
+          severity: intensity >= 58 || actors.size >= 3 ? "high" : "medium",
+          theaterWide: false,
+          source: "RULE_ENGINE",
+          drivers: [
+            `對抗行動 ${items.length} 項`,
+            weatherPressure ? `環境摩擦 ${round1(weatherPressure)}` : "",
+            eventPressure ? `事件壓力 ${round1(eventPressure)}` : ""
+          ].filter(Boolean),
+          actionKeys: items.map(item => item.key)
+        });
       }
     });
     if (!conflicts.length) {
       const combatActions = actions.filter(action => action.combat);
       const actors = new Set(combatActions.map(action => action.actor));
       const opposed = actors.has("RED") && (actors.has("BLUE") || actors.has("AMBER"));
-      const theaterIntensity = combatActions.reduce((sum, item) => sum + Math.max(3, item.resource) * (.72 + item.priority * .13), 0);
+      const environmentPressure = Math.max(0, Number(adjudicationContext.environmentPenalty || 0));
+      const eventPressure = [...eventPressureByZone.values()].reduce((sum, value) => sum + value, 0);
+      const theaterIntensity = combatActions.reduce((sum, item) => sum + Math.max(3, item.resource) * (.72 + item.priority * .13), 0)
+        + environmentPressure + eventPressure;
       const explicitEngagement = combatActions.some(item => /交戰|攔截|拒止|反制/.test(item.action));
       if (opposed && (theaterIntensity >= 72 || (explicitEngagement && theaterIntensity >= 58))) {
         const focalAction = [...combatActions].sort((a, b) => (b.resource * b.priority) - (a.resource * a.priority))[0];
         conflicts.push({
           zone: focalAction.zone,
-          items: combatActions,
           intensity: round1(theaterIntensity),
           actors: [...actors],
-          theaterWide: true
+          severity: theaterIntensity >= 92 ? "high" : "medium",
+          theaterWide: true,
+          source: "RULE_ENGINE",
+          drivers: [
+            `跨區對抗行動 ${combatActions.length} 項`,
+            environmentPressure ? `整體環境摩擦 ${round1(environmentPressure)}` : "",
+            eventPressure ? `事件壓力 ${round1(eventPressure)}` : "",
+            `裁決差值 ${round1(adjudicationContext.balance || 0)}`
+          ].filter(Boolean),
+          actionKeys: combatActions.map(item => item.key)
         });
       }
     }
     return conflicts;
+  }
+
+  function operationSituationLayersMarkup(scene) {
+    if (!scene) {
+      return ["戰力狀態", "天候環境", "事件導調", "情報與風險"].map((title, index) => `
+        <article class="operation-layer-card ${["", "environment", "events", "intel-risk"][index]}">
+          <header><h5>${title}</h5><span>等待回合快照</span></header>
+          <p class="muted">結算後顯示本回合完整資料。</p>
+        </article>`).join("");
+    }
+    const snapshot = scene.snapshot || {};
+    const status = snapshot.statusAfter || {};
+    const supportMode = snapshot.scenario?.amberSupport || state.scenario?.amberSupport || "none";
+    const actors = supportMode === "none" ? ["BLUE", "RED"] : ["BLUE", "RED", "AMBER"];
+    const statusRows = actors.filter(actor => status[actor]).map(actor => {
+      const readiness = round1(status[actor].readiness || 0);
+      return `<div class="operation-layer-row ${actor}">
+        <span>${escapeHtml(actorLabel(actor))}準備</span>
+        <span class="operation-layer-track"><i style="width:${clamp(readiness)}%"></i></span>
+        <strong>${readiness}</strong>
+      </div>`;
+    }).join("");
+    const statusDetails = actors.filter(actor => status[actor]).map(actor =>
+      `${actorLabel(actor)}：後勤 ${round1(status[actor].sustainment || 0)}／指管 ${round1(status[actor].command || 0)}／資源 ${round1(status[actor].resources || 0)}`
+    );
+
+    const weatherRows = [...(snapshot.weather || [])].sort((a, b) => {
+      const pressure = item => Number(item.sea_state_1_5 || 0) + (6 - Number(item.visibility_1_5 || 0));
+      return pressure(b) - pressure(a);
+    });
+    const worstWeather = weatherRows[0];
+    const environment = snapshot.environment || {};
+    const weatherText = worstWeather
+      ? `${zoneName(worstWeather.zone_id)}：海象 ${worstWeather.sea_state_1_5}/5、能見度 ${worstWeather.visibility_1_5}/5`
+      : "本回合沒有天候快照。";
+
+    const events = snapshot.events || [];
+    const eventTags = events.length
+      ? events.slice(0, 4).map(event => `<span class="operation-layer-tag" title="${escapeAttr(event.description || "")}">${escapeHtml(event.event_name || "未命名事件")} · ${escapeHtml(zoneName(event.zone_id))}</span>`).join("")
+      : `<span class="operation-layer-tag">無預排事件</span>`;
+
+    const intel = snapshot.intel || [];
+    const confidenceValues = intel.map(item => Number(item.confidence_pct)).filter(Number.isFinite);
+    const avgConfidence = confidenceValues.length
+      ? Math.round(confidenceValues.reduce((sum, value) => sum + value, 0) / confidenceValues.length)
+      : null;
+    const lowConfidence = confidenceValues.filter(value => value < 55).length;
+    const civilianRisk = round1(status.BLUE?.civilianRisk || 0);
+    const intelTags = intel.length
+      ? intel.slice(0, 3).map(item => `<span class="operation-layer-tag">${escapeHtml(item.report_type || "情報")} ${Number(item.confidence_pct) || 0}% · ${escapeHtml(zoneName(item.zone_id))}</span>`).join("")
+      : `<span class="operation-layer-tag">本回合無新增情報</span>`;
+
+    return `
+      <article class="operation-layer-card status">
+        <header><h5>戰力狀態</h5><span>結算後 0–100 指數</span></header>
+        ${statusRows || `<p class="muted">無狀態快照。</p>`}
+        <div class="operation-layer-tags">${statusDetails.map(text => `<span class="operation-layer-tag">${escapeHtml(text)}</span>`).join("")}</div>
+      </article>
+      <article class="operation-layer-card environment">
+        <header><h5>天候環境</h5><span>${weatherRows.length} 個區域</span></header>
+        <p>${escapeHtml(weatherText)}</p>
+        <p class="muted">全區平均：海象 ${round1(environment.avgSea || 0)}/5 · 能見度 ${round1(environment.avgVisibility || 0)}/5</p>
+      </article>
+      <article class="operation-layer-card events">
+        <header><h5>事件導調</h5><span>${events.length} 項</span></header>
+        <div class="operation-layer-tags">${eventTags}</div>
+      </article>
+      <article class="operation-layer-card intel-risk">
+        <header><h5>情報與風險</h5><span>${avgConfidence === null ? "無信心值" : `平均信心 ${avgConfidence}%`}</span></header>
+        <p><strong>關鍵風險：</strong>${escapeHtml(snapshot.keyRisk || "需持續監控")} · 民事風險 ${civilianRisk}</p>
+        <p class="muted">${lowConfidence ? `${lowConfidence} 項情報信心低於 55%。` : "未發現低於 55% 的情報項目。"}</p>
+        <div class="operation-layer-tags">${intelTags}</div>
+      </article>`;
+  }
+
+  function renderOperationSituationLayers(scene, targetId = "operationSituationLayers") {
+    const host = $(targetId);
+    if (host) host.innerHTML = operationSituationLayersMarkup(scene);
   }
 
   function renderOperationTheater() {
@@ -1352,6 +2495,7 @@
     if (!canvas) return;
     renderOperationIconLegend();
     const scene = latestOperationScene();
+    renderOperationLeafletLayers(scene);
     const replay = $("operationReplayBtn");
     const pause = $("operationPauseBtn");
     const empty = $("operationCanvasEmpty");
@@ -1372,8 +2516,9 @@
         .filter(actor => actor !== "AMBER" || state.scenario?.amberSupport !== "none")
         .map(actor => `<div class="operation-actor-chip ${actor}"><strong>${actorLabel(actor)}</strong><span>${currentOrders[actor] ? "命令已提交；內容於規則允許時揭露" : "等待命令"}</span></div>`)
         .join("");
+      renderOperationSituationLayers(null);
       $("operationCanvasDescription").textContent = "尚無已結算回合；動畫不會提前揭露密封命令。";
-      drawOperationFrame(0, null);
+      if (operationLeafletMap) operationLeafletMap.invalidateSize();
       return;
     }
 
@@ -1395,24 +2540,27 @@
     }
 
     const conflictText = scene.conflicts.length
-      ? ` · 偵測到 ${scene.conflicts.length} 個重大衝突區域`
-      : " · 未達重大衝突高亮門檻";
+      ? ` · 裁決標示 ${scene.conflicts.length} 個重大衝突區域`
+      : " · 裁決未標示重大衝突";
     $("operationTheaterStatus").textContent = `最近結算：第 ${scene.log.turn} 回合${conflictText}`;
     $("operationActorSummary").innerHTML = ["BLUE", "RED", "AMBER"]
-      .filter(actor => scene.log.orders[actor])
+      .filter(actor => scene.snapshot.orders?.[actor])
       .map(actor => {
-        const order = scene.log.orders[actor];
+        const order = scene.snapshot.orders[actor];
         const primary = orderPrimary(order);
         const supports = orderSupports(order);
-        const primaryType = operationType(primary.action).type;
-        const equipment = operationEquipmentLabel(actor, primaryType, `${scene.log.turn}-${primary.action}-0`);
+        const primaryAction = scene.actions.find(item => item.actor === actor && item.primary);
+        const equipment = primaryAction?.equipment || "";
         return `<div class="operation-actor-chip ${actor}">
           <strong>${actorLabel(actor)} · ${escapeHtml(primary.action)}</strong>
-          <span>${equipment ? `${escapeHtml(equipment)} · ` : ""}${escapeHtml(zoneName(primary.zone))} · 支援 ${supports.length} 項</span>
+          <span>${equipment ? `${escapeHtml(equipment)} · ` : ""}${escapeHtml(zoneName(primary.zone))} · 圖標 ${escapeHtml(OPERATION_TYPE_LABELS[primaryAction?.type] || primaryAction?.type || "自動")} · 支援 ${supports.length} 項</span>
         </div>`;
       }).join("");
-    $("operationCanvasDescription").textContent = `第 ${scene.log.turn} 回合抽象三方行動示意。${scene.conflicts.length ? `重大衝突區域：${scene.conflicts.map(item => zoneName(item.zone)).join("、")}。` : "本回合沒有達到重大衝突高亮門檻。"}公開裝備名稱僅作敘事標籤；不代表真實座標、數量、性能、部隊部署或交戰程序。`;
-    if (!operationAnimation.playing) drawOperationFrame(operationAnimation.elapsed, scene);
+    renderOperationSituationLayers(scene);
+    const intelValues = (scene.snapshot.intel || []).map(item => Number(item.confidence_pct)).filter(Number.isFinite);
+    const avgIntel = intelValues.length ? Math.round(intelValues.reduce((sum, value) => sum + value, 0) / intelValues.length) : null;
+    $("operationCanvasDescription").textContent = `第 ${scene.log.turn} 回合經緯度三方行動地圖。${scene.conflicts.length ? `裁決標示重大衝突區域：${scene.conflicts.map(item => zoneName(item.zone)).join("、")}。` : "裁決未標示重大衝突。"}本回合包含 ${(scene.snapshot.events || []).length} 項事件、${(scene.snapshot.weather || []).length} 個天候區域${avgIntel === null ? "" : `，情報平均信心 ${avgIntel}%`}。裝備圖標從本回合保存的配置點移動至目標；縮放和平移時由地圖重新投影。`;
+    if (!operationAnimation.playing) updateGeographicAnimation(scene, operationAnimation.elapsed);
     const theaterExpanded = !$("operationTheater").classList.contains("collapsed");
     const simulationVisible = $("simulation").classList.contains("active") && theaterExpanded;
     const shouldAutoplay = theaterExpanded && (
@@ -1456,7 +2604,7 @@
       operationAnimation.duration,
       (now - operationAnimation.startedAt) * operationAnimation.speed
     );
-    drawOperationFrame(operationAnimation.elapsed, operationAnimation.scene);
+    updateGeographicAnimation(operationAnimation.scene, operationAnimation.elapsed);
     if (operationAnimation.elapsed < operationAnimation.duration) {
       operationAnimation.frameId = requestAnimationFrame(stepOperationAnimation);
     } else {
@@ -1479,7 +2627,7 @@
     );
     stopOperationAnimation();
     $("operationPauseBtn").textContent = "繼續";
-    drawOperationFrame(operationAnimation.elapsed, operationAnimation.scene);
+    updateGeographicAnimation(operationAnimation.scene, operationAnimation.elapsed);
   }
 
   function setOperationSpeed() {
@@ -1517,7 +2665,10 @@
     const active = document.fullscreenElement === theater;
     button.textContent = active ? "退出全螢幕" : "全螢幕";
     button.setAttribute("aria-pressed", String(active));
-    requestAnimationFrame(() => drawOperationFrame(operationAnimation.elapsed, operationAnimation.scene));
+    requestAnimationFrame(() => {
+      operationLeafletMap?.invalidateSize();
+      updateGeographicAnimation(operationAnimation.scene, operationAnimation.elapsed);
+    });
   }
 
   async function toggleOperationTheaterVisibility() {
@@ -1541,7 +2692,10 @@
     button.setAttribute("aria-expanded", String(!collapsing));
     if (!collapsing) {
       renderOperationTheater();
-      requestAnimationFrame(() => drawOperationFrame(operationAnimation.elapsed, operationAnimation.scene));
+      requestAnimationFrame(() => {
+        operationLeafletMap?.invalidateSize();
+        updateGeographicAnimation(operationAnimation.scene, operationAnimation.elapsed);
+      });
     }
   }
 
@@ -1571,8 +2725,10 @@
     const frame = $(frameId);
     const { ctx, width, height } = surface;
     ctx.clearRect(0, 0, width, height);
-    drawOperationBackground(ctx, width, height);
-    drawOperationMap(ctx, width, height);
+    if (canvasId !== "operationCanvas") {
+      drawOperationBackground(ctx, width, height);
+      drawOperationMap(ctx, width, height);
+    }
     if (!scene) {
       frame.classList.remove("major-conflict", "major-conflict-active");
       return;
@@ -1736,7 +2892,10 @@
     ctx.fillStyle = color;
     ctx.strokeStyle = color;
 
-    if (type === "aviation") {
+    if (type === "standby") {
+      ctx.fillRect(-size * .28, -size * .42, size * .18, size * .84);
+      ctx.fillRect(size * .1, -size * .42, size * .18, size * .84);
+    } else if (type === "aviation") {
       ctx.beginPath();
       ctx.moveTo(size * .5, 0); ctx.lineTo(-size * .2, -size * .12); ctx.lineTo(-size * .48, -size * .42);
       ctx.lineTo(-size * .56, -size * .35); ctx.lineTo(-size * .38, 0); ctx.lineTo(-size * .56, size * .35);
@@ -1873,7 +3032,7 @@
     ctx.fillStyle = "rgba(255,232,184,.92)";
     ctx.font = `800 ${Math.max(9, width * .012)}px sans-serif`;
     ctx.textAlign = "center";
-    ctx.fillText(`重大衝突 · ${zoneName(conflict.zone)}`, x, y - boxHeight / 2 - 8);
+    ctx.fillText(`${conflict.severity === "high" ? "高強度衝突" : "重大衝突"} · ${zoneName(conflict.zone)}`, x, y - boxHeight / 2 - 8);
     ctx.restore();
   }
 
@@ -1904,7 +3063,7 @@
     ctx.font = `800 ${Math.max(11, width * .015)}px sans-serif`;
     ctx.fillText(`第 ${scene.log.turn} 回合裁決`, width * .075, height - boxHeight + 8);
     ctx.font = `600 ${Math.max(9, width * .012)}px sans-serif`;
-    drawCanvasWrappedText(ctx, scene.log.outcome, width * .075, height - boxHeight + 29, width * .82, Math.max(13, width * .017), 2);
+    drawCanvasWrappedText(ctx, scene.snapshot?.outcome || scene.log.outcome, width * .075, height - boxHeight + 29, width * .82, Math.max(13, width * .017), 2);
     ctx.restore();
   }
 
@@ -1942,55 +3101,35 @@
   }
 
   function renderOrderControls() {
-    const zoneSelect = $("orderZone");
-    if (!zoneSelect.options.length) {
-      zoneSelect.innerHTML = DATA.zones
-        .filter(z => z.zone_id !== "Z-REAR" || state.scenario.amberSupport !== "none")
-        .map(z => `<option value="${z.zone_id}">${escapeHtml(z.zone_name)}</option>`).join("");
-    }
-    renderSupportActions();
     const finished = state.currentTurn > state.scenario.turns;
-    [...$("orderForm").elements].forEach(el => el.disabled = finished);
-    const actorSelect = $("orderActor");
-    const amberOption = actorSelect.querySelector('option[value="AMBER"]');
-    if (amberOption) amberOption.disabled = state.scenario.amberSupport === "none";
     const current = state.orders[state.currentTurn] || {};
-    const nextActor = nextRequiredActor(current);
-    if (!finished && state.scenario.turnOrderMode !== "simultaneous" && nextActor && actorSelect.value !== nextActor) {
-      actorSelect.value = nextActor;
-    }
-    updateActionOptions();
-    const selectedActor = actorSelect.value;
-    const canSubmit = !finished && canActorSubmit(selectedActor, current);
-    const submitButton = $("orderForm").querySelector('button[type="submit"]');
-    if (submitButton) submitButton.disabled = !canSubmit;
+    activeOrderActors().forEach(actor => {
+      const card = document.querySelector(`[data-order-actor="${actor}"]`);
+      const submitted = Boolean(current[actor]);
+      if (card) card.classList.toggle("submitted", submitted);
+      const input = naturalOrderInput(actor);
+      if (input) input.disabled = finished || submitted;
+      card?.querySelectorAll("[data-order-template]").forEach(button => {
+        button.disabled = finished || submitted;
+      });
+      const status = $(`naturalOrderStatus${actor}`);
+      if (status) status.textContent = submitted ? "已提交" : canActorSubmit(actor, current) ? "可下令" : "等候前序";
+    });
+    const amberCard = document.querySelector('[data-order-actor="AMBER"]');
+    if (amberCard) amberCard.hidden = state.scenario.amberSupport === "none";
     $("orderSequenceHint").textContent = orderSequenceHint(current);
-    $("resolveTurnBtn").disabled = finished;
+    $("resolveTurnBtn").disabled = finished || activeOrderActors().some(actor => !current[actor]);
     syncLlmActionButtons();
   }
 
-  function updateActionOptions() {
-    const actor = $("orderActor").value;
-    $("orderAction").innerHTML = ACTIONS[actor].map(([name]) => `<option>${escapeHtml(name)}</option>`).join("");
-    renderSupportActions();
-    if (state.scenario) {
-      const current = state.orders[state.currentTurn] || {};
-      const submitButton = $("orderForm").querySelector('button[type="submit"]');
-      if (submitButton) submitButton.disabled = state.currentTurn > state.scenario.turns || !canActorSubmit(actor, current);
-      $("orderSequenceHint").textContent = orderSequenceHint(current);
-    }
-  }
-
   function activeOrderActors() {
-    return state.scenario?.amberSupport === "none" ? ["BLUE", "RED"] : ["BLUE", "RED", "AMBER"];
+    return state.scenario?.amberSupport === "none" ? ["RED", "BLUE"] : ["RED", "BLUE", "AMBER"];
   }
 
   function turnOrderSequence() {
     const actors = activeOrderActors();
     if (state.scenario?.turnOrderMode === "simultaneous") return actors;
-    const first = state.scenario?.turnOrderMode === "red_first" || state.currentTurn % 2 === 1 ? "RED" : "BLUE";
-    const second = first === "RED" ? "BLUE" : "RED";
-    return [first, second, ...actors.filter(actor => actor === "AMBER")];
+    return ["RED", "BLUE", ...actors.filter(actor => actor === "AMBER")];
   }
 
   function nextRequiredActor(current = state.orders[state.currentTurn] || {}) {
@@ -2034,6 +3173,772 @@
     };
   }
 
+  function normalizeNaturalOrderText(value) {
+    return String(value || "")
+      .normalize("NFKC")
+      .toLowerCase()
+      .replace(/台/g, "臺")
+      .replace(/[^a-z0-9\u3400-\u9fff]+/g, "");
+  }
+
+  function naturalOrderInventoryRows() {
+    if (Array.isArray(state.scenario?.detailedInventory) && state.scenario.detailedInventory.length) {
+      return state.scenario.detailedInventory;
+    }
+    return INVENTORY_TEMPLATE.map(([actor, alias, category]) => ({ actor, alias, category }));
+  }
+
+  function naturalEquipmentTokens(alias) {
+    const text = String(alias || "");
+    const firstName = text.split(/[「（(／/]/)[0];
+    const modelNames = text.match(/[a-z]+(?:[\s-]*\d+[a-z0-9]*)+|[a-z]{3,}|[\u3400-\u9fff]{2,}/gi) || [];
+    return [...new Set([firstName, ...modelNames]
+      .map(normalizeNaturalOrderText)
+      .filter(token => token.length >= 3 || /[\u3400-\u9fff]{2,}/.test(token)))];
+  }
+
+  function detectNaturalEquipment(text) {
+    const normalized = normalizeNaturalOrderText(text);
+    const matches = naturalOrderInventoryRows().flatMap(row =>
+      naturalEquipmentTokens(row.alias)
+        .filter(token => normalized.includes(token))
+        .map(token => ({ row, token }))
+    );
+    matches.sort((a, b) => b.token.length - a.token.length);
+    return matches[0]?.row || null;
+  }
+
+  function detectNaturalActor(text, equipment) {
+    const normalized = normalizeNaturalOrderText(text);
+    const actorAliases = {
+      BLUE: ["藍方", "臺灣", "國軍", "blue"],
+      RED: ["紅方", "中國大陸", "中方", "解放軍", "共軍", "red"],
+      AMBER: ["琥珀方", "美軍", "美方", "盟軍", "amber", "usa"]
+    };
+    const explicit = Object.entries(actorAliases)
+      .map(([actor, aliases]) => ({
+        actor,
+        index: Math.min(...aliases.map(alias => {
+          const found = normalized.indexOf(normalizeNaturalOrderText(alias));
+          return found < 0 ? Number.POSITIVE_INFINITY : found;
+        }))
+      }))
+      .filter(item => Number.isFinite(item.index))
+      .sort((a, b) => a.index - b.index)[0]?.actor;
+    return explicit || equipment?.actor || $("orderActor").value || "BLUE";
+  }
+
+  function naturalActionMatch(actor, text, preferredCategory = null) {
+    const normalized = normalizeNaturalOrderText(text);
+    return ACTIONS[actor].map(([action]) => {
+      const actionName = normalizeNaturalOrderText(action.replace(/【[^】]+】/g, ""));
+      let score = actionName && normalized.includes(actionName) ? 100 : 0;
+      (NATURAL_ACTION_ALIASES[action] || []).forEach(alias => {
+        const token = normalizeNaturalOrderText(alias);
+        if (token && normalized.includes(token)) score += token.length >= 4 ? 20 : 14;
+      });
+      if (preferredCategory && inventoryCategoryForAction(action) === preferredCategory) score += 9;
+      return { action, score };
+    }).sort((a, b) => b.score - a.score)[0];
+  }
+
+  function parseNaturalZone(text, fallback = "Z-CW") {
+    const normalized = normalizeNaturalOrderText(text);
+    const exact = DATA.zones.find(zone => normalized.includes(normalizeNaturalOrderText(zone.zone_name)));
+    if (exact) return exact.zone_id;
+    const aliases = [
+      ["Z-NE", ["東北外海", "東北海域", "東北"]],
+      ["Z-SE", ["東南外海", "東南海域", "東南"]],
+      ["Z-NW", ["北部海峽", "西北海域", "北部", "西北"]],
+      ["Z-SW", ["南部海峽", "西南海域", "南部", "西南"]],
+      ["Z-CW", ["中部海峽", "海峽中部", "海峽中央", "中線"]],
+      ["Z-E", ["東部外海", "東部海域", "東部"]],
+      ["Z-ISL", ["本島整體", "臺灣本島", "本島", "全島", "島內"]],
+      ["Z-REAR", ["遠端支援", "後方支援", "遠端", "後方", "區域外"]]
+    ];
+    return aliases.find(([, names]) => names.some(name => normalized.includes(normalizeNaturalOrderText(name))))?.[0] || fallback;
+  }
+
+  function parseNaturalResource(text, fallback) {
+    const match = String(text || "").match(/(?:投入|使用|動用|資源(?:點數)?|兵力)\s*([0-9]{1,2})\s*(?:點)?|([0-9]{1,2})\s*點/i);
+    return match ? Number(match[1] || match[2]) : fallback;
+  }
+
+  function parseNaturalPriority(text, fallback = 4) {
+    const source = String(text || "");
+    const numbered = source.match(/優先(?:級)?\s*([1-5])/);
+    if (numbered) return Number(numbered[1]);
+    if (/最高優先|最優先|決定性/.test(source)) return 5;
+    if (/高優先|優先度高/.test(source)) return 4;
+    if (/低優先|優先度低/.test(source)) return 2;
+    if (/保留任務|最低優先/.test(source)) return 1;
+    return fallback;
+  }
+
+  function parseNaturalRisk(text, fallback = "medium") {
+    const source = String(text || "");
+    if (/高風險|風險高|冒險/.test(source)) return "high";
+    if (/低風險|風險低|保守/.test(source)) return "low";
+    if (/中風險|風險中/.test(source)) return "medium";
+    return fallback;
+  }
+
+  function parseNaturalLabeledText(text, labels) {
+    const labelPattern = labels.join("|");
+    const match = String(text || "").match(new RegExp(`(?:${labelPattern})\\s*[：:]\\s*([^；;\\n]+)`));
+    return match?.[1]?.trim() || "";
+  }
+
+  function findNaturalSupportMarker(text) {
+    const source = String(text || "");
+    return [...source.matchAll(/(?:支援行動|支援|配合|協同)\s*[：:]?/g)].find(item => {
+      if (item.index === 0) return true;
+      const preceding = source[item.index - 1];
+      return /[\s，,；;：:]/.test(preceding);
+    });
+  }
+
+  function naturalSupportClauses(text) {
+    const marker = findNaturalSupportMarker(text);
+    if (!marker) {
+      return String(text || "").split(/[、，,；;\n]|\s+(?:以及|並且|並|與|和)\s+/)
+        .slice(1)
+        .map(clause => clause.trim())
+        .filter(Boolean);
+    }
+    let source = String(text).slice(marker.index + marker[0].length);
+    source = source.replace(/(?:條件|前提|理由|目的)\s*[：:].*$/s, "");
+    return source.split(/[、，,；;\n]|\s+(?:以及|並且|並|與|和)\s+/)
+      .map(clause => clause.trim())
+      .filter(Boolean);
+  }
+
+  function balanceNaturalOrderResources(primary, supports) {
+    primary.resource = Math.round(clamp(Number(primary.resource) || 20, 10, ORDER_BUDGET - MIN_SUPPORT_ACTIONS * 3));
+    supports.forEach(item => {
+      item.resource = Math.round(clamp(Number(item.resource) || 5, 3, 25));
+    });
+    let total = primary.resource + supports.reduce((sum, item) => sum + item.resource, 0);
+    for (let index = supports.length - 1; index >= 0 && total > ORDER_BUDGET; index -= 1) {
+      const reduction = Math.min(supports[index].resource - 3, total - ORDER_BUDGET);
+      supports[index].resource -= reduction;
+      total -= reduction;
+    }
+    if (total > ORDER_BUDGET) {
+      const reduction = Math.min(primary.resource - 10, total - ORDER_BUDGET);
+      primary.resource -= reduction;
+    }
+  }
+
+  function parseNaturalOrder(text) {
+    const equipment = detectNaturalEquipment(text);
+    const actor = detectNaturalActor(text, equipment);
+    const markerMatch = findNaturalSupportMarker(text);
+    const primaryText = markerMatch ? String(text).slice(0, markerMatch.index) : String(text);
+    const primaryActionText = primaryText.split(/[，,；;\n]/)[0] || primaryText;
+    const primaryMatch = naturalActionMatch(actor, primaryActionText, equipment?.category);
+    const fallbackZone = $("orderZone").value || "Z-CW";
+    const condition = parseNaturalLabeledText(text, ["條件", "前提"])
+      || (String(text).match(/(?:若|如果)([^；;\n]+)/)?.[0] || $("orderCondition").value.trim() || "情勢未出現重大惡化");
+    const primary = {
+      action: primaryMatch.action,
+      zone: parseNaturalZone(primaryText, fallbackZone),
+      resource: parseNaturalResource(primaryText, Number($("orderResource").value) || 20),
+      priority: parseNaturalPriority(primaryText, Number($("orderPriority").value) || 4),
+      condition: condition.slice(0, 100),
+      risk: parseNaturalRisk(primaryText, $("orderRisk").value || "medium")
+    };
+    if (isStandbyAction(primary.action)) {
+      primary.resource = 0;
+      primary.priority = 1;
+      primary.condition = "本回合不採取主動行動";
+      primary.risk = "low";
+      return {
+        actor,
+        equipment: null,
+        primary,
+        supports: [],
+        rationale: (parseNaturalLabeledText(text, ["理由", "目的"]) || "本回合選擇待命，不採取主動行動或消耗品項資源。").slice(0, 180)
+      };
+    }
+    const supports = [];
+    naturalSupportClauses(text).forEach(clause => {
+      if (supports.length >= MAX_SUPPORT_ACTIONS) return;
+      const match = naturalActionMatch(actor, clause);
+      if (!match || match.score <= 0 || match.action === primary.action || supports.some(item => item.action === match.action)) return;
+      supports.push({
+        action: match.action,
+        zone: parseNaturalZone(clause, primary.zone),
+        resource: parseNaturalResource(clause, 5),
+        priority: parseNaturalPriority(clause, Math.max(1, 3 - supports.length)),
+        condition: "配合主行動執行",
+        risk: parseNaturalRisk(clause, primary.risk)
+      });
+    });
+    (NATURAL_SUPPORT_PREFERENCES[actor] || []).forEach(action => {
+      if (supports.length >= MIN_SUPPORT_ACTIONS || action === primary.action || supports.some(item => item.action === action)) return;
+      supports.push({
+        action,
+        zone: primary.zone,
+        resource: 5,
+        priority: Math.max(1, 3 - supports.length),
+        condition: "配合主行動執行",
+        risk: primary.risk
+      });
+    });
+    if (supports.length < MIN_SUPPORT_ACTIONS) {
+      ACTIONS[actor].forEach(([action]) => {
+        if (supports.length >= MIN_SUPPORT_ACTIONS || action === primary.action || supports.some(item => item.action === action)) return;
+        supports.push({
+          action, zone: primary.zone, resource: 5, priority: Math.max(1, 3 - supports.length),
+          condition: "配合主行動執行", risk: primary.risk
+        });
+      });
+    }
+    balanceNaturalOrderResources(primary, supports);
+    return {
+      actor,
+      equipment,
+      primary,
+      supports,
+      rationale: (parseNaturalLabeledText(text, ["理由", "目的"]) || `依自然語言命令「${String(text).trim()}」形成回合命令包。`).slice(0, 180)
+    };
+  }
+
+  function naturalOrderInput(actor) {
+    return $(`naturalOrderInput${actor}`);
+  }
+
+  function setNaturalOrderFeedback(actor, message, type = "") {
+    const feedback = $(`naturalOrderFeedback${actor}`);
+    if (!feedback) return;
+    feedback.textContent = message;
+    feedback.classList.toggle("success", type === "success");
+    feedback.classList.toggle("error", type === "error");
+  }
+
+  function actorInventoryForLlm(actor) {
+    if (!state.scenario?.inventoryEnabled) return [];
+    const sensitive = state.scenario.inventoryMode === "sensitive_local";
+    return state.scenario.detailedInventory
+      .filter(row => row.actor === actor)
+      .map((row, index) => sensitive
+        ? { localReference: `${actor}-${index + 1}`, category: row.category }
+        : {
+          id: row.id,
+          alias: row.alias,
+          category: row.category,
+          availableSyntheticUnits: round1(row.current),
+          reservePct: round1(row.reserve),
+          reliabilityPct: round1(row.reliability),
+          unitEffect: round1(row.effect),
+          typicalConsumption: round1(row.consumption)
+        });
+  }
+
+  function naturalOrderLlmPrompt(actor, text, autoGenerate = false) {
+    const actions = ACTIONS[actor].map(([name]) => name);
+    const zones = DATA.zones
+      .filter(zone => zone.zone_id !== "Z-REAR" || actor === "AMBER")
+      .map(zone => ({ id: zone.zone_id, name: zone.zone_name, domain: zone.domain }));
+    const intel = currentIntel().map(item => ({
+      type: item.report_type,
+      zone: item.zone_id,
+      confidence: item.confidence_pct,
+      text: item.report_text
+    }));
+    const events = currentEvents().map(event => ({
+      name: event.event_name,
+      category: event.category,
+      zone: event.zone_id,
+      description: event.description
+    }));
+    const actorName = actor === "AMBER" ? "黃方" : actorLabel(actor);
+    return `你是教育兵推的「${actorName}自然語言命令轉換器」。只做語意分類與合成資源記帳，不得加入真實座標、目標、部署、射程、性能、弱點、交戰程序或額外作戰建議。請以繁體中文回傳嚴格 JSON，不要使用 Markdown。
+
+${autoGenerate ? "請依目前戰局與已提交命令，自動撰寫一則自然語言命令並完成結構化轉換。" : `使用者命令：${JSON.stringify(text)}`}
+
+回傳格式：
+{"actor":"${actor}","naturalLanguage":"120字內、可直接顯示給使用者的${actorName}命令","primary":{"action":"允許主行動之一","zone":"允許區域ID之一","resource":10到29的整數；待命不做事時必須為0,"priority":1到5,"condition":"100字內","risk":"low|medium|high","assetAllocations":[{"inventoryId":"允許資源ID","alias":"對應公開名稱","quantity":正整數,"unit":"架次|枚|艘|批|單位"}]},"supports":[{"action":"允許行動之一","zone":"允許區域ID之一","resource":3到10的整數,"priority":1到5,"condition":"100字內","risk":"low|medium|high"}],"rationale":"80字內的命令解讀","interpretation":"80字內，說明如何把原句轉成資源"}
+
+規則：
+1. actor 固定為 ${actor}。
+2. 必須產生 1 項主行動與 2–4 項支援行動，總 resource 不得超過 ${ORDER_BUDGET}。
+3. 若使用者明確指定裝備數量，assetAllocations.quantity 必須保留原數量，並匹配下方最接近的 inventoryId；不得自行改寫。
+4. 若使用者命令為「待命不做事」，primary.action 必須完全等於「待命不做事」、resource 為 0、assetAllocations 與 supports 都必須為空陣列。
+4. resource 是遊戲內部投入強度；assetAllocations.quantity 是詳細資源帳本要扣除的合成單位，兩者不可混為一談。
+5. 未明確指定裝備數量時，assetAllocations 可為空陣列。
+
+允許主／支援行動：${JSON.stringify(actions)}
+允許區域：${JSON.stringify(zones)}
+${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
+本回合情報：${JSON.stringify(intel)}
+本回合事件：${JSON.stringify(events)}
+已提交命令：${JSON.stringify(sanitizedOrdersForLlm(state.orders[state.currentTurn] || {}))}
+天候：${JSON.stringify(currentWeather().map(item => ({ zone: item.zone_id, sea: item.sea_state_1_5, visibility: item.visibility_1_5 })))}`;
+  }
+
+  function naturalOrderQuantity(text) {
+    const match = String(text || "").match(/([0-9]{1,4})\s*(架次|架|枚|艘|批|輛|組|單位)/);
+    return match ? { quantity: Number(match[1]), unit: match[2] === "架" ? "架次" : match[2] } : null;
+  }
+
+  function sanitizeNaturalAssetAllocations(rawAllocations, text, actor) {
+    const rows = state.scenario?.detailedInventory?.filter(row => row.actor === actor) || [];
+    const normalizedRows = rows.map(row => ({ row, normalizedAlias: normalizeNaturalOrderText(row.alias) }));
+    const allocations = [];
+    (Array.isArray(rawAllocations) ? rawAllocations : []).forEach(raw => {
+      const requestedId = String(raw?.inventoryId || "");
+      const requestedAlias = normalizeNaturalOrderText(raw?.alias || "");
+      const match = normalizedRows.find(item => item.row.id === requestedId)
+        || normalizedRows.find(item => requestedAlias && (
+          item.normalizedAlias.includes(requestedAlias) || requestedAlias.includes(item.normalizedAlias)
+        ));
+      const quantity = Math.round(Number(raw?.quantity) || 0);
+      if (!match || quantity <= 0 || allocations.some(item => item.inventoryId === match.row.id)) return;
+      allocations.push({
+        inventoryId: match.row.id,
+        alias: match.row.alias,
+        quantity,
+        unit: String(raw?.unit || "單位").slice(0, 10),
+        available: round1(match.row.current)
+      });
+    });
+    if (!allocations.length) {
+      const equipment = detectNaturalEquipment(text);
+      const quantity = naturalOrderQuantity(text);
+      if (equipment?.actor === actor && quantity) {
+        allocations.push({
+          inventoryId: equipment.id,
+          alias: equipment.alias,
+          quantity: quantity.quantity,
+          unit: quantity.unit,
+          available: round1(equipment.current)
+        });
+      }
+    }
+    return allocations.filter(item => item.quantity > 0);
+  }
+
+  function normalizeLlmNaturalOrder(result, text, actor) {
+    const equipment = detectNaturalEquipment(text);
+    const primaryFallback = naturalActionMatch(actor, text, equipment?.actor === actor ? equipment.category : null).action;
+    const normalizeItem = (raw, primary = false) => {
+      const allowedAction = ACTIONS[actor].some(([name]) => name === raw?.action) ? raw.action : primaryFallback;
+      const allowedZone = DATA.zones.some(zone => zone.zone_id === raw?.zone && (zone.zone_id !== "Z-REAR" || actor === "AMBER"))
+        ? raw.zone
+        : parseNaturalZone(text, "Z-CW");
+      return {
+        action: allowedAction,
+        zone: allowedZone,
+        resource: Math.round(clamp(Number(raw?.resource) || (primary ? 20 : 5), primary ? 10 : 3, primary ? 29 : 10)),
+        priority: Math.round(clamp(Number(raw?.priority) || (primary ? 4 : 3), 1, 5)),
+        condition: String(raw?.condition || "依本回合情報執行").replace(/[\r\n]+/g, " ").trim().slice(0, 100),
+        risk: ["low", "medium", "high"].includes(raw?.risk) ? raw.risk : "medium"
+      };
+    };
+    const primary = normalizeItem(result?.primary, true);
+    if (isStandbyAction(primary.action)) {
+      primary.resource = 0;
+      primary.priority = 1;
+      primary.condition = "本回合不採取主動行動";
+      primary.risk = "low";
+      primary.assetAllocations = [];
+      return {
+        actor,
+        primary,
+        supports: [],
+        naturalLanguage: String(result?.naturalLanguage || text || "待命不做事。").replace(/[\r\n]+/g, " ").trim().slice(0, 500),
+        rationale: String(result?.rationale || "本回合待命，不採取主動行動或消耗品項資源。").replace(/[\r\n]+/g, " ").slice(0, 180),
+        interpretation: String(result?.interpretation || "待命命令已轉成零投入、無空間目標的遊戲行動。").replace(/[\r\n]+/g, " ").slice(0, 180)
+      };
+    }
+    primary.assetAllocations = sanitizeNaturalAssetAllocations(result?.primary?.assetAllocations, text, actor);
+    const supports = [];
+    (Array.isArray(result?.supports) ? result.supports : []).forEach(raw => {
+      const item = normalizeItem(raw, false);
+      if (item.action === primary.action || supports.some(existing => existing.action === item.action)) return;
+      supports.push(item);
+    });
+    (NATURAL_SUPPORT_PREFERENCES[actor] || []).forEach(action => {
+      if (supports.length >= MIN_SUPPORT_ACTIONS || action === primary.action || supports.some(item => item.action === action)) return;
+      supports.push({
+        action,
+        zone: primary.zone,
+        resource: 5,
+        priority: Math.max(1, 3 - supports.length),
+        condition: "配合主行動執行",
+        risk: primary.risk
+      });
+    });
+    supports.splice(MAX_SUPPORT_ACTIONS);
+    balanceNaturalOrderResources(primary, supports);
+    return {
+      actor,
+      primary,
+      supports,
+      naturalLanguage: String(result?.naturalLanguage || text || `${primary.action}，於${zoneName(primary.zone)}執行。`).replace(/[\r\n]+/g, " ").trim().slice(0, 500),
+      rationale: String(result?.rationale || `依自然語言命令「${text}」形成${actorLabel(actor)}回應。`).replace(/[\r\n]+/g, " ").slice(0, 180),
+      interpretation: String(result?.interpretation || "LLM 已將自然語言轉成遊戲行動與合成資源。").replace(/[\r\n]+/g, " ").slice(0, 180)
+    };
+  }
+
+  function applyLlmNaturalOrder(parsed, sourceText) {
+    beginSpatialOrderTargeting(parsed, sourceText);
+  }
+
+  function prepareSpatialAllocations(actor, item) {
+    if (isStandbyAction(item.action)) return [];
+    if (Array.isArray(item.assetAllocations) && item.assetAllocations.length) return item.assetAllocations;
+    const category = inventoryCategoryForAction(item.action);
+    const row = (state.scenario?.detailedInventory || [])
+      .map(sanitizeInventoryRow)
+      .filter(candidate => candidate.actor === actor && candidate.category === category)
+      .sort((a, b) => weaponRowMetrics(b).committable - weaponRowMetrics(a).committable)[0];
+    if (!row) return [];
+    const quantity = Math.max(.1, Math.min(weaponRowMetrics(row).committable, row.consumption * Math.max(.35, Number(item.resource || 0) / 20)));
+    return [{ inventoryId: row.id, alias: row.alias, quantity: round1(quantity), unit: "單位" }];
+  }
+
+  function beginSpatialOrderTargeting(parsed, sourceText) {
+    const actor = parsed.actor;
+    const current = state.orders[state.currentTurn] || {};
+    if (!canActorSubmit(actor, current)) throw new Error(`目前應由${actorLabel(nextRequiredActor(current))}先提交命令`);
+    const items = [parsed.primary, ...parsed.supports];
+    items.forEach(item => {
+      item.assetAllocations = prepareSpatialAllocations(actor, item);
+      item._spatialRequired = !isStandbyAction(item.action)
+        && !SPATIAL.OPTIONAL_LOCATION_CATEGORIES.has(inventoryCategoryForAction(item.action));
+      if (!item._spatialRequired) item.target = null;
+    });
+    pendingSpatialOrder = { parsed, sourceText: sourceText || parsed.naturalLanguage };
+    pendingSpatialItemIndex = Math.max(0, items.findIndex(item => item._spatialRequired && !item.target));
+    $("spatialOrderTargetPanel").hidden = false;
+    renderSpatialOrderTargetPanel();
+    setSimulationPanel("command");
+    ensureOperationLeafletMap()?.invalidateSize();
+    $("spatialOrderTargetPanel").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    setNaturalOrderFeedback(actor, "命令已解析；請在主地圖依序點選行動目標，再確認空間配置。", "success");
+  }
+
+  function renderSpatialOrderTargetPanel() {
+    if (!pendingSpatialOrder) return;
+    const { parsed } = pendingSpatialOrder;
+    const items = [parsed.primary, ...parsed.supports];
+    let completed = 0;
+    $("spatialOrderTargetItems").innerHTML = items.map((item, index) => {
+      const allocation = item.assetAllocations?.[0];
+      const row = state.scenario.detailedInventory.find(candidate => candidate.id === allocation?.inventoryId);
+      const eligible = row && item.target ? SPATIAL.eligiblePlacements(row, item.target, allocation.quantity) : [];
+      const selectedPlacementId = allocation?.placementId || "";
+      const selectionValid = !item._spatialRequired || Boolean(item.target && eligible.some(candidate => candidate.placement.placementId === selectedPlacementId));
+      if (selectionValid) completed += 1;
+      const placementOptions = eligible.length
+        ? `<option value="">請選擇出發配置點</option>${eligible.map((candidate, candidateIndex) =>
+          `<option value="${escapeAttr(candidate.placement.placementId)}"${candidate.placement.placementId === selectedPlacementId ? " selected" : ""}>${candidateIndex === 0 ? "最近建議 · " : ""}${escapeHtml(candidate.placement.label)} · ${round1(candidate.distanceKm)} km · 可用 ${round1(candidate.committable)}</option>`
+        ).join("")}`
+        : `<option value="">${item.target ? "範圍內沒有數量足夠的配置點" : "設定目標後顯示可用配置點"}</option>`;
+      return `<div class="spatial-target-row${index === pendingSpatialItemIndex ? " active" : ""}" data-spatial-item-index="${index}">
+        <div><strong>${index ? `支援 ${index}` : "主行動"}：${escapeHtml(item.action)}</strong><small>${item._spatialRequired ? (item.target ? `${Number(item.target.lat).toFixed(6)}, ${Number(item.target.lng).toFixed(6)} · ${escapeHtml(item.target.label)}` : "尚未設定目標；可點擊地圖或使用自動選擇") : "非空間行動，沿用抽象區域"}</small></div>
+        <select class="spatial-placement-select" ${item._spatialRequired ? "" : "disabled"} aria-label="出發配置點">
+          ${placementOptions}
+        </select>
+        <div class="spatial-target-actions">
+          <button type="button" class="secondary choose-spatial-target-button" ${item._spatialRequired ? "" : "disabled"}>${item._spatialRequired ? "地圖選擇" : "不適用"}</button>
+          <button type="button" class="secondary auto-spatial-selection-button" ${item._spatialRequired ? "" : "disabled"}>自動選擇</button>
+        </div>
+      </div>`;
+    }).join("");
+    $("spatialOrderTargetStatus").textContent = `${actorLabel(parsed.actor)} · 已完成 ${completed}/${items.length}`;
+    $("confirmSpatialOrderBtn").disabled = completed !== items.length;
+    renderPendingTargetMarker();
+  }
+
+  function autoSelectSpatialItem(index, fillTarget = true) {
+    if (!pendingSpatialOrder) return { ok: false, reason: "沒有待確認命令" };
+    const items = [pendingSpatialOrder.parsed.primary, ...pendingSpatialOrder.parsed.supports];
+    const item = items[index];
+    if (!item?._spatialRequired) return { ok: true, skipped: true };
+    if (!item.target && fillTarget) {
+      const center = SPATIAL.ZONE_CENTERS[item.zone];
+      if (!center) return { ok: false, reason: `「${item.action}」沒有可用的區域中心` };
+      item.target = {
+        lat: center[0],
+        lng: center[1],
+        zoneId: item.zone,
+        label: `${zoneName(item.zone)}（自動區域中心）`
+      };
+    }
+    if (!item.target) return { ok: false, reason: `「${item.action}」尚未設定目標` };
+    const allocation = item.assetAllocations?.[0];
+    const row = state.scenario.detailedInventory.find(candidate => candidate.id === allocation?.inventoryId);
+    const eligible = row && allocation ? SPATIAL.eligiblePlacements(row, item.target, allocation.quantity) : [];
+    if (!allocation || !eligible.length) {
+      if (allocation) allocation.placementId = "";
+      return { ok: false, reason: `「${item.action}」沒有可達且數量足夠的配置點` };
+    }
+    allocation.placementId = eligible[0].placement.placementId;
+    return { ok: true, placement: eligible[0].placement, distanceKm: eligible[0].distanceKm };
+  }
+
+  function autoSelectAllSpatialItems() {
+    if (!pendingSpatialOrder) return;
+    const items = [pendingSpatialOrder.parsed.primary, ...pendingSpatialOrder.parsed.supports];
+    const results = items.map((item, index) => autoSelectSpatialItem(index, true));
+    const failures = results.filter(result => !result.ok);
+    pendingSpatialItemIndex = Math.max(0, results.findIndex(result => !result.ok));
+    renderSpatialOrderTargetPanel();
+    if (failures.length) toast(`已完成 ${results.length - failures.length}/${results.length} 項；${failures[0].reason}。`);
+    else toast("已自動選擇全部行動目標與最近可用配置點；請確認後提交。");
+  }
+
+  function renderPendingTargetMarker() {
+    const map = ensureOperationLeafletMap();
+    if (!map || !operationTargetLayer) return;
+    operationTargetLayer.clearLayers();
+    if (!pendingSpatialOrder) return;
+    [pendingSpatialOrder.parsed.primary, ...pendingSpatialOrder.parsed.supports].forEach((item, index) => {
+      if (!item.target) return;
+      L.marker([item.target.lat, item.target.lng], { icon: spatialDivIcon("target", String(index + 1), "target") })
+        .bindPopup(`${index ? `支援 ${index}` : "主行動"}：${escapeHtml(item.action)}`)
+        .addTo(operationTargetLayer);
+    });
+  }
+
+  function setPendingSpatialTarget(index, latlng) {
+    if (!pendingSpatialOrder) return;
+    const items = [pendingSpatialOrder.parsed.primary, ...pendingSpatialOrder.parsed.supports];
+    const item = items[index];
+    if (!item?._spatialRequired) return;
+    item.target = {
+      lat: Number(latlng.lat.toFixed(6)),
+      lng: Number(latlng.lng.toFixed(6)),
+      zoneId: SPATIAL.nearestZoneId(latlng),
+      label: `地圖目標 ${Number(latlng.lat).toFixed(4)}, ${Number(latlng.lng).toFixed(4)}`
+    };
+    item.zone = item.target.zoneId;
+    const allocation = item.assetAllocations?.[0];
+    const row = state.scenario.detailedInventory.find(candidate => candidate.id === allocation?.inventoryId);
+    const eligible = row ? SPATIAL.eligiblePlacements(row, item.target, allocation.quantity) : [];
+    if (allocation) allocation.placementId = eligible[0]?.placement.placementId || "";
+    const next = items.findIndex((candidate, candidateIndex) => candidateIndex > index && candidate._spatialRequired && !candidate.target);
+    pendingSpatialItemIndex = next >= 0 ? next : index;
+    renderSpatialOrderTargetPanel();
+  }
+
+  function confirmPendingSpatialOrder() {
+    if (!pendingSpatialOrder) return;
+    const { parsed, sourceText } = pendingSpatialOrder;
+    const items = [parsed.primary, ...parsed.supports];
+    for (const item of items) {
+      if (!item._spatialRequired) continue;
+      const allocation = item.assetAllocations?.[0];
+      if (!item.target) return toast(`請先設定「${item.action}」的目標位置。`);
+      if (!allocation?.placementId) return toast(`「${item.action}」在作用半徑內沒有數量足夠的配置點。`);
+      const row = state.scenario.detailedInventory.find(candidate => candidate.id === allocation.inventoryId);
+      const eligible = row ? SPATIAL.eligiblePlacements(row, item.target, allocation.quantity) : [];
+      if (!eligible.some(candidate => candidate.placement.placementId === allocation.placementId)) {
+        return toast(`「${item.action}」所選配置點已不可用，請重新選擇。`);
+      }
+      delete item._spatialRequired;
+    }
+    pendingSpatialOrder = null;
+    $("spatialOrderTargetPanel").hidden = true;
+    operationTargetLayer?.clearLayers();
+    commitLlmNaturalOrder(parsed, sourceText);
+  }
+
+  function commitLlmNaturalOrder(parsed, sourceText) {
+    const actor = parsed.actor;
+    const displayText = sourceText || parsed.naturalLanguage;
+    parsed.primary.iconChoice = selectedOperationIconType(parsed.primary);
+    state.orders[state.currentTurn] ||= {};
+    state.orders[state.currentTurn][actor] = {
+      actor,
+      primary: parsed.primary,
+      supports: parsed.supports,
+      resourceBudget: ORDER_BUDGET,
+      rationale: parsed.rationale,
+      naturalLanguageSource: displayText,
+      llmInterpretation: parsed.interpretation,
+      llmGenerated: true,
+      submittedAt: new Date().toISOString()
+    };
+    naturalOrderInput(actor).value = displayText;
+    const resourceText = parsed.primary.assetAllocations.length
+      ? parsed.primary.assetAllocations.map(item => {
+        const row = state.scenario.detailedInventory.find(candidate => candidate.id === item.inventoryId);
+        const committed = row ? weaponRowMetrics(row, item.quantity).committed : 0;
+        return `${item.alias} 要求 ${item.quantity}${item.unit}／可投入 ${committed}`;
+      }).join("、")
+      : "未指定特定品項，結算時依行動類別扣用";
+    const weaponPower = weaponPowerForOrderItem(actor, parsed.primary);
+    setNaturalOrderFeedback(actor,
+      `LLM 解析完成：${parsed.primary.action}／${zoneName(parsed.primary.zone)}／內部投入 ${parsed.primary.resource} 點／品項戰力 ${round1(Number(weaponPower) || 0)}。資源：${resourceText}。${parsed.interpretation}`,
+      "success"
+    );
+    if (actor === "RED") ensureRedInitiativeForTurn();
+    saveState(false);
+    renderSimulation();
+    toast(`${actor === "AMBER" ? "黃方" : actorLabel(actor)}命令已提交。`);
+  }
+
+  function equipmentCanonicalName(alias) {
+    return String(alias || "")
+      .replace(/「[^」]*」/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function equipmentPolishCatalog(actor) {
+    return naturalOrderInventoryRows()
+      .filter(row => row.actor === actor)
+      .map(row => {
+        const canonical = equipmentCanonicalName(row.alias);
+        const tokens = naturalEquipmentTokens(row.alias);
+        const variants = [...new Set(tokens.flatMap(token => {
+          const looseModel = token.replace(/(\d)[a-z]$/i, "$1");
+          return looseModel !== token ? [token, looseModel] : [token];
+        }))];
+        return { inventoryId: row.id || "", canonical, category: row.category, variants };
+      });
+  }
+
+  function canonicalizeEquipmentInOrder(actor, text) {
+    return SPATIAL.canonicalizeCatalogNames(text, equipmentPolishCatalog(actor));
+  }
+
+  function naturalOrderPolishPrompt(actor, text) {
+    const catalog = equipmentPolishCatalog(actor).map(item => ({
+      inventoryId: item.inventoryId,
+      canonicalName: item.canonical,
+      category: item.category,
+      acceptedAliases: item.variants
+    }));
+    return `你是個人娛樂兵推遊戲的命令文字編輯器。請依本回合情報、事件、天候與已提交命令，把使用者草稿潤飾成清楚、完整、可直接確認的繁體中文命令。保留草稿中明確的裝備名稱、數量、優先順序、限制與保留要求，不得擅自改變數量。不要加入真實座標、部署、射程、弱點或交戰程序。只回傳嚴格 JSON，不要使用 Markdown。
+
+格式：{"naturalLanguage":"500字內的潤飾完稿","revisionNote":"80字內說明修正重點"}
+方別：${actorLabel(actor)}
+使用者草稿：${JSON.stringify(text)}
+本方武器與物資名稱字典：${JSON.stringify(catalog)}
+名稱規則：若草稿使用縮寫、缺少連字號、舊稱或近似名稱，必須改成名稱字典中的 canonicalName；不得創造字典外的型號。例：字典含 KC-46A Pegasus 時，KC46、KC-46、KC46A 一律寫成 KC-46A Pegasus。數量與單位必須原樣保留。
+本回合情報：${JSON.stringify(currentIntel().map(item => ({ type: item.report_type, zone: item.zone_id, confidence: item.confidence_pct, text: item.report_text })))}
+本回合事件：${JSON.stringify(currentEvents().map(item => ({ name: item.event_name, category: item.category, zone: item.zone_id, description: item.description })))}
+天候：${JSON.stringify(currentWeather().map(item => ({ zone: item.zone_id, sea: item.sea_state_1_5, visibility: item.visibility_1_5 })))}
+已提交命令：${JSON.stringify(sanitizedOrdersForLlm(state.orders[state.currentTurn] || {}))}`;
+  }
+
+  async function generateNaturalOrderDraft(actor) {
+    const input = naturalOrderInput(actor);
+    if (!hasLlmApiKey()) return setNaturalOrderFeedback(actor, "請先到「一、建立想定」輸入 API Key。", "error");
+    if (!state.scenario || state.currentTurn > state.scenario.turns || state.orders[state.currentTurn]?.[actor]) return;
+    const button = document.querySelector(`[data-auto-natural-order="${actor}"]`);
+    const originalLabel = button.textContent;
+    button.disabled = true;
+    button.textContent = "草稿生成中…";
+    setNaturalOrderFeedback(actor, "LLM 正在依戰局與資源產生可編輯草稿…");
+    try {
+      saveLlmSettings();
+      const provider = $("llmProvider").value;
+      const raw = await requestLlm(provider, $("llmModel").value.trim(), $("llmApiKey").value.trim(), naturalOrderLlmPrompt(actor, input.value.trim(), true), $("llmReasoning").value);
+      const parsed = normalizeLlmNaturalOrder(extractJson(raw), input.value.trim(), actor);
+      input.value = parsed.naturalLanguage;
+      input.focus();
+      setNaturalOrderFeedback(actor, "LLM 草稿已填入；請人工修改，再按「LLM 潤飾」，確認後按「完稿提交」。", "success");
+    } catch (error) {
+      setNaturalOrderFeedback(actor, `LLM 草稿生成失敗：${error.message}`, "error");
+    } finally {
+      button.textContent = originalLabel;
+      syncLlmActionButtons();
+    }
+  }
+
+  async function polishNaturalOrderDraft(actor) {
+    const input = naturalOrderInput(actor);
+    const text = input.value.trim();
+    if (!hasLlmApiKey()) return setNaturalOrderFeedback(actor, "請先到「一、建立想定」輸入 API Key。", "error");
+    if (!text) {
+      setNaturalOrderFeedback(actor, "請先輸入或產生草稿，再交給 LLM 潤飾。", "error");
+      input.focus();
+      return;
+    }
+    const button = document.querySelector(`[data-polish-natural-order="${actor}"]`);
+    const originalLabel = button.textContent;
+    button.disabled = true;
+    button.textContent = "潤飾中…";
+    const canonicalDraft = canonicalizeEquipmentInOrder(actor, text);
+    setNaturalOrderFeedback(actor, "正在對照本方武器與物資清單，校正名稱並交由 LLM 整理命令文字…");
+    try {
+      saveLlmSettings();
+      const provider = $("llmProvider").value;
+      const result = extractJson(await requestLlm(provider, $("llmModel").value.trim(), $("llmApiKey").value.trim(), naturalOrderPolishPrompt(actor, canonicalDraft.text), $("llmReasoning").value));
+      const rawPolished = String(result?.naturalLanguage || "").replace(/[\r\n]+/g, " ").trim().slice(0, 500);
+      const canonicalPolished = canonicalizeEquipmentInOrder(actor, rawPolished);
+      const polished = canonicalPolished.text.slice(0, 500);
+      if (!polished) throw new Error("LLM 未回傳潤飾文字");
+      input.value = polished;
+      input.focus();
+      const correctedNames = [...canonicalDraft.replacements, ...canonicalPolished.replacements]
+        .filter(item => item.changed)
+        .map(item => item.canonical).filter((name, index, list) => list.indexOf(name) === index);
+      const nameNote = correctedNames.length ? ` 已依清單校正：${correctedNames.join("、")}。` : "";
+      setNaturalOrderFeedback(actor, `潤飾完成，尚未提交。${nameNote}${String(result?.revisionNote || "").replace(/[\r\n]+/g, " ").trim().slice(0, 80)}`, "success");
+    } catch (error) {
+      setNaturalOrderFeedback(actor, `LLM 潤飾失敗：${error.message}`, "error");
+    } finally {
+      button.textContent = originalLabel;
+      syncLlmActionButtons();
+    }
+  }
+
+  async function applyNaturalOrderInputWithLlm(actor) {
+    const input = naturalOrderInput(actor);
+    const text = input.value.trim();
+    if (!hasLlmApiKey()) {
+      setNaturalOrderFeedback(actor, "請先到「一、建立想定」輸入 API Key；未設定時不能使用想定。", "error");
+      return;
+    }
+    if (!canActorSubmit(actor)) {
+      const next = nextRequiredActor();
+      setNaturalOrderFeedback(actor, next ? `目前應由${next === "AMBER" ? "黃方" : actorLabel(next)}先提交命令。` : "本回合命令均已提交。", "error");
+      return;
+    }
+    if (!text) {
+      setNaturalOrderFeedback(actor, "請先輸入命令草稿，或按「LLM 產生草稿」。", "error");
+      input.focus();
+      return;
+    }
+    const button = document.querySelector(`[data-parse-natural-order="${actor}"]`);
+    const originalLabel = button.textContent;
+    button.disabled = true;
+    button.textContent = "完稿處理中…";
+    setNaturalOrderFeedback(actor, "LLM 正在把確認完稿轉成資源與戰略命令，完成後正式提交…");
+    try {
+      saveLlmSettings();
+      const provider = $("llmProvider").value;
+      const raw = await requestLlm(provider, $("llmModel").value.trim(), $("llmApiKey").value.trim(), naturalOrderLlmPrompt(actor, text, false), $("llmReasoning").value);
+      const parsed = normalizeLlmNaturalOrder(extractJson(raw), text, actor);
+      applyLlmNaturalOrder(parsed, text);
+    } catch (error) {
+      setNaturalOrderFeedback(actor, `LLM 處理失敗：${error.message}`, "error");
+      toast("自然語言命令尚未轉換，未扣用任何資源。");
+    } finally {
+      button.textContent = originalLabel;
+      syncLlmActionButtons();
+    }
+  }
+
+  async function autoGenerateMissingNaturalOrders() {
+    let generated = 0;
+    for (const actor of activeOrderActors()) {
+      if (!state.orders[state.currentTurn]?.[actor] && !naturalOrderInput(actor).value.trim()) {
+        await generateNaturalOrderDraft(actor);
+        generated += 1;
+      }
+    }
+    if (!generated) toast("三方草稿皆已有內容；為避免覆寫人工修改，未重新生成。");
+  }
+
   // Retain compatibility with saved single-action orders and older JSON exports.
   function orderPrimary(order) {
     return order?.primary || {
@@ -2051,8 +3956,42 @@
     return order ? [orderPrimary(order), ...orderSupports(order)] : [];
   }
 
+  function sanitizedOrdersForLlm(orders) {
+    return Object.fromEntries(Object.entries(orders || {}).map(([actor, order]) => [
+      actor,
+      {
+        actor,
+        primary: sanitizeOrderItemForLlm(orderPrimary(order)),
+        supports: orderSupports(order).map(sanitizeOrderItemForLlm),
+        rationale: String(order?.rationale || "").slice(0, 180)
+      }
+    ]));
+  }
+
+  function sanitizeOrderItemForLlm(item) {
+    return {
+      action: item?.action,
+      zone: item?.zone,
+      resource: Number(item?.resource) || 0,
+      priority: Number(item?.priority) || 0,
+      condition: item?.condition,
+      risk: item?.risk,
+      assetAllocations: (item?.assetAllocations || []).map(allocation => ({
+        inventoryId: allocation.inventoryId,
+        alias: allocation.alias,
+        quantity: allocation.quantity,
+        unit: allocation.unit
+      }))
+    };
+  }
+
   function orderTotalResource(order) {
     return orderItems(order).reduce((total, item) => total + (Number(item.resource) || 0), 0);
+  }
+
+  function orderAllocationText(order) {
+    const allocations = orderItems(order).flatMap(item => Array.isArray(item.assetAllocations) ? item.assetAllocations : []);
+    return allocations.map(item => `${item.alias} ${item.quantity}${item.unit || "單位"}`).join("、");
   }
 
   function supportActionMarkup(actor, item, index, disabled) {
@@ -2122,9 +4061,13 @@
       }
       const primary = orderPrimary(order);
       const supports = orderSupports(order);
+      const allocationText = orderAllocationText(order);
+      const weaponPower = orderWeaponPower(order);
       return `<div class="order-item ${order.actor}">
         <strong>${actorLabel(order.actor)}：主行動 ${escapeHtml(primary.action)}</strong>
-        <div>${zoneName(primary.zone)} · ${primary.resource}/${ORDER_BUDGET} 點 · 優先 ${primary.priority} · 風險 ${riskLabel(primary.risk)}${order.aiGenerated ? " · AI建議" : ""}</div>
+        ${order.naturalLanguageSource ? `<div class="order-support-summary">自然語言：${escapeHtml(order.naturalLanguageSource)}</div>` : ""}
+        <div>${zoneName(primary.zone)} · ${primary.resource}/${ORDER_BUDGET} 點 · 優先 ${primary.priority} · 風險 ${riskLabel(primary.risk)} · 圖標 ${escapeHtml(OPERATION_TYPE_LABELS[selectedOperationIconType(primary)] || selectedOperationIconType(primary))}${Number.isFinite(weaponPower) ? ` · 品項戰力 ${round1(weaponPower)}` : ""}${order.aiGenerated ? " · AI建議" : ""}</div>
+        ${allocationText ? `<div class="order-support-summary">詳細資源：${escapeHtml(allocationText)}</div>` : ""}
         <div class="order-support-summary">支援：${supports.map(item => `${escapeHtml(item.action)}（${item.resource}點／優先${item.priority}／${riskLabel(item.risk)}）`).join("；") || "無（舊版紀錄）"}</div>
         <small>合計 ${orderTotalResource(order)}/${ORDER_BUDGET} 點 · 條件：${escapeHtml(primary.condition || "未填寫")} · ${escapeHtml(order.rationale || "未填寫理由")}</small>
       </div>`;
@@ -2189,19 +4132,9 @@
       .filter(zone => zone.zone_id !== "Z-REAR" || state.scenario.amberSupport !== "none")
       .map(zone => `<option value="${zone.zone_id}">${escapeHtml(zone.zone_name)}</option>`).join("");
     const finished = state.currentTurn > state.scenario.turns;
-    $("eventPanel").innerHTML = `${eventList}
-      <form id="whiteEventForm" class="white-event-form">
-        <h4>白方臨時導調事件</h4>
-        <label>事件名稱<input id="whiteEventName" required maxlength="80" placeholder="例如：民間通訊壅塞" ${finished ? "disabled" : ""}></label>
-        <label>類別
-          <select id="whiteEventCategory" ${finished ? "disabled" : ""}>
-            <option>民事</option><option>情報</option><option>氣象</option><option>後勤</option><option>外交</option><option>指管</option><option>資訊</option><option>其他</option>
-          </select>
-        </label>
-        <label>影響區域<select id="whiteEventZone" ${finished ? "disabled" : ""}>${zones}</select></label>
-        <label>導調說明<textarea id="whiteEventDescription" required maxlength="300" rows="3" placeholder="說明白方發布的情境變化與應注意事項。" ${finished ? "disabled" : ""}></textarea></label>
-        <button type="submit" class="secondary" ${finished ? "disabled" : ""}>立即發布本回合事件</button>
-      </form>`;
+    $("eventPanel").innerHTML = eventList;
+    $("whiteEventZone").innerHTML = zones;
+    [...$("whiteEventForm").elements].forEach(control => { control.disabled = finished; });
   }
 
   function publishWhiteEvent(event) {
@@ -2222,74 +4155,112 @@
       whiteInjected: true,
       publishedAt: new Date().toISOString()
     });
+    event.target.reset();
     saveState(false);
     renderSimulation();
     toast("白方臨時事件已發布並納入本回合。");
   }
 
-  function submitOrder(event) {
-    event.preventDefault();
+  function ensureRedInitiativeForTurn() {
     if (!state.scenario || state.currentTurn > state.scenario.turns) return;
-    const actor = $("orderActor").value;
-    const current = state.orders[state.currentTurn] || {};
-    if (!canActorSubmit(actor, current)) {
-      const next = nextRequiredActor(current);
-      toast(next ? `目前應由${actorLabel(next)}先提交命令。` : "本回合命令均已提交。");
-      return;
-    }
-    if (actor === "AMBER" && state.scenario.amberSupport === "none") {
-      toast("本想定未納入美軍支援。");
-      return;
-    }
-    const primary = {
-      action: $("orderAction").value,
-      zone: $("orderZone").value,
-      resource: Number($("orderResource").value) || 0,
-      priority: Number($("orderPriority").value) || 4,
-      condition: $("orderCondition").value.trim(),
-      risk: $("orderRisk").value
-    };
-    const supports = readSupportActions();
-    const total = primary.resource + supports.reduce((sum, item) => sum + item.resource, 0);
-    const validItems = [primary, ...supports].every((item, index) => ACTIONS[actor].some(([name]) => name === item.action)
-      && DATA.zones.some(zone => zone.zone_id === item.zone)
-      && Number.isInteger(item.resource) && item.resource >= (index === 0 ? 10 : 3) && item.resource <= (index === 0 ? ORDER_BUDGET : 25)
-      && item.priority >= 1 && item.priority <= 5 && item.condition && ["low", "medium", "high"].includes(item.risk));
-    if (supports.length < MIN_SUPPORT_ACTIONS || supports.length > MAX_SUPPORT_ACTIONS || !validItems || total > ORDER_BUDGET) {
-      toast(`命令包須有 1 項主行動、${MIN_SUPPORT_ACTIONS}–${MAX_SUPPORT_ACTIONS} 項支援行動；每項需完整填寫，且合計不得超過 ${ORDER_BUDGET} 點。`);
-      return;
-    }
-    const order = {
-      actor, primary, supports, resourceBudget: ORDER_BUDGET,
-      rationale: $("orderRationale").value.trim(), submittedAt: new Date().toISOString()
-    };
+    let changed = false;
+    if (state.scenario.turnOrderMode !== "red_first" || state.scenario.firstOrderVisibility !== "public") changed = true;
+    state.scenario.turnOrderMode = "red_first";
+    state.scenario.firstOrderVisibility = "public";
     state.orders[state.currentTurn] ||= {};
-    state.orders[state.currentTurn][actor] = order;
-    const nextActor = nextRequiredActor(state.orders[state.currentTurn]);
-    if (state.scenario.turnOrderMode !== "simultaneous" && nextActor) $("orderActor").value = nextActor;
-    $("orderRationale").value = "";
-    $("supportActionsList")._draft = null;
-    saveState(false);
-    renderSimulation();
-    toast(`${actorLabel(actor)}命令已提交。`);
+    if (!state.orders[state.currentTurn].RED) {
+      if (changed) saveState(false);
+      return;
+    }
+    const redOrder = state.orders[state.currentTurn].RED;
+    const primary = orderPrimary(redOrder);
+    const eventId = `RED-INIT-${state.currentTurn}`;
+    if (!state.scenario.events.some(event => event.event_id === eventId)) {
+      state.scenario.events.push({
+        event_id: eventId,
+        trigger_turn: state.currentTurn,
+        event_name: `紅方先制行動：${primary.action}`,
+        category: "紅方行動",
+        zone_id: primary.zone,
+        affected_actor: "BLUE",
+        description: `紅方在${zoneName(primary.zone)}發起「${primary.action}」；藍方應依本回合情報，以自然語言下達回應命令。`,
+        readiness_delta: -0.5,
+        command_delta: -0.5,
+        civilian_risk_delta: 1,
+        redInitiative: true
+      });
+      changed = true;
+    }
+    const reportId = `RED-INIT-INT-${state.currentTurn}`;
+    if (!state.scenario.intel.some(report => report.report_id === reportId)) {
+      const rng = mulberry32(state.scenario.seed + state.currentTurn * 1777);
+      state.scenario.intel.push({
+        report_id: reportId,
+        turn: state.currentTurn,
+        report_type: "紅方先行態勢通報",
+        zone_id: primary.zone,
+        source_reliability: "B",
+        confidence_pct: Math.round(clamp(78 - state.scenario.uncertainty * 4 + rng() * 10, 45, 90)),
+        report_text: `多源情報顯示紅方正於${zoneName(primary.zone)}執行「${primary.action}」。裝備、數量與後續意圖仍有不確定性。`,
+        redInitiative: true
+      });
+      changed = true;
+    }
+    if (changed) saveState(false);
   }
 
-  function fallbackAutoFill(missingActors) {
-    const rng = mulberry32(state.scenario.seed + state.currentTurn * 991);
-    missingActors.forEach(actor => {
-      const pickItem = (resource, priority) => ({
-        action: pick(ACTIONS[actor], rng)[0],
-        zone: pick(DATA.zones.filter(z => z.zone_id !== "Z-REAR" || actor === "AMBER"), rng).zone_id,
-        resource, priority, condition: "情勢未出現重大惡化", risk: "medium"
-      });
-      state.orders[state.currentTurn][actor] = {
-        actor, primary: pickItem(Math.round(14 + rng() * 5), 4),
-        supports: [pickItem(Math.round(4 + rng() * 3), 3), pickItem(Math.round(4 + rng() * 3), 2)],
-        resourceBudget: ORDER_BUDGET,
-        rationale: "本機合成規則：依本回合的合成態勢補齊代表性行動。",
-        submittedAt: new Date().toISOString()
-      };
-    });
+  async function requestRedInitiativeForTurn() {
+    if (!state.scenario || state.currentTurn > state.scenario.turns || state.orders[state.currentTurn]?.RED) return;
+    const turn = state.currentTurn;
+    const scenarioId = state.scenario.id;
+    const requestKey = `${scenarioId}-${turn}`;
+    if (!hasLlmApiKey() || redInitiativeRequests.has(requestKey)) return;
+    redInitiativeRequests.add(requestKey);
+    const host = $("redInitiativeBanner");
+    if (host) host.innerHTML = "<strong>LLM 正在生成紅方先行事件…</strong><span>完成後才會開放藍方自然語言命令。</span>";
+    syncLlmActionButtons();
+    try {
+      const provider = $("llmProvider").value;
+      const result = extractJson(await requestLlm(
+        provider,
+        $("llmModel").value.trim(),
+        $("llmApiKey").value.trim(),
+        autoOrderPrompt(["RED"]),
+        $("llmReasoning").value
+      ));
+      if (state.scenario?.id !== scenarioId || state.currentTurn !== turn) return;
+      const remaining = applyAiOrders(result, ["RED"]);
+      if (remaining.length || !state.orders[turn]?.RED) throw new Error("LLM 未回傳有效的紅方命令");
+      state.orders[turn].RED.systemInitiative = true;
+      state.orders[turn].RED.aiGenerated = true;
+      ensureRedInitiativeForTurn();
+      saveState(false);
+      renderSimulation();
+      toast(`第 ${turn} 回合紅方先行事件已由 LLM 生成。`);
+    } catch (error) {
+      if (host) host.innerHTML = `<strong>紅方事件生成失敗</strong><span>${escapeHtml(error.message)}；請確認 API 設定後重新進入本頁。</span>`;
+      toast(`LLM 紅方事件生成失敗：${error.message}`);
+    } finally {
+      redInitiativeRequests.delete(requestKey);
+      syncLlmActionButtons();
+    }
+  }
+
+  function renderRedInitiativeBanner() {
+    const host = $("redInitiativeBanner");
+    if (!host || !state.scenario || state.currentTurn > state.scenario.turns) {
+      if (host) host.textContent = "";
+      return;
+    }
+    const order = state.orders[state.currentTurn]?.RED;
+    if (!order) {
+      host.innerHTML = "<strong>等待紅方先行命令</strong><span>可輸入紅方自然語言，或只讓 LLM 自動生成紅方；提交後才開放藍方。</span>";
+      return;
+    }
+    const primary = orderPrimary(order);
+    const report = state.scenario.intel.find(item => item.report_id === `RED-INIT-INT-${state.currentTurn}`);
+    host.innerHTML = `<strong>紅方已先行：${escapeHtml(primary.action)}</strong>
+      <span>${escapeHtml(zoneName(primary.zone))} · 情報信心 ${Number(report?.confidence_pct) || 0}% · 請由藍方輸入自然語言回應。</span>`;
   }
 
   function autoOrderPrompt(missingActors) {
@@ -2297,7 +4268,7 @@
     const zones = DATA.zones.filter(z => z.zone_id !== "Z-REAR" || missingActors.includes("AMBER")).map(z => ({ id: z.zone_id, name: z.zone_name, domain: z.domain }));
     const events = currentEvents();
     const weather = currentWeather().map(w => ({ zone: w.zone_id, sea: w.sea_state_1_5, visibility: w.visibility_1_5 }));
-    return `你是兵推回合助理。只能使用下列完全合成、虛構的模擬資料；不得補入真實部隊、武器型號、座標、部署、射程、目標或可執行的現實作戰建議。\n\n請只回傳嚴格 JSON：{"orders":[{"actor":"BLUE|RED|AMBER","primary":{"action":"允許動作之一","zone":"允許區域之一","resource":10到35的整數,"priority":1到5,"condition":"繁體中文、100字內","risk":"low|medium|high"},"supports":[{"action":"允許動作之一","zone":"允許區域之一","resource":3到25的整數,"priority":1到5,"condition":"繁體中文、100字內","risk":"low|medium|high"},{"action":"...第二項支援行動"}],"rationale":"繁體中文、80字內"}]}。每個角色恰有 1 個主行動與 2–4 個支援行動，所有行動 resource 合計不得超過 ${ORDER_BUDGET}。\n\n必須補齊的角色：${JSON.stringify(missingActors)}\n允許動作：${JSON.stringify(availableActions)}\n允許區域：${JSON.stringify(zones)}\n當前狀態：${JSON.stringify({ turn: state.currentTurn, turnOrderMode: state.scenario.turnOrderMode, firstOrderVisibility: state.scenario.firstOrderVisibility, status: state.status, abstractResources: state.scenario.inventoryEnabled ? sanitizedAbstractSummary(state.scenario.abstractResources) : null, syntheticLegacyResources: state.scenario.inventoryEnabled ? null : state.scenario.resources, strategicParameters: state.scenario.strategicParameters, currentOrders: state.orders[state.currentTurn], events: events.map(event => ({ name: event.event_name, category: event.category, zone: event.zone_id, description: event.description })), weather })}`;
+    return `你是兵推回合助理。只能使用下列完全合成、虛構的模擬資料；不得補入真實部隊、武器型號、座標、部署、射程、目標或可執行的現實作戰建議。\n\n請只回傳嚴格 JSON：{"orders":[{"actor":"BLUE|RED|AMBER","primary":{"action":"允許動作之一","zone":"允許區域之一","resource":10到35的整數；待命不做事時為0,"priority":1到5,"condition":"繁體中文、100字內","risk":"low|medium|high"},"supports":[{"action":"允許動作之一","zone":"允許區域之一","resource":3到25的整數,"priority":1到5,"condition":"繁體中文、100字內","risk":"low|medium|high"},{"action":"...第二項支援行動"}],"rationale":"繁體中文、80字內"}]}。一般命令每個角色恰有 1 個主行動與 2–4 個支援行動，所有行動 resource 合計不得超過 ${ORDER_BUDGET}；若 primary.action 為「待命不做事」，resource 必須為 0 且 supports 必須為空陣列。\n\n必須補齊的角色：${JSON.stringify(missingActors)}\n允許動作：${JSON.stringify(availableActions)}\n允許區域：${JSON.stringify(zones)}\n當前狀態：${JSON.stringify({ turn: state.currentTurn, turnOrderMode: state.scenario.turnOrderMode, firstOrderVisibility: state.scenario.firstOrderVisibility, status: state.status, abstractResources: state.scenario.inventoryEnabled ? sanitizedAbstractSummary(state.scenario.abstractResources) : null, syntheticLegacyResources: state.scenario.inventoryEnabled ? null : state.scenario.resources, strategicParameters: state.scenario.strategicParameters, currentOrders: sanitizedOrdersForLlm(state.orders[state.currentTurn]), events: events.map(event => ({ name: event.event_name, category: event.category, zone: event.zone_id, description: event.description })), weather })}`;
   }
 
   function applyAiOrders(result, missingActors) {
@@ -2312,8 +4283,25 @@
         && Number.isInteger(Number(item.resource)) && Number(item.resource) >= min && Number(item.priority) >= 1 && Number(item.priority) <= 5
         && String(item.condition || "").trim() && ["low", "medium", "high"].includes(item.risk);
       const total = [primary, ...supports].reduce((sum, item) => sum + Number(item?.resource || 0), 0);
+      if (missingActors.includes(actor) && !accepted.has(actor) && isStandbyAction(primary?.action)
+        && allowedZones.has(primary.zone) && Number(primary.resource) === 0
+        && Number(primary.priority) >= 1 && Number(primary.priority) <= 5
+        && String(primary.condition || "").trim() && ["low", "medium", "high"].includes(primary.risk)
+        && supports.length === 0) {
+        state.orders[state.currentTurn][actor] = {
+          actor,
+          primary: { ...primary, resource: 0, priority: Math.round(Number(primary.priority)), condition: String(primary.condition).trim().slice(0, 100), assetAllocations: [], target: null },
+          supports: [],
+          resourceBudget: ORDER_BUDGET,
+          rationale: String(row.rationale || "本回合待命，不採取主動行動。").replace(/[\r\n]+/g, " ").slice(0, 180),
+          aiGenerated: true,
+          submittedAt: new Date().toISOString()
+        };
+        accepted.add(actor);
+        return;
+      }
       if (!missingActors.includes(actor) || accepted.has(actor) || !validItem(primary, 10) || supports.length < MIN_SUPPORT_ACTIONS || supports.length > MAX_SUPPORT_ACTIONS || !supports.every(item => validItem(item, 3)) || total > ORDER_BUDGET) return;
-      state.orders[state.currentTurn][actor] = {
+      const order = {
         actor,
         primary: { ...primary, resource: Math.round(Number(primary.resource)), priority: Math.round(Number(primary.priority)), condition: String(primary.condition).trim().slice(0, 100) },
         supports: supports.map(item => ({ ...item, resource: Math.round(Number(item.resource)), priority: Math.round(Number(item.priority)), condition: String(item.condition).trim().slice(0, 100) })),
@@ -2321,25 +4309,48 @@
         rationale: String(row.rationale || "AI 未提供理由。").replace(/[\r\n]+/g, " ").slice(0, 180),
         aiGenerated: true, submittedAt: new Date().toISOString()
       };
+      assignAutomaticSpatialOrder(order);
+      state.orders[state.currentTurn][actor] = order;
       accepted.add(actor);
     });
     return missingActors.filter(actor => !accepted.has(actor));
   }
 
+  function assignAutomaticSpatialOrder(order) {
+    orderItems(order).forEach(item => {
+      if (isStandbyAction(item.action)) {
+        item.assetAllocations = [];
+        item.target = null;
+        return;
+      }
+      const category = inventoryCategoryForAction(item.action);
+      if (SPATIAL.OPTIONAL_LOCATION_CATEGORIES.has(category)) return;
+      item.assetAllocations = prepareSpatialAllocations(order.actor, item);
+      const allocation = item.assetAllocations[0];
+      const row = state.scenario.detailedInventory.find(candidate => candidate.id === allocation?.inventoryId);
+      if (!row || !allocation) return;
+      const zoneCenter = SPATIAL.ZONE_CENTERS[item.zone] || SPATIAL.ZONE_CENTERS["Z-CW"];
+      let target = { lat: zoneCenter[0], lng: zoneCenter[1], zoneId: item.zone, label: `${zoneName(item.zone)}合成目標` };
+      let eligible = SPATIAL.eligiblePlacements(row, target, allocation.quantity);
+      if (!eligible.length && row.placements?.length) {
+        const placement = row.placements[0];
+        target = { lat: placement.lat, lng: placement.lng, zoneId: placement.zoneId, label: `${placement.label}鄰近合成目標` };
+        eligible = SPATIAL.eligiblePlacements(row, target, allocation.quantity);
+      }
+      item.target = target;
+      item.zone = target.zoneId;
+      allocation.placementId = eligible[0]?.placement.placementId || "";
+    });
+  }
+
   function missingOrderActors() {
+    if (!state.scenario) return [];
     const actors = state.scenario.amberSupport === "none" ? ["BLUE", "RED"] : ["BLUE", "RED", "AMBER"];
-    return actors.filter(actor => !state.orders[state.currentTurn][actor]);
+    return actors.filter(actor => !state.orders[state.currentTurn]?.[actor]);
   }
 
   function autoFillOrders() {
-    if (!state.scenario) return;
-    state.orders[state.currentTurn] ||= {};
-    const missingActors = missingOrderActors();
-    if (!missingActors.length) return toast("所有角色本回合都已有命令。");
-    fallbackAutoFill(missingActors);
-    saveState(false);
-    renderSimulation();
-    toast("已以本機合成規則補齊尚未提交的角色命令。");
+    return autoFillOrdersWithLlm();
   }
 
   async function autoFillOrdersWithLlm() {
@@ -2373,20 +4384,62 @@
     return ACTIONS[actor].find(([name]) => name === actionName)?.[1] || {};
   }
 
+  function weaponPowerForOrderItem(actor, item) {
+    if (isStandbyAction(item?.action)) return 0;
+    if (!state.scenario?.inventoryEnabled) return null;
+    const rows = state.scenario.detailedInventory.filter(row => row.actor === actor).map(sanitizeInventoryRow);
+    const allocations = Array.isArray(item.assetAllocations) ? item.assetAllocations : [];
+    if (allocations.length) {
+      const contributions = allocations.map(allocation => {
+        const row = rows.find(candidate => candidate.id === allocation.inventoryId);
+        if (!row) return null;
+        const metrics = weaponRowMetrics(row, allocation.quantity);
+        return { row, metrics, quantity: Number(allocation.quantity) || 0 };
+      }).filter(Boolean);
+      if (!contributions.length) return 0;
+      const weighted = contributions.reduce((sum, entry) => sum + entry.metrics.power, 0);
+      return round1(clamp(weighted / Math.sqrt(contributions.length), 0, 140));
+    }
+    const category = inventoryCategoryForAction(item.action);
+    const matching = rows.filter(row => row.category === category);
+    if (!matching.length) return 0;
+    const entries = matching.map(row => {
+      const requested = row.consumption * Math.max(.35, Number(item.resource || 0) / 20);
+      return { row, metrics: weaponRowMetrics(row, requested) };
+    });
+    const weightTotal = entries.reduce((sum, entry) => sum + Math.max(1, entry.metrics.committable), 0);
+    return round1(entries.reduce((sum, entry) =>
+      sum + entry.metrics.power * Math.max(1, entry.metrics.committable) / weightTotal, 0));
+  }
+
+  function orderWeaponPower(order) {
+    if (!order || !state.scenario?.inventoryEnabled) return null;
+    return round1(orderItems(order).reduce((sum, item, index) => {
+      const roleWeight = index === 0 ? 1 : 0.58;
+      const priorityWeight = 0.8 + Number(item.priority || 3) * 0.08;
+      const riskWeight = item.risk === "high" ? 1.06 : item.risk === "low" ? 0.96 : 1;
+      return sum + Number(weaponPowerForOrderItem(order.actor, item) || 0) * roleWeight * priorityWeight * riskWeight;
+    }, 0));
+  }
+
   function orderScore(order, status, rng) {
     if (!order) return 0;
     const items = orderItems(order);
-    const effort = items.reduce((sum, item, index) => {
+    const abstractEffort = items.reduce((sum, item, index) => {
       const roleWeight = index === 0 ? 1 : 0.58;
       const priorityWeight = 0.8 + Number(item.priority || 3) * 0.08;
       const riskWeight = item.risk === "high" ? 1.06 : item.risk === "low" ? 0.96 : 1;
       return sum + Math.sqrt(item.resource) * 2.3 * roleWeight * priorityWeight * riskWeight;
     }, 0);
+    const weaponPower = orderWeaponPower(order);
+    const effort = Number.isFinite(weaponPower) ? weaponPower * 0.22 : abstractEffort;
     const readiness = status.readiness * 0.22;
     const command = status.command * 0.16;
     const sustain = status.sustainment * 0.12;
     const riskBonus = orderTotalResource(order) > 25 ? 4 : 0;
-    const resourceModifier = state.scenario?.resourceBalance?.[order.actor.toLowerCase()] || 0;
+    const resourceModifier = state.scenario?.inventoryEnabled
+      ? 0
+      : state.scenario?.resourceBalance?.[order.actor.toLowerCase()] || 0;
     return effort + readiness + command + sustain + riskBonus + resourceModifier + (rng() - 0.5) * 14;
   }
 
@@ -2397,7 +4450,9 @@
       const effect = actionEffect(actor, item.action);
       const roleWeight = index === 0 ? 1 : 0.58;
       const priorityWeight = 0.8 + Number(item.priority || 3) * 0.08;
-      const scale = (item.resource / 20) * roleWeight * priorityWeight;
+      const weaponPower = weaponPowerForOrderItem(actor, item);
+      const weaponFactor = Number.isFinite(weaponPower) ? clamp(weaponPower / 75, .2, 1.5) : 1;
+      const scale = (item.resource / 20) * roleWeight * priorityWeight * weaponFactor;
       status.readiness = clamp(status.readiness + (effect.readiness || 0) * scale);
       status.sustainment = clamp(status.sustainment + (effect.sustainment || 0) * scale);
       status.command = clamp(status.command + (effect.command || 0) * scale);
@@ -2474,7 +4529,8 @@
       humanitarian: "logistics",
       energy: "energy",
       diplomacy: "communications",
-      disperse: "logistics"
+      disperse: "logistics",
+      standby: "communications"
     }[type] || "logistics");
   }
 
@@ -2484,47 +4540,104 @@
     const rows = state.scenario.detailedInventory.map(sanitizeInventoryRow);
     const entries = rows.map(row => ({
       id: row.id, actor: row.actor, alias: row.alias, category: row.category,
+      effect: row.effect, reliability: row.reliability,
       opening: round1(row.current), recovery: 0, replenishment: 0,
       actionConsumption: 0, eventLoss: 0, closing: 0
     }));
     const entryById = new Map(entries.map(entry => [entry.id, entry]));
+    const actionAllocations = [];
 
     rows.forEach(row => {
       const entry = entryById.get(row.id);
       const recovered = Math.min(row.recovery, Math.max(0, row.nominal - row.current));
-      row.current += recovered;
-      entry.recovery = round1(recovered);
+      if (row.placements.length) {
+        const result = SPATIAL.distributeRecovery(row, recovered);
+        row.placements = result.spatial.placements;
+        row.current = SPATIAL.placementTotals(row).current;
+        entry.recovery = round1(result.applied);
+      } else {
+        row.current += recovered;
+        entry.recovery = round1(recovered);
+      }
       if (!row.replenishmentApplied && row.replenishment > 0 && state.currentTurn > row.delay) {
-        row.current += row.replenishment;
+        if (row.placements.length) {
+          const result = SPATIAL.distributeRecovery(row, row.replenishment);
+          row.placements = result.spatial.placements;
+          row.current = SPATIAL.placementTotals(row).current;
+          entry.replenishment = round1(result.applied);
+        } else {
+          row.current += row.replenishment;
+          entry.replenishment = round1(row.replenishment);
+        }
         row.replenishmentApplied = true;
-        entry.replenishment = round1(row.replenishment);
       }
     });
 
     const spend = (actor, category, demand, field, protectReserve) => {
       const matching = rows.filter(row => row.actor === actor && row.category === category);
-      if (!matching.length || demand <= 0) return 0;
+      if (!matching.length || demand <= 0) return [];
       const capacities = matching.map(row => protectReserve
-        ? Math.max(0, row.current - row.nominal * row.reserve / 100)
+        ? weaponRowMetrics(row).committable
         : Math.max(0, row.current));
       let remaining = Math.min(demand, capacities.reduce((sum, value) => sum + value, 0));
-      let spent = 0;
+      const usedRows = [];
       matching.forEach((row, index) => {
         const capacityTotal = capacities.reduce((sum, value) => sum + value, 0);
         const target = index === matching.length - 1
           ? remaining
           : Math.min(remaining, demand * (capacityTotal ? capacities[index] / capacityTotal : 0));
-        const used = Math.min(capacities[index], target);
-        row.current = Math.max(0, row.current - used);
+        let used = Math.min(capacities[index], target);
+        if (row.placements.length) {
+          let placementDemand = used;
+          let placementUsed = 0;
+          row.placements.forEach(placement => {
+            if (placementDemand <= 0) return;
+            const result = SPATIAL.consumePlacement(row, placement.placementId, placementDemand, protectReserve);
+            row.placements = result.spatial.placements;
+            placementDemand -= result.used;
+            placementUsed += result.used;
+          });
+          used = placementUsed;
+          row.current = SPATIAL.placementTotals(row).current;
+        } else {
+          row.current = Math.max(0, row.current - used);
+        }
         entryById.get(row.id)[field] += used;
         remaining -= used;
-        spent += used;
+        if (used > 0) usedRows.push({ row, used: round1(used) });
       });
-      return spent;
+      return usedRows;
     };
 
     Object.entries(orders).forEach(([actor, order]) => {
       orderItems(order).forEach((item, index) => {
+        if (isStandbyAction(item.action)) return;
+        const allocations = Array.isArray(item.assetAllocations) ? item.assetAllocations : [];
+        if (allocations.length) {
+          allocations.forEach(allocation => {
+            const row = rows.find(candidate => candidate.actor === actor && candidate.id === allocation.inventoryId);
+            if (!row) return;
+            let used = 0;
+            if (allocation.placementId && row.placements.length) {
+              const result = SPATIAL.consumePlacement(row, allocation.placementId, allocation.quantity, true);
+              used = result.used;
+              row.placements = result.spatial.placements;
+              row.current = SPATIAL.placementTotals(row).current;
+            } else {
+              used = weaponRowMetrics(row, allocation.quantity).committed;
+              row.current = Math.max(0, row.current - used);
+            }
+            entryById.get(row.id).actionConsumption += used;
+            actionAllocations.push({
+              actor, itemIndex: index, action: item.action, inventoryId: row.id,
+              placementId: allocation.placementId || null,
+              alias: row.alias, category: row.category,
+              requested: round1(Number(allocation.quantity) || 0), committed: round1(used),
+              effect: row.effect, reliability: row.reliability
+            });
+          });
+          return;
+        }
         const category = inventoryCategoryForAction(item.action);
         const matching = rows.filter(row => row.actor === actor && row.category === category);
         const baseConsumption = matching.length
@@ -2532,7 +4645,14 @@
           : 0;
         const roleWeight = index === 0 ? 1 : .58;
         const demand = baseConsumption * Math.max(.35, Number(item.resource || 0) / 20) * roleWeight;
-        spend(actor, category, demand, "actionConsumption", true);
+        spend(actor, category, demand, "actionConsumption", true).forEach(({ row, used }) => {
+          actionAllocations.push({
+            actor, itemIndex: index, action: item.action, inventoryId: row.id,
+            alias: row.alias, category: row.category,
+            requested: round1(demand), committed: round1(used),
+            effect: row.effect, reliability: row.reliability
+          });
+        });
       });
     });
 
@@ -2564,11 +4684,12 @@
     state.scenario.abstractResources = abstractAfter;
     state.scenario.resourceBalance = calculateCombinedResourceBalance(state.scenario.resources, abstractAfter);
     ["BLUE", "RED", "AMBER"].forEach(actor => {
-      if (state.status[actor]) state.status[actor].resources = abstractAfter.byActor[actor].overall;
+      if (state.status[actor]) state.status[actor].resources = inventoryHealthForActor(rows, actor);
     });
     const ledger = {
       turn: state.currentTurn,
       entries,
+      actionAllocations,
       abstractBefore: previousAbstract,
       abstractAfter,
       totals: {
@@ -2625,7 +4746,7 @@
       headline,
       summary: nextTurn > state.scenario.turns
         ? "已完成最後一回合，不再注入新事件；請檢視資源帳本與決策取捨。"
-        : "依固定規則比較本回合結算後的抽象資源、趨勢與保留水準，形成下一回合導調重點。",
+        : "依規則結算後的資源、趨勢與保留水準，形成提供給 LLM 的下一回合導調基線。",
       resourcePressures: pressures.slice(0, 5),
       intelUpdates: nextTurn > state.scenario.turns ? [] : [{
         type: "資源態勢",
@@ -2718,6 +4839,15 @@
     };
   }
 
+  function requireLlmNextTurnPayload(result) {
+    const requiredLists = ["resourcePressures", "intelUpdates", "candidateEvents", "decisionDilemmas"];
+    if (!String(result?.headline || "").trim() || !String(result?.summary || "").trim()
+      || requiredLists.some(key => !Array.isArray(result?.[key]))
+      || !result.decisionDilemmas.length) {
+      throw new Error("LLM 回傳的次回合想定包不完整");
+    }
+  }
+
   function applyNextTurnPackageArtifacts(packageData) {
     if (packageData.turn > state.scenario.turns) return;
     packageData.intelUpdates.forEach((item, index) => state.scenario.intel.push({
@@ -2726,7 +4856,7 @@
       report_type: item.type,
       zone_id: item.zone,
       report_text: item.text,
-      source_reliability: packageData.generatedBy === "LLM_SANITIZED" ? "AI 合成摘要" : "規則引擎",
+      source_reliability: "AI 合成摘要",
       confidence_pct: item.confidence,
       nextTurnGenerated: true
     }));
@@ -2747,36 +4877,178 @@
     const nextTurn = log.turn + 1;
     const fallback = fallbackNextTurnPackage(log, nextTurn);
     const apiKey = $("llmApiKey").value.trim();
-    const permitted = state.scenario.useLlmNextTurn && state.scenario.allowSanitizedLlm && apiKey && nextTurn <= state.scenario.turns;
-    if (!permitted) {
-      fallback.fallbackReason = !state.scenario.useLlmNextTurn ? "LLM 次回合生成未啟用"
-        : !state.scenario.allowSanitizedLlm ? "匿名摘要分享未獲允許"
-          : !apiKey ? "未設定 API Key" : "已完成最後回合";
-      applyNextTurnPackageArtifacts(fallback);
-      return fallback;
-    }
-    try {
-      const provider = $("llmProvider").value;
-      const result = extractJson(await requestLlm(provider, $("llmModel").value.trim(), apiKey, nextTurnPackagePrompt(log, fallback), $("llmReasoning").value));
-      const normalized = normalizeNextTurnPackage(result, fallback);
-      normalized.provider = LLM_PRESETS[provider].label;
-      normalized.model = $("llmModel").value.trim();
-      applyNextTurnPackageArtifacts(normalized);
-      return normalized;
-    } catch (error) {
-      fallback.fallbackReason = `LLM 失敗：${error.message}`;
-      applyNextTurnPackageArtifacts(fallback);
-      toast("次回合想定包改由固定規則生成。");
-      return fallback;
-    }
+    if (!apiKey) throw new Error("未設定 API Key");
+    const provider = $("llmProvider").value;
+    const result = extractJson(await requestLlm(provider, $("llmModel").value.trim(), apiKey, nextTurnPackagePrompt(log, fallback), $("llmReasoning").value));
+    requireLlmNextTurnPayload(result);
+    const normalized = normalizeNextTurnPackage(result, fallback);
+    normalized.provider = LLM_PRESETS[provider].label;
+    normalized.model = $("llmModel").value.trim();
+    applyNextTurnPackageArtifacts(normalized);
+    return normalized;
+  }
+
+  function adjudicationNarrativePrompt(log) {
+    const sensitive = state.scenario.inventoryMode === "sensitive_local";
+    const allocationRows = (log.resourceLedger?.actionAllocations || []).slice(0, 40).map(item => ({
+      actor: item.actor,
+      action: item.action,
+      category: item.category,
+      asset: sensitive ? undefined : item.alias,
+      requested: round1(item.requested),
+      committed: round1(item.committed),
+      unitEffect: round1(item.effect),
+      reliabilityPct: round1(item.reliability)
+    }));
+    const closingRows = (log.resourceLedger?.entries || [])
+      .filter(item => Number(item.actionConsumption || 0) > 0 || Number(item.eventLoss || 0) > 0)
+      .slice(0, 40)
+      .map(item => ({
+        actor: item.actor,
+        category: item.category,
+        asset: sensitive ? undefined : item.alias,
+        opening: round1(item.opening),
+        consumed: round1(item.actionConsumption),
+        eventLoss: round1(item.eventLoss),
+        closing: round1(item.closing)
+      }));
+    const orders = Object.fromEntries(Object.entries(log.orders || {}).map(([actor, order]) => [
+      actor,
+      orderItems(order).map(item => ({
+        action: item.action,
+        zone: item.zone,
+        resource: item.resource,
+        priority: item.priority,
+        risk: item.risk
+      }))
+    ]));
+    return `你是教育兵推的白方裁決官。只能根據下列完全合成的規則結算、武器遊戲值、資源扣用、命令、事件、天候與戰局衝突撰寫本回合裁決。不得補入真實座標、部署、射程、目標、弱點、命中率或現實作戰建議。不得改寫、忽略或另行創造任何數值；若命令意圖與實際可投入資源不一致，必須在文字中指出。
+
+只回傳嚴格 JSON：
+{"outcome":"180字內，明確說明三方本回合態勢與主要因果","keyRisk":"80字內，指出下一個最重要風險","assessment":"300字內，說明命令、實際資源投入、戰局衝突、損失與剩餘能力如何共同形成裁決"}
+
+回合：${log.turn}
+命令：${JSON.stringify(orders)}
+事件：${JSON.stringify((log.events || []).map(item => ({ name: item.event_name, category: item.category, zone: item.zone_id, description: item.description })))}
+天候：${JSON.stringify(log.environment)}
+規則結算：${JSON.stringify(sanitizedAdjudicationForLlm(log.adjudication))}
+結算後狀態：${JSON.stringify(log.statusAfter)}
+逐行動實際資源投入：${JSON.stringify(allocationRows)}
+資源期初、消耗、損失與期末：${JSON.stringify(closingRows)}
+
+文字必須與規則結算、重大衝突區域、品項戰力及資源帳本完全一致。`;
+  }
+
+  function sanitizedAdjudicationForLlm(adjudication) {
+    if (!adjudication) return null;
+    const sanitized = {
+      version: adjudication.version,
+      source: adjudication.source,
+      balance: adjudication.balance,
+      blueScore: adjudication.blueScore,
+      redScore: adjudication.redScore,
+      amberContribution: adjudication.amberContribution,
+      weaponPower: adjudication.weaponPower,
+      blueLoss: adjudication.blueLoss,
+      redLoss: adjudication.redLoss,
+      environmentPenalty: adjudication.environmentPenalty
+    };
+    sanitized.operationConflicts = (adjudication.operationConflicts || []).map(conflict => ({
+      zone: conflict.zone,
+      intensity: conflict.intensity,
+      actors: conflict.actors,
+      severity: conflict.severity,
+      theaterWide: conflict.theaterWide,
+      source: conflict.source,
+      drivers: (conflict.drivers || []).map(driver =>
+        String(driver).replace(/\d+(?:\.\d+)?\s*km/gi, "空間規則門檻")
+      )
+    }));
+    return sanitized;
+  }
+
+  async function generateLlmAdjudicationNarrative(log) {
+    const apiKey = $("llmApiKey").value.trim();
+    if (!apiKey) throw new Error("未設定 API Key");
+    const provider = $("llmProvider").value;
+    const result = extractJson(await requestLlm(
+      provider,
+      $("llmModel").value.trim(),
+      apiKey,
+      adjudicationNarrativePrompt(log),
+      $("llmReasoning").value
+    ));
+    const outcome = String(result?.outcome || "").replace(/[\r\n]+/g, " ").trim().slice(0, 180);
+    const keyRisk = String(result?.keyRisk || "").replace(/[\r\n]+/g, " ").trim().slice(0, 80);
+    const assessment = String(result?.assessment || "").replace(/[\r\n]+/g, " ").trim().slice(0, 300);
+    if (!outcome || !keyRisk || !assessment) throw new Error("LLM 回傳的裁決文字不完整");
+    return {
+      outcome,
+      keyRisk,
+      assessment,
+      generatedBy: "LLM_ADJUDICATION",
+      provider: LLM_PRESETS[provider].label,
+      model: $("llmModel").value.trim()
+    };
   }
 
   async function resolveTurn() {
     if (!state.scenario || state.currentTurn > state.scenario.turns) return;
+    const placementErrors = validateAllInventoryPlacements(state.scenario.detailedInventory || []);
+    if (placementErrors.length) {
+      toast(`空間資料待補，無法結算：${placementErrors[0]}`);
+      setTab("builder");
+      setBuilderPanel("inventory");
+      return;
+    }
+    if (!hasLlmApiKey()) {
+      toast("請先輸入 API Key；未設定時不能結算想定。");
+      renderSimulation();
+      return;
+    }
     const resolveButton = $("resolveTurnBtn");
     resolveButton.disabled = true;
     resolveButton.textContent = "結算與生成中…";
-    await autoFillOrders();
+    ensureRedInitiativeForTurn();
+    const missingActors = activeOrderActors().filter(actor => !state.orders[state.currentTurn]?.[actor]);
+    if (missingActors.length) {
+      resolveButton.disabled = false;
+      resolveButton.textContent = "結算本回合";
+      missingActors.forEach(actor => setNaturalOrderFeedback(actor, "本方尚未提交自然語言命令。", "error"));
+      toast(`尚缺少：${missingActors.map(actor => actor === "AMBER" ? "黃方" : actorLabel(actor)).join("、")}命令。`);
+      setSimulationPanel("command");
+      return;
+      state.orders[state.currentTurn].AMBER.systemSupport = true;
+    }
+    const spatialOrderErrors = [];
+    Object.values(state.orders[state.currentTurn] || {}).forEach(order => {
+      orderItems(order).forEach(item => {
+        const category = inventoryCategoryForAction(item.action);
+        if (SPATIAL.OPTIONAL_LOCATION_CATEGORIES.has(category)) return;
+        const allocation = item.assetAllocations?.[0];
+        const row = state.scenario.detailedInventory.find(candidate => candidate.id === allocation?.inventoryId);
+        if (!item.target) spatialOrderErrors.push(`${actorLabel(order.actor)}「${item.action}」尚未設定目標`);
+        else if (!row || !allocation?.placementId || !SPATIAL.eligiblePlacements(row, item.target, allocation.quantity)
+          .some(candidate => candidate.placement.placementId === allocation.placementId)) {
+          spatialOrderErrors.push(`${actorLabel(order.actor)}「${item.action}」沒有可達且數量足夠的配置點`);
+        }
+      });
+    });
+    if (spatialOrderErrors.length) {
+      resolveButton.disabled = false;
+      resolveButton.textContent = "結算本回合";
+      toast(`無法結算：${spatialOrderErrors[0]}`);
+      setSimulationPanel("command");
+      return;
+    }
+    const turnCheckpoint = {
+      status: JSON.parse(JSON.stringify(state.status)),
+      detailedInventory: JSON.parse(JSON.stringify(state.scenario.detailedInventory || [])),
+      abstractResources: JSON.parse(JSON.stringify(state.scenario.abstractResources || null)),
+      resourceBalance: JSON.parse(JSON.stringify(state.scenario.resourceBalance || null)),
+      resourceLedger: JSON.parse(JSON.stringify(state.scenario.resourceLedger || [])),
+      logsLength: state.logs.length
+    };
     const orders = state.orders[state.currentTurn] || {};
     const rng = mulberry32(state.scenario.seed + state.currentTurn * 7919 + hashText(JSON.stringify(orders)));
     const difficulty = DIFFICULTY[state.scenario.difficulty];
@@ -2790,6 +5062,9 @@
     events.forEach(applyEvent);
     applyStrategicPressure();
 
+    const blueWeaponPower = orderWeaponPower(orders.BLUE);
+    const redWeaponPower = orderWeaponPower(orders.RED);
+    const amberWeaponPower = orderWeaponPower(orders.AMBER);
     const blueScore = orderScore(orders.BLUE, state.status.BLUE, rng) + state.status.BLUE.intel * 0.13;
     const redScore = orderScore(orders.RED, state.status.RED, rng) + state.status.RED.intel * 0.13;
     const amberContribution = orders.AMBER ? orderScore(orders.AMBER, state.status.AMBER, rng) * (
@@ -2816,11 +5091,37 @@
       state.status.BLUE.sustainment = clamp(state.status.BLUE.sustainment + (amberActions.includes("提升後勤準備") ? 4 : 0.8));
     }
 
-    const outcome = balance > 12 ? "藍方在本回合取得較佳態勢，但仍須保存資源。" :
+    const ruleOutcome = balance > 12 ? "藍方在本回合取得較佳態勢，但仍須保存資源。" :
       balance < -12 ? "紅方施壓取得較明顯效果，藍方需調整部署與資訊判讀。" :
       "本回合態勢膠著，雙方均付出資源與持續性成本。";
+    const ruleKeyRisk = state.status.BLUE.civilianRisk > 65 ? "民事風險升高" :
+      state.status.BLUE.sustainment < 50 ? "藍方持續性不足" :
+      state.status.BLUE.resources < 30 ? "藍方資源接近下限" :
+      state.status.BLUE.intel < 50 ? "情報品質不足" : "需持續監控";
 
     const resourceLedger = applyDetailedInventoryTurn(orders, events);
+    const adjudication = {
+      version: 1,
+      source: "RULE_ENGINE",
+      balance: round1(balance),
+      blueScore: round1(blueScore),
+      redScore: round1(redScore),
+      amberContribution: round1(amberContribution),
+      weaponPower: {
+        BLUE: round1(Number(blueWeaponPower) || 0),
+        RED: round1(Number(redWeaponPower) || 0),
+        AMBER: round1(Number(amberWeaponPower) || 0)
+      },
+      blueLoss: round1(blueLoss),
+      redLoss: round1(redLoss),
+      environmentPenalty: round1(environmentPenalty),
+      operationConflicts: adjudicateOperationConflicts(orders, events, weather, {
+        balance,
+        blueLoss,
+        redLoss,
+        environmentPenalty
+      }, resourceLedger)
+    };
     const log = {
       turn: state.currentTurn,
       elapsedHours: (state.currentTurn - 1) * state.scenario.hoursPerTurn,
@@ -2831,31 +5132,72 @@
       redScore: round1(redScore),
       amberContribution: round1(amberContribution),
       environment: { avgSea: round1(avgSea), avgVisibility: round1(avgVisibility) },
-      outcome,
+      outcome: ruleOutcome,
+      adjudication,
       resourceLedger,
+      spatialInventoryBefore: JSON.parse(JSON.stringify(turnCheckpoint.detailedInventory || [])),
       abstractResourcesAfter: JSON.parse(JSON.stringify(state.scenario.abstractResources || null)),
       statusAfter: JSON.parse(JSON.stringify(state.status)),
-      keyRisk: state.status.BLUE.civilianRisk > 65 ? "民事風險升高" :
-        state.status.BLUE.sustainment < 50 ? "藍方持續性不足" :
-        state.status.BLUE.resources < 30 ? "藍方資源接近下限" :
-        state.status.BLUE.intel < 50 ? "情報品質不足" : "需持續監控"
+      keyRisk: ruleKeyRisk
     };
     state.logs.push(log);
-    const nextTurnPackage = await generateNextTurnPackage(log);
+    let nextTurnPackage;
+    try {
+      resolveButton.textContent = "LLM 裁決文字生成中…";
+      const llmAdjudication = await generateLlmAdjudicationNarrative(log);
+      log.outcome = llmAdjudication.outcome;
+      log.keyRisk = llmAdjudication.keyRisk;
+      log.adjudicationNarrative = llmAdjudication;
+      log.adjudication.narrativeSource = "LLM_ADJUDICATION";
+      resolveButton.textContent = "LLM 生成次回合想定…";
+      nextTurnPackage = await generateNextTurnPackage(log);
+    } catch (error) {
+      state.status = turnCheckpoint.status;
+      state.scenario.detailedInventory = turnCheckpoint.detailedInventory;
+      state.scenario.abstractResources = turnCheckpoint.abstractResources;
+      state.scenario.resourceBalance = turnCheckpoint.resourceBalance;
+      state.scenario.resourceLedger = turnCheckpoint.resourceLedger;
+      state.logs.splice(turnCheckpoint.logsLength);
+      resolveButton.disabled = false;
+      resolveButton.textContent = "結算本回合";
+      renderSimulation();
+      toast(`LLM 裁決或次回合想定生成失敗，本回合未結算：${error.message}`);
+      return;
+    }
     log.nextTurnPackage = nextTurnPackage;
     log.turnSnapshot = {
-      version: 1,
+      version: 3,
+      scenario: {
+        name: state.scenario.name,
+        template: state.scenario.template,
+        focusTitle: state.scenario.focusTitle,
+        amberSupport: state.scenario.amberSupport,
+        strategicParameters: JSON.parse(JSON.stringify(state.scenario.strategicParameters || {}))
+      },
       intel: JSON.parse(JSON.stringify(intel)),
       weather: JSON.parse(JSON.stringify(weather)),
       events: JSON.parse(JSON.stringify(events)),
       orders: JSON.parse(JSON.stringify(orders)),
       resourceLedger: JSON.parse(JSON.stringify(resourceLedger || null)),
+      spatialInventoryBefore: JSON.parse(JSON.stringify(turnCheckpoint.detailedInventory || [])),
       abstractResourcesAfter: JSON.parse(JSON.stringify(state.scenario.abstractResources || null)),
+      statusAfter: JSON.parse(JSON.stringify(state.status)),
+      environment: JSON.parse(JSON.stringify(log.environment)),
+      outcome: log.outcome,
+      keyRisk: log.keyRisk,
+      adjudicationNarrative: JSON.parse(JSON.stringify(log.adjudicationNarrative || null)),
+      adjudication: JSON.parse(JSON.stringify(adjudication)),
       nextTurnPackage: JSON.parse(JSON.stringify(nextTurnPackage || null))
     };
     state.scenario.nextTurnPackages.push(nextTurnPackage);
     operationAnimation.pendingAutoplayTurn = log.turn;
     state.currentTurn += 1;
+    if (state.currentTurn <= state.scenario.turns) {
+      activeOrderActors().forEach(actor => {
+        naturalOrderInput(actor).value = "";
+        setNaturalOrderFeedback(actor, actor === "RED" ? "新回合等待紅方先行命令。" : "等待前序方命令。");
+      });
+    }
     saveState(false);
     renderSimulation();
     renderAAR();
@@ -2867,9 +5209,10 @@
     const logs = [...state.logs].reverse();
     $("turnNarrative").innerHTML = logs.length ? logs.map(log => `
       <div class="turn-log">
-        <h4>第 ${log.turn} 回合 · T+${log.elapsedHours}h</h4>
+        <h4>第 ${log.turn} 回合 · T+${log.elapsedHours}h <span class="badge">LLM 裁決文字</span></h4>
         <p><strong>事件：</strong>${escapeHtml(log.event)}</p>
         <p><strong>裁決：</strong>${escapeHtml(log.outcome)}</p>
+        ${log.adjudicationNarrative?.assessment ? `<p><strong>裁決分析：</strong>${escapeHtml(log.adjudicationNarrative.assessment)}</p>` : ""}
         <p><strong>關鍵風險：</strong>${escapeHtml(log.keyRisk)}</p>
         <small>藍方準備 ${round1(log.statusAfter.BLUE.readiness)} · 紅方準備 ${round1(log.statusAfter.RED.readiness)} · 民事風險 ${round1(log.statusAfter.BLUE.civilianRisk)}</small>
       </div>`).join("") : `<p class="muted">尚未結算任何回合。</p>`;
@@ -2883,10 +5226,9 @@
       return;
     }
     const ledger = state.scenario.resourceLedger?.at(-1);
-    const abstractInventory = state.scenario.abstractResources;
     const chips = ["BLUE", "RED", "AMBER"].map(actor => {
-      const overall = abstractInventory?.byActor?.[actor]?.overall ?? 0;
-      return `<span class="ledger-chip"><strong>${actorLabel(actor)}</strong> ${overall}/100</span>`;
+      const summary = weaponRosterSummary(state.scenario.detailedInventory, actor);
+      return `<span class="ledger-chip"><strong>${actorLabel(actor)}</strong> 庫存 ${summary.health}% · 典型戰力 ${summary.power}</span>`;
     }).join("");
     if (!ledger) {
       host.innerHTML = `<div class="ledger-summary">${chips}</div><p class="muted">等待第一個回合結算。結算後會顯示期初、恢復、補充、行動消耗、事件損失與期末數量。</p>`;
@@ -2901,10 +5243,11 @@
         <span class="ledger-chip">恢復／補充 ${round1(ledger.totals.recovered + ledger.totals.replenished)}</span>
       </div>
       ${changed.length ? `<div class="table-wrap"><table class="ledger-table">
-        <thead><tr><th>品項</th><th>方別／類別</th><th>期初</th><th>恢復</th><th>補充</th><th>行動消耗</th><th>事件損失</th><th>期末</th></tr></thead>
+        <thead><tr><th>品項</th><th>方別／類別</th><th>效能／可靠</th><th>期初</th><th>恢復</th><th>補充</th><th>行動消耗</th><th>事件損失</th><th>期末</th></tr></thead>
         <tbody>${changed.map(entry => `<tr>
           <td>${escapeHtml(entry.alias)}</td>
           <td>${actorLabel(entry.actor)}／${INVENTORY_CATEGORIES[entry.category]}</td>
+          <td>${round1(entry.effect || 0)}／${round1(entry.reliability || 0)}%</td>
           <td>${entry.opening}</td><td>+${entry.recovery}</td><td>+${entry.replenishment}</td>
           <td>−${entry.actionConsumption}</td><td>−${entry.eventLoss}</td><td><strong>${entry.closing}</strong></td>
         </tr>`).join("")}</tbody>
@@ -2917,11 +5260,11 @@
     if (!host || !badge) return;
     const packageData = state.scenario.nextTurnPackages?.at(-1);
     if (!packageData) {
-      badge.textContent = "尚未生成";
-      host.innerHTML = `<p class="muted">回合結算後，系統會依剩餘資源、趨勢、事件與狀態形成下一回合想定包。</p>`;
+      badge.textContent = "等待 LLM";
+      host.innerHTML = `<p class="muted">回合結算時會呼叫 LLM，依剩餘資源、趨勢、事件與狀態生成下一回合想定包；API 失敗時不會改用本機想定。</p>`;
       return;
     }
-    badge.textContent = packageData.generatedBy === "LLM_SANITIZED" ? "LLM／匿名摘要" : "固定規則";
+    badge.textContent = "LLM／匿名摘要";
     const pressures = packageData.resourcePressures || [];
     const events = packageData.candidateEvents || [];
     const intel = packageData.intelUpdates || [];
@@ -2936,7 +5279,7 @@
       ${events.length ? `<h5>候選事件</h5><ul class="package-list">${events.map(item => `<li><strong>${escapeHtml(item.name)}</strong>：${escapeHtml(item.description)}</li>`).join("")}</ul>` : ""}
       <h5>決策難題</h5>
       <ul class="package-list">${(packageData.decisionDilemmas || []).map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
-      <p class="package-source-note">資料邊界：${packageData.privacy === "SANITIZED_AGGREGATE_ONLY" ? "僅使用匿名化聚合值" : "本機規則"}${packageData.fallbackReason ? `；${escapeHtml(packageData.fallbackReason)}` : ""}。</p>`;
+      <p class="package-source-note">資料邊界：LLM 僅使用匿名化聚合值。</p>`;
   }
 
   function updateLab() {
@@ -2978,6 +5321,12 @@
       orders: log?.orders || {},
       resourceLedger: log?.resourceLedger || null,
       abstractResourcesAfter: log?.abstractResourcesAfter || null,
+      statusAfter: log?.statusAfter || {},
+      environment: log?.environment || {},
+      outcome: log?.outcome || "",
+      keyRisk: log?.keyRisk || "",
+      adjudicationNarrative: log?.adjudicationNarrative || null,
+      adjudication: log?.adjudication || null,
       nextTurnPackage: log?.nextTurnPackage
         || (state.scenario?.nextTurnPackages || []).find(item => Number(item.turn) === turn + 1)
         || null
@@ -3033,10 +5382,11 @@
     ).length;
     const totals = ledger.totals || {};
     const actorScores = ["BLUE", "RED", "AMBER"].map(actor => {
-      const score = snapshot.abstractResourcesAfter?.byActor?.[actor]?.overall;
-      return Number.isFinite(score)
-        ? `<span class="ledger-chip"><strong>${actorLabel(actor)}</strong> ${round1(score)}/100</span>`
-        : "";
+      const actorEntries = entries.filter(entry => entry.actor === actor);
+      const opening = actorEntries.reduce((sum, entry) => sum + Number(entry.opening || 0), 0);
+      const closing = actorEntries.reduce((sum, entry) => sum + Number(entry.closing || 0), 0);
+      const health = opening > 0 ? round1(clamp(closing / opening * 100)) : 0;
+      return `<span class="ledger-chip"><strong>${actorLabel(actor)}</strong> 本回合庫存保留 ${health}%</span>`;
     }).join("");
     return `<div class="ledger-summary">${actorScores}
       <span class="ledger-chip">行動消耗 ${round1(Number(totals.consumed || 0))}</span>
@@ -3045,10 +5395,11 @@
       <span class="ledger-chip">異動品項 ${changedCount}/${entries.length}</span>
     </div>
     ${entries.length ? `<div class="table-wrap"><table class="ledger-table aar-review-table">
-      <thead><tr><th>品項</th><th>方別／類別</th><th>期初</th><th>恢復</th><th>補充</th><th>行動消耗</th><th>事件損失</th><th>期末</th></tr></thead>
+      <thead><tr><th>品項</th><th>方別／類別</th><th>效能／可靠</th><th>期初</th><th>恢復</th><th>補充</th><th>行動消耗</th><th>事件損失</th><th>期末</th></tr></thead>
       <tbody>${entries.map(entry => `<tr>
         <td>${escapeHtml(entry.alias || "未命名品項")}</td>
         <td>${escapeHtml(actorLabel(entry.actor))}／${escapeHtml(INVENTORY_CATEGORIES[entry.category] || entry.category || "未分類")}</td>
+        <td>${round1(Number(entry.effect) || 0)}／${round1(Number(entry.reliability) || 0)}%</td>
         <td>${Number(entry.opening) || 0}</td><td>+${Number(entry.recovery) || 0}</td><td>+${Number(entry.replenishment) || 0}</td>
         <td>−${Number(entry.actionConsumption) || 0}</td><td>−${Number(entry.eventLoss) || 0}</td><td><strong>${Number(entry.closing) || 0}</strong></td>
       </tr>`).join("")}</tbody>
@@ -3061,7 +5412,7 @@
     const pressures = packageData.resourcePressures || [];
     const intel = packageData.intelUpdates || [];
     const events = packageData.candidateEvents || [];
-    const source = packageData.generatedBy === "LLM_SANITIZED" ? "LLM／匿名摘要" : "固定規則";
+    const source = "LLM／匿名摘要";
     return `<div class="aar-package-heading"><span class="badge">${source}</span>
       <h4>第 ${Number(packageData.turn) || "—"} 回合 · ${escapeHtml(packageData.headline || "次回合想定")}</h4></div>
       <p>${escapeHtml(packageData.summary || "")}</p>
@@ -3074,7 +5425,7 @@
       ${events.length ? `<h5>候選事件</h5><ul class="package-list">${events.map(item => `<li><strong>${escapeHtml(item.name || "事件")}</strong>：${escapeHtml(item.description || "")}</li>`).join("")}</ul>` : ""}
       <h5>決策難題</h5>
       <ul class="package-list">${(packageData.decisionDilemmas || []).map(item => `<li>${escapeHtml(item)}</li>`).join("") || "<li>未保存決策難題。</li>"}</ul>
-      <p class="package-source-note">資料邊界：${packageData.privacy === "SANITIZED_AGGREGATE_ONLY" ? "僅使用匿名化聚合值" : "本機規則"}${packageData.fallbackReason ? `；${escapeHtml(packageData.fallbackReason)}` : ""}。</p>`;
+      <p class="package-source-note">資料邊界：LLM 僅使用匿名化聚合值。</p>`;
   }
 
   function renderReviewOrders(snapshot) {
@@ -3084,8 +5435,9 @@
     return `<div class="aar-order-grid">${actors.map(actor => {
       const order = orders[actor];
       const items = orderItems(order);
+      const weaponPower = Number(snapshot.adjudication?.weaponPower?.[actor]);
       return `<article class="aar-order-card ${actor}">
-        <header><strong>${escapeHtml(actorLabel(actor))}</strong><span>投入 ${orderTotalResource(order)}/${ORDER_BUDGET}</span></header>
+        <header><strong>${escapeHtml(actorLabel(actor))}</strong><span>投入 ${orderTotalResource(order)}/${ORDER_BUDGET}${Number.isFinite(weaponPower) ? ` · 品項戰力 ${round1(weaponPower)}` : ""}</span></header>
         <div class="table-wrap"><table class="aar-order-table">
           <thead><tr><th>類型</th><th>行動</th><th>區域</th><th>投入</th><th>優先</th><th>風險</th><th>條件</th></tr></thead>
           <tbody>${items.map((item, index) => `<tr>
@@ -3104,17 +5456,18 @@
   }
 
   function aarReplayIconLegendMarkup(log) {
+    const orders = turnReviewSnapshot(log).orders || log.orders || {};
     return `<div class="operation-icon-guide">
       <div class="operation-icon-guide-heading">
         <h5>本回合圖標說明</h5>
-        <span>依藍、紅、黃三方列出本回合實際使用的行動圖標</span>
+        <span>依各方本回合實際命令列出行動圖標</span>
       </div>
-      <div class="operation-icon-legend">${["BLUE", "RED", "AMBER"].map(actor => {
-        const items = orderItems(log.orders?.[actor]);
+      <div class="operation-icon-legend">${["BLUE", "RED", "AMBER"].filter(actor => orders[actor]).map(actor => {
+        const items = orderItems(orders[actor]);
         return `<section class="operation-icon-faction ${actor}">
           <h6>${escapeHtml(actorLabel(actor))}</h6>
           <div class="operation-icon-list">${items.length ? items.map((item, index) => {
-            const type = operationType(item.action).type;
+            const type = selectedOperationIconType(item);
             return `<div class="operation-icon-item">
               <canvas data-aar-replay-icon="${escapeAttr(type)}" data-aar-replay-actor="${actor}" aria-hidden="true"></canvas>
               <div><strong>${escapeHtml(item.action)}</strong><span>${escapeHtml(OPERATION_TYPE_LABELS[type] || type)} · ${index === 0 ? "主要行動" : "支援行動"}</span></div>
@@ -3126,11 +5479,11 @@
   }
 
   function aarReplayMarkup(log) {
-    return `<section id="aarReplayTheater" class="operation-theater aar-replay-theater" aria-label="第 ${log.turn} 回合三方作戰示意動畫">
+    return `<section id="aarReplayTheater" class="operation-theater aar-replay-theater" aria-label="第 ${log.turn} 回合三方回合結算示意動畫">
       <div class="operation-theater-heading">
         <div>
-          <h4>第 ${log.turn} 回合三方作戰示意動畫</h4>
-          <p id="aarReplayStatus" class="muted">選定回合的唯讀動畫重播。</p>
+          <h4>第 ${log.turn} 回合三方回合結算示意動畫</h4>
+          <p id="aarReplayStatus" class="muted">選定回合完整快照的唯讀動畫重播。</p>
         </div>
         <div class="operation-playback">
           <button id="aarReplayBtn" type="button" class="secondary">重播</button>
@@ -3147,12 +5500,14 @@
         </div>
       </div>
       <div id="aarReplayCanvasFrame" class="operation-canvas-frame">
-        <canvas id="aarReplayCanvas" role="img" aria-label="第 ${log.turn} 回合三方行動路徑與衝突示意"></canvas>
+        <div id="aarReplayMap" class="leaflet-map operation-leaflet-map" role="img" aria-label="第 ${log.turn} 回合三方命令、裁決衝突與結果經緯度地圖"></div>
+        <p id="aarReplayMapOffline" class="map-offline" hidden>OpenStreetMap 圖磚目前無法載入；回合空間快照與行動圖層仍可使用。</p>
       </div>
+      <div id="aarReplaySituationLayers" class="operation-situation-layers"></div>
       <div id="aarReplayActorSummary" class="operation-actor-summary"></div>
       <p id="aarReplayDescription" class="operation-equipment-disclaimer"></p>
       ${aarReplayIconLegendMarkup(log)}
-      <p class="operation-map-credit">底圖：Wikimedia Commons 向量地圖，僅供教學示意。</p>
+      <p class="operation-map-credit">底圖與地圖資料：<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a>。位置為本回合保存的唯讀空間快照。</p>
     </section>`;
   }
 
@@ -3170,24 +5525,28 @@
       $("aarReplayStatus").textContent = "本回合沒有可重建的命令動畫。";
       $("aarReplayBtn").disabled = true;
       $("aarReplayPauseBtn").disabled = true;
-      drawAarReplayFrame();
       return;
     }
+    ensureAarReplayMap();
+    renderAarReplayLeafletLayers(scene);
+    renderOperationSituationLayers(scene, "aarReplaySituationLayers");
     const conflictText = scene.conflicts.length
-      ? `偵測到 ${scene.conflicts.length} 個重大衝突區域`
-      : "未達重大衝突高亮門檻";
+      ? `裁決標示 ${scene.conflicts.length} 個重大衝突區域`
+      : "裁決未標示重大衝突";
     $("aarReplayStatus").textContent = `第 ${log.turn} 回合 · ${conflictText}`;
-    $("aarReplayActorSummary").innerHTML = ["BLUE", "RED", "AMBER"].filter(actor => log.orders?.[actor]).map(actor => {
-      const order = log.orders[actor];
+    $("aarReplayActorSummary").innerHTML = ["BLUE", "RED", "AMBER"].filter(actor => scene.snapshot.orders?.[actor]).map(actor => {
+      const order = scene.snapshot.orders[actor];
       const primary = orderPrimary(order);
-      const type = operationType(primary.action).type;
-      const equipment = operationEquipmentLabel(actor, type, `${log.turn}-${primary.action}-0`);
+      const equipment = scene.actions.find(item => item.actor === actor && item.primary)?.equipment || "";
       return `<div class="operation-actor-chip ${actor}">
         <strong>${escapeHtml(actorLabel(actor))} · ${escapeHtml(primary.action)}</strong>
         <span>${equipment ? `${escapeHtml(equipment)} · ` : ""}${escapeHtml(zoneName(primary.zone))} · 支援 ${orderSupports(order).length} 項</span>
       </div>`;
     }).join("");
-    $("aarReplayDescription").textContent = `第 ${log.turn} 回合抽象行動示意。${scene.conflicts.length ? `重大衝突區域：${scene.conflicts.map(item => zoneName(item.zone)).join("、")}。` : ""}公開裝備名稱僅為教學遊戲的敘事標籤，不代表真實座標、數量、性能、部署或交戰程序。`;
+    const hasSpatialSnapshot = Array.isArray(scene.snapshot.spatialInventoryBefore);
+    $("aarReplayDescription").textContent = hasSpatialSnapshot
+      ? `第 ${log.turn} 回合唯讀空間快照。${scene.conflicts.length ? `裁決標示重大衝突區域：${scene.conflicts.map(item => zoneName(item.zone)).join("、")}。` : "裁決未標示重大衝突。"}裝備圖標依保存的來源與目標經緯度移動。`
+      : `第 ${log.turn} 回合為舊版紀錄，缺少完整配置快照；以保存目標與抽象區域中心重建。`;
     $("aarReplayTheater").querySelectorAll("canvas[data-aar-replay-icon]").forEach(canvas => {
       const actor = OPERATION_ACTORS[canvas.dataset.aarReplayActor];
       const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -3198,15 +5557,90 @@
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       drawOperationPictogram(ctx, canvas.dataset.aarReplayIcon, size / 2, size / 2, 11, actor.color, 0);
     });
-    requestAnimationFrame(drawAarReplayFrame);
+    requestAnimationFrame(() => {
+      aarReplayLeafletMap?.invalidateSize();
+      drawAarReplayFrame();
+    });
   }
 
   function drawAarReplayFrame() {
-    drawOperationFrame(aarReplayAnimation.elapsed, aarReplayAnimation.scene, {
-      canvasId: "aarReplayCanvas",
-      frameId: "aarReplayCanvasFrame",
-      playing: aarReplayAnimation.playing
+    (aarReplayAnimation.scene?.actions || []).forEach(action => {
+      if (!action._aarLeafletMarker || !action._aarOrigin || !action.target) return;
+      const progress = geographicActionProgress(action, aarReplayAnimation.elapsed);
+      const eased = progress * progress * (3 - 2 * progress);
+      action._aarLeafletMarker.setLatLng([
+        action._aarOrigin.lat + (Number(action.target.lat) - action._aarOrigin.lat) * eased,
+        action._aarOrigin.lng + (Number(action.target.lng) - action._aarOrigin.lng) * eased
+      ]);
+      action._aarLeafletMarker.setOpacity(progress <= 0 ? .25 : 1);
     });
+  }
+
+  function ensureAarReplayMap() {
+    if (aarReplayLeafletMap || !$("aarReplayMap")) return aarReplayLeafletMap;
+    aarReplayLeafletMap = createOsmMap("aarReplayMap", {
+      center: [23.7, 120.8],
+      zoom: 6,
+      offlineElementId: "aarReplayMapOffline"
+    });
+    if (!aarReplayLeafletMap) return null;
+    ["placements", "actions", "events", "conflicts"].forEach(key => {
+      aarReplayLayers[key] = L.layerGroup().addTo(aarReplayLeafletMap);
+    });
+    return aarReplayLeafletMap;
+  }
+
+  function renderAarReplayLeafletLayers(scene) {
+    const map = ensureAarReplayMap();
+    if (!map) return;
+    Object.values(aarReplayLayers).forEach(layer => layer.clearLayers());
+    const rows = scene.snapshot.spatialInventoryBefore || [];
+    rows.map(sanitizeInventoryRow).forEach(row => row.placements.forEach(placement => {
+      L.marker([placement.lat, placement.lng], {
+        icon: spatialDivIcon(row.actor, String(Math.round(placement.currentQuantity)))
+      }).bindPopup(`<strong>${escapeHtml(row.alias)}</strong><br>${escapeHtml(placement.label)}<br>本回合期初 ${round1(placement.currentQuantity)}`)
+        .addTo(aarReplayLayers.placements);
+    }));
+    scene.actions.forEach(action => {
+      if (!action.target) return;
+      const origin = operationActionOrigin(action, scene, rows);
+      L.marker([action.target.lat, action.target.lng], {
+        icon: spatialDivIcon(action.actor, action.primary ? "主" : "支")
+      }).bindPopup(`<strong>${escapeHtml(action.action)}</strong><br>${escapeHtml(action.target.label || zoneName(action.zone))}`)
+        .addTo(aarReplayLayers.actions);
+      if (!origin) return;
+      L.polyline([[origin.lat, origin.lng], [action.target.lat, action.target.lng]], {
+        color: OPERATION_ACTORS[action.actor].color,
+        weight: action.primary ? 3 : 2,
+        dashArray: action.primary ? null : "7 7",
+        opacity: .75
+      }).addTo(aarReplayLayers.actions);
+      action._aarOrigin = { lat: origin.lat, lng: origin.lng };
+      action._aarLeafletMarker = L.marker([origin.lat, origin.lng], {
+        icon: spatialDivIcon(action.actor, operationAnimationGlyph(action), "operation-moving-marker"),
+        keyboard: false,
+        zIndexOffset: action.primary ? 1000 : 600
+      }).bindTooltip(`${actorLabel(action.actor)} · ${action.action}`, { direction: "top", offset: [0, -24] })
+        .addTo(aarReplayLayers.actions);
+    });
+    (scene.snapshot.events || []).forEach(event => {
+      const center = SPATIAL.ZONE_CENTERS[event.zone_id];
+      if (center) L.circleMarker(center, { radius: 7, color: "#666", fillColor: "#fff", fillOpacity: .9 })
+        .bindPopup(`<strong>${escapeHtml(event.event_name)}</strong><br>${escapeHtml(zoneName(event.zone_id))}`)
+        .addTo(aarReplayLayers.events);
+    });
+    scene.conflicts.forEach(conflict => {
+      const center = conflict.target || (SPATIAL.ZONE_CENTERS[conflict.zone]
+        ? { lat: SPATIAL.ZONE_CENTERS[conflict.zone][0], lng: SPATIAL.ZONE_CENTERS[conflict.zone][1] }
+        : null);
+      if (center) L.circle([center.lat, center.lng], {
+        radius: SPATIAL.CONFLICT_RADIUS_KM * 1000,
+        color: "#ff4b3e",
+        weight: 2,
+        fillOpacity: .12
+      }).addTo(aarReplayLayers.conflicts);
+    });
+    drawAarReplayFrame();
   }
 
   function stopAarReplayAnimation() {
@@ -3292,13 +5726,21 @@
     const active = document.fullscreenElement === theater;
     button.textContent = active ? "退出全螢幕" : "全螢幕";
     button.setAttribute("aria-pressed", String(active));
-    requestAnimationFrame(drawAarReplayFrame);
+    requestAnimationFrame(() => {
+      aarReplayLeafletMap?.invalidateSize();
+      drawAarReplayFrame();
+    });
   }
 
   function renderAarReviewContent(log) {
     const host = $("aarReviewContent");
     if (!host || !log) return;
     stopAarReplayAnimation();
+    if (aarReplayLeafletMap) {
+      aarReplayLeafletMap.remove();
+      aarReplayLeafletMap = null;
+      aarReplayLayers = {};
+    }
     const snapshot = turnReviewSnapshot(log);
     const tab = state.aarReview.tab;
     if (tab === "intel") host.innerHTML = renderReviewIntel(snapshot);
@@ -3355,6 +5797,7 @@
     const hasLogs = state.logs.length > 0;
     $("aarEmpty").hidden = hasLogs;
     $("aarContent").hidden = !hasLogs;
+    renderDecisionTimeline();
     if (!hasLogs) {
       stopAarReplayAnimation();
       aarReplayAnimation.scene = null;
@@ -3389,7 +5832,16 @@
     }
     $("aarInsights").innerHTML = `<ul class="compact-list">${insights.join("")}</ul>`;
     renderAarReview();
+  }
 
+  function renderDecisionTimeline() {
+    const hasLogs = state.logs.length > 0;
+    $("timelineEmpty").hidden = hasLogs;
+    $("timelineContent").hidden = !hasLogs;
+    if (!hasLogs) {
+      $("timelineBody").innerHTML = "";
+      return;
+    }
     $("timelineBody").innerHTML = state.logs.map(log => {
       const o = log.orders || {};
       return `<tr>
@@ -3498,10 +5950,12 @@
     if (!order) return "—";
     const primary = orderPrimary(order);
     const supports = orderSupports(order);
+    const allocationText = orderAllocationText(order);
     const supportText = supports.length
       ? `<br><small>支援：${supports.map(item => escapeHtml(item.action)).join("；")}</small>`
       : "";
-    return `<strong>主：${escapeHtml(primary.action)}</strong><br><small>${zoneName(primary.zone)} · 資源 ${orderTotalResource(order)}/${ORDER_BUDGET}</small>${supportText}`;
+    const allocationLine = allocationText ? `<br><small>詳細資源：${escapeHtml(allocationText)}</small>` : "";
+    return `<strong>主：${escapeHtml(primary.action)}</strong><br><small>${zoneName(primary.zone)} · 資源 ${orderTotalResource(order)}/${ORDER_BUDGET}</small>${allocationLine}${supportText}`;
   }
 
   function renderLibrary() {
@@ -4026,7 +6480,12 @@
     state.scenario.nextTurnPackages = [];
     if (state.scenario.inventoryEnabled) {
       state.scenario.detailedInventory = (state.scenario.initialDetailedInventory || state.scenario.detailedInventory)
-        .map((row, index) => sanitizeInventoryRow({ ...row, current: row.nominal, replenishmentApplied: false }, index));
+        .map((row, index) => sanitizeInventoryRow({
+          ...row,
+          current: row.nominal,
+          placements: (row.placements || []).map(placement => ({ ...placement, currentQuantity: placement.nominalQuantity })),
+          replenishmentApplied: false
+        }, index));
       state.scenario.resourceLedger = [];
       state.scenario.abstractResources = calculateAbstractInventory(state.scenario.detailedInventory);
       state.scenario.resourceBalance = calculateCombinedResourceBalance(state.scenario.resources, state.scenario.abstractResources);
@@ -4075,7 +6534,7 @@
     if (!state.scenario) return toast("目前沒有可匯出的想定。");
     const payload = {
       app: "Taiwan Strait Scenario Generator with STORM Teaching Lab",
-      version: "3.0",
+      version: "4.0-SPATIAL",
       exportedAt: new Date().toISOString(),
       safetyClass: "EDUCATIONAL_SYNTHETIC",
       scenario: state.scenario,
@@ -4098,6 +6557,8 @@
         if (!payload.scenario || payload.safetyClass !== "EDUCATIONAL_SYNTHETIC") {
           throw new Error("不是本系統的合成資料格式");
         }
+        if (!hasLlmApiKey()) throw new Error("請先輸入 API Key，才能匯入並使用想定");
+        if (!isLlmScenario(payload.scenario)) throw new Error("此檔案不是由 LLM 生成的想定");
         state.scenario = ensureScenarioResources(payload.scenario);
         hydrateInventoryFormFromScenario(state.scenario);
         state.currentTurn = payload.currentTurn || 1;
@@ -4178,13 +6639,18 @@
   }
 
   function exportInventoryCsv() {
-    const header = ["actor","alias","category","nominal","availability_pct","reserve_pct","consumption_per_action","recovery_per_turn","replenishment","delay_turns","reliability_pct","note"];
+    const header = ["inventory_id","actor","alias","category","nominal","availability_pct","reserve_pct","consumption_per_action","recovery_per_turn","replenishment","delay_turns","reliability_pct","unit_effect","game_range_km","location_required","placement_id","placement_label","lat","lng","placement_nominal","placement_current","preset_id","source_url","source_checked_at","precision","is_live","is_user_modified","note"];
     const lines = [header.join(",")];
     readDetailedInventoryRows().forEach(row => {
-      lines.push([
-        row.actor, row.alias, row.category, row.nominal, row.availability, row.reserve,
-        row.consumption, row.recovery, row.replenishment, row.delay, row.reliability, row.note
-      ].map(csvEscape).join(","));
+      const placements = row.placements.length ? row.placements : [null];
+      placements.forEach(placement => lines.push([
+        row.id, row.actor, row.alias, row.category, row.nominal, row.availability, row.reserve,
+        row.consumption, row.recovery, row.replenishment, row.delay, row.reliability, row.effect,
+        row.gameRangeKm, row.locationRequired, placement?.placementId || "", placement?.label || "",
+        placement?.lat ?? "", placement?.lng ?? "", placement?.nominalQuantity ?? "", placement?.currentQuantity ?? "",
+        placement?.presetId || "", placement?.sourceUrl || "", placement?.sourceCheckedAt || "", placement?.precision || "",
+        false, Boolean(placement?.isUserModified), row.note
+      ].map(csvEscape).join(",")));
     });
     download("educational-named-resource-inventory.csv", "\ufeff" + lines.join("\n"), "text/csv;charset=utf-8");
   }
@@ -4202,20 +6668,53 @@
           const index = keys.indexOf(key);
           return index >= 0 ? row[index] : fallback;
         };
-        const rows = data.slice(0, 200).map((values, index) => sanitizeInventoryRow({
-          actor: get(values, "actor"),
-          alias: get(values, "alias"),
-          category: get(values, "category"),
-          nominal: get(values, "nominal"),
-          availability: get(values, "availability_pct", 100),
-          reserve: get(values, "reserve_pct", 20),
-          consumption: get(values, "consumption_per_action", 1),
-          recovery: get(values, "recovery_per_turn", 0),
-          replenishment: get(values, "replenishment", 0),
-          delay: get(values, "delay_turns", 0),
-          reliability: get(values, "reliability_pct", 85),
-          note: get(values, "note", "")
-        }, index));
+        const grouped = new Map();
+        data.slice(0, 500).forEach((values, index) => {
+          const id = get(values, "inventory_id") || `INV-CSV-${Date.now()}-${index + 1}`;
+          if (!grouped.has(id)) {
+            const category = get(values, "category");
+            grouped.set(id, {
+              id,
+              actor: get(values, "actor"),
+              alias: get(values, "alias"),
+              category,
+              nominal: get(values, "nominal"),
+              availability: get(values, "availability_pct", 100),
+              reserve: get(values, "reserve_pct", 20),
+              consumption: get(values, "consumption_per_action", 1),
+              recovery: get(values, "recovery_per_turn", 0),
+              replenishment: get(values, "replenishment", 0),
+              delay: get(values, "delay_turns", 0),
+              reliability: get(values, "reliability_pct", 85),
+              effect: get(values, "unit_effect", INVENTORY_EFFECT_DEFAULTS[category] || 70),
+              gameRangeKm: get(values, "game_range_km", SPATIAL.RANGE_DEFAULTS_KM[category] || 100),
+              locationRequired: get(values, "location_required", !SPATIAL.OPTIONAL_LOCATION_CATEGORIES.has(category)) !== "false",
+              note: get(values, "note", ""),
+              placements: []
+            });
+          }
+          const placementId = get(values, "placement_id");
+          const lat = Number(get(values, "lat"));
+          const lng = Number(get(values, "lng"));
+          if (placementId && Number.isFinite(lat) && Number.isFinite(lng)) {
+            grouped.get(id).placements.push({
+              placementId,
+              label: get(values, "placement_label", "配置點"),
+              lat,
+              lng,
+              zoneId: SPATIAL.nearestZoneId({ lat, lng }),
+              nominalQuantity: get(values, "placement_nominal", 0),
+              currentQuantity: get(values, "placement_current", get(values, "placement_nominal", 0)),
+              presetId: get(values, "preset_id", ""),
+              sourceUrl: get(values, "source_url", ""),
+              sourceCheckedAt: get(values, "source_checked_at", ""),
+              precision: get(values, "precision", "user-selected"),
+              isLive: false,
+              isUserModified: get(values, "is_user_modified", "false") === "true"
+            });
+          }
+        });
+        const rows = [...grouped.values()].map(sanitizeInventoryRow);
         if (!rows.length) throw new Error("CSV 沒有可匯入的資料列");
         renderDetailedInventoryRows(rows);
         toast(`已匯入 ${rows.length} 項資源。`);
@@ -4290,18 +6789,49 @@
   function syncLlmActionButtons() {
     const hasApiKey = Boolean($("llmApiKey").value.trim());
     const scenarioButton = $("generateWithLlmBtn");
-    const orderButton = $("llmAutoOrdersBtn");
+    const demoButton = $("loadDemoBtn");
+    const inventoryButton = $("generateInventoryWithLlmBtn");
+    const bulkButton = $("generateMissingOrdersBtn");
     const ordersFinished = Boolean(state.scenario && state.currentTurn > state.scenario.turns);
     scenarioButton.disabled = !hasApiKey;
     scenarioButton.title = hasApiKey ? "" : "請先輸入 API Key";
-    orderButton.disabled = !hasApiKey || ordersFinished;
-    orderButton.title = !hasApiKey ? "請先輸入 API Key" : ordersFinished ? "此想定已完成" : "";
+    demoButton.disabled = !hasApiKey;
+    demoButton.title = hasApiKey ? "" : "請先輸入 API Key";
+    if (inventoryButton) {
+      inventoryButton.disabled = !hasApiKey;
+      inventoryButton.title = hasApiKey ? "" : "請先輸入 API Key";
+    }
+    if (bulkButton) {
+      bulkButton.disabled = !hasApiKey || ordersFinished || !state.scenario || !missingOrderActors().length;
+      bulkButton.title = !hasApiKey ? "請先至建立想定頁輸入 API Key" : ordersFinished ? "此想定已完成" : "";
+    }
+    document.querySelectorAll("[data-auto-natural-order], [data-polish-natural-order]").forEach(button => {
+      const actor = button.dataset.autoNaturalOrder || button.dataset.polishNaturalOrder;
+      const submitted = Boolean(state.scenario && state.orders[state.currentTurn]?.[actor]);
+      const needsText = Boolean(button.dataset.polishNaturalOrder);
+      button.disabled = !hasApiKey || ordersFinished || !state.scenario || submitted || (needsText && !naturalOrderInput(actor)?.value.trim());
+      button.title = !hasApiKey ? "請先至建立想定頁輸入 API Key" :
+        submitted ? "本方本回合命令已提交" :
+          needsText && !naturalOrderInput(actor)?.value.trim() ? "請先輸入或產生草稿" : "";
+    });
+    document.querySelectorAll("[data-parse-natural-order]").forEach(button => {
+      const actor = button.dataset.parseNaturalOrder;
+      const submitted = Boolean(state.scenario && state.orders[state.currentTurn]?.[actor]);
+      const hasText = Boolean(naturalOrderInput(actor)?.value.trim());
+      button.disabled = !hasApiKey || ordersFinished || !state.scenario || submitted || Boolean(pendingSpatialOrder) || !hasText || !canActorSubmit(actor);
+      button.title = !hasApiKey ? "請先至建立想定頁輸入 API Key" :
+        submitted ? "本方本回合命令已提交" :
+          pendingSpatialOrder ? "請先完成或取消目前的空間目標配置" :
+          !hasText ? "請先完成命令文字" :
+            !canActorSubmit(actor) ? `等待${nextRequiredActor() === "AMBER" ? "黃方" : actorLabel(nextRequiredActor())}完稿提交` : "";
+    });
   }
 
   function clearLlmKey() {
     $("llmApiKey").value = "";
     saveLlmSettings();
     syncLlmActionButtons();
+    renderSimulation();
     $("llmStatus").textContent = "已清除儲存在此瀏覽器的 API Key。";
     toast("已清除 API Key。");
   }
@@ -4372,6 +6902,14 @@
     return cleaned.length ? cleaned : fallback;
   }
 
+  function requireLlmScenarioPayload(result) {
+    const requiredLists = ["objectives", "successCriteria", "constraints", "eventIdeas"];
+    if (!String(result?.name || "").trim() || !String(result?.overview || "").trim()
+      || requiredLists.some(key => !Array.isArray(result?.[key]) || !result[key].length)) {
+      throw new Error("LLM 回傳的想定內容不完整");
+    }
+  }
+
   async function generateWithLlm() {
     const apiKey = $("llmApiKey").value.trim();
     if (!apiKey) return toast("請輸入 API Key；可保存在此瀏覽器並隨時清除。");
@@ -4379,18 +6917,39 @@
     const button = $("generateWithLlmBtn");
     const status = $("llmStatus");
     const formValues = readScenarioForm();
+    const placementErrors = formValues.inventoryEnabled ? validateAllInventoryPlacements(formValues.detailedInventory) : [];
+    if (placementErrors.length) {
+      toast(`尚不能建立想定：${placementErrors[0]}`);
+      status.textContent = `請先完成地圖配置；尚有 ${placementErrors.length} 項問題。`;
+      setBuilderPanel("inventory");
+      return;
+    }
     button.disabled = true;
     status.textContent = `正在向 ${LLM_PRESETS[provider].label} 請求合成想定…`;
     try {
       saveLlmSettings();
       const result = extractJson(await requestLlm(provider, $("llmModel").value.trim(), apiKey, llmPrompt(formValues), $("llmReasoning").value));
+      requireLlmScenarioPayload(result);
       const scenario = generateScenario(formValues);
       scenario.name = String(result.name || scenario.name).replace(/[\r\n]+/g, " ").trim().slice(0, 100) || scenario.name;
       scenario.overview = String(result.overview || scenario.overview).slice(0, 500);
       scenario.objectives = cleanLlmList(result.objectives, scenario.objectives, 4);
       scenario.successCriteria = cleanLlmList(result.successCriteria, scenario.successCriteria, 4);
       scenario.constraints = [...scenario.constraints, ...cleanLlmList(result.constraints, [], 5)].slice(0, 7);
-      scenario.llmNarrative = { provider: LLM_PRESETS[provider].label, model: $("llmModel").value.trim(), reasoning: $("llmReasoning").value, eventIdeas: cleanLlmList(result.eventIdeas, [], 4) };
+      const eventIdeas = cleanLlmList(result.eventIdeas, [], 4);
+      eventIdeas.forEach((idea, index) => {
+        if (!scenario.events[index]) return;
+        scenario.events[index].event_name = idea.slice(0, 80);
+        scenario.events[index].description = `LLM 想定導調：${idea}`.slice(0, 300);
+        scenario.events[index].llmGenerated = true;
+      });
+      scenario.llmNarrative = {
+        provider: LLM_PRESETS[provider].label,
+        model: $("llmModel").value.trim(),
+        reasoning: $("llmReasoning").value,
+        eventIdeas,
+        generatedAt: new Date().toISOString()
+      };
       $("scenarioName").value = scenario.name;
       beginScenario(scenario);
       status.textContent = `已使用 ${scenario.llmNarrative.provider} 生成名稱與敘事；API Key 已保存於此瀏覽器，可手動清除。`;
@@ -4402,6 +6961,36 @@
 
   function bindEvents() {
     document.querySelectorAll(".tab").forEach(btn => btn.addEventListener("click", () => setTab(btn.dataset.tab)));
+    $("builderPanelTabs").addEventListener("click", event => {
+      const button = event.target.closest("[data-builder-panel]");
+      if (button) setBuilderPanel(button.dataset.builderPanel);
+    });
+    $("builderPanelTabs").addEventListener("keydown", event => {
+      if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
+      const buttons = [...$("builderPanelTabs").querySelectorAll("[data-builder-panel]")];
+      const currentIndex = buttons.indexOf(document.activeElement);
+      const nextIndex = event.key === "Home" ? 0 :
+        event.key === "End" ? buttons.length - 1 :
+          (currentIndex + (["ArrowRight", "ArrowDown"].includes(event.key) ? 1 : -1) + buttons.length) % buttons.length;
+      event.preventDefault();
+      buttons[nextIndex].focus();
+      setBuilderPanel(buttons[nextIndex].dataset.builderPanel);
+    });
+    $("simulationPanelTabs").addEventListener("click", event => {
+      const button = event.target.closest("[data-simulation-panel]");
+      if (button) setSimulationPanel(button.dataset.simulationPanel);
+    });
+    $("simulationPanelTabs").addEventListener("keydown", event => {
+      if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+      const buttons = [...$("simulationPanelTabs").querySelectorAll("[data-simulation-panel]")];
+      const currentIndex = buttons.indexOf(document.activeElement);
+      const nextIndex = event.key === "Home" ? 0 :
+        event.key === "End" ? buttons.length - 1 :
+          (currentIndex + (event.key === "ArrowRight" ? 1 : -1) + buttons.length) % buttons.length;
+      event.preventDefault();
+      buttons[nextIndex].focus();
+      setSimulationPanel(buttons[nextIndex].dataset.simulationPanel);
+    });
     $("sectionNavigatorLinks").addEventListener("click", event => {
       const button = event.target.closest("[data-section-target]");
       const target = button ? $(button.dataset.sectionTarget) : null;
@@ -4421,7 +7010,7 @@
 
     $("scenarioForm").addEventListener("submit", event => {
       event.preventDefault();
-      beginScenario(generateScenario(readScenarioForm()));
+      generateWithLlm();
     });
     $("loadDemoBtn").addEventListener("click", () => {
       $("scenarioTemplate").value = "blockade";
@@ -4435,8 +7024,8 @@
       $("civilPressure").value = 3;
       $("amberSupport").value = "indirect";
       $("weatherPreset").value = "variable";
-      $("turnOrderMode").value = "simultaneous";
-      $("firstOrderVisibility").value = "sealed";
+      $("turnOrderMode").value = "red_first";
+      $("firstOrderVisibility").value = "public";
       updateTurnOrderSettings();
       Object.entries(STRATEGIC_DEFAULTS).forEach(([key, value]) => { if ($(key)) $(key).value = value; });
       $("blueAircraft").value = 48;
@@ -4457,29 +7046,119 @@
       renderDetailedInventoryRows(inventoryTemplateRows());
       updateRangeLabels();
       renderTemplateInfo();
-      beginScenario(generateScenario(readScenarioForm()));
+      generateWithLlm();
     });
     $("uncertainty").addEventListener("input", updateRangeLabels);
     $("civilPressure").addEventListener("input", updateRangeLabels);
     $("turnOrderMode").addEventListener("change", updateTurnOrderSettings);
     $("scenarioTemplate").addEventListener("change", applyScenarioTemplate);
     $("detailedInventoryRows").addEventListener("input", syncDetailedInventoryPreview);
-    $("detailedInventoryRows").addEventListener("change", syncDetailedInventoryPreview);
+    $("detailedInventoryRows").addEventListener("change", event => {
+      if (event.target.matches(".inventory-actor")) {
+        event.target.closest("tr").dataset.inventoryActor = event.target.value;
+        setInventoryActorView(inventoryActorView);
+      }
+      if (event.target.matches(".inventory-category")) {
+        const row = event.target.closest("tr");
+        const category = event.target.value;
+        const defaults = INVENTORY_CATEGORY_DEFAULTS[category];
+        Object.entries({ ...defaults, effect: INVENTORY_EFFECT_DEFAULTS[category] }).forEach(([field, value]) => {
+          const input = row.querySelector(`.inventory-${field}`);
+          if (input) input.value = value;
+        });
+        row.querySelector(".inventory-game-range").value = SPATIAL.RANGE_DEFAULTS_KM[category] || 100;
+        row._locationRequired = !SPATIAL.OPTIONAL_LOCATION_CATEGORIES.has(category);
+        if (!row._locationRequired) row._placements = [];
+        row.querySelector(".inventory-note").value = "已依分類套用預設遊戲參數，可繼續調整。";
+      }
+      syncDetailedInventoryPreview();
+    });
     $("detailedInventoryRows").addEventListener("click", event => {
+      const locationButton = event.target.closest(".inventory-location-button");
+      if (locationButton) {
+        const rows = readDetailedInventoryRows();
+        selectedInventoryPlacementId = locationButton.closest("tr").dataset.inventoryId;
+        renderDetailedInventoryRows(rows);
+        ensureInventoryPlacementMap()?.invalidateSize();
+        return;
+      }
       const button = event.target.closest(".remove-inventory-row");
       if (!button) return;
+      if (button.closest("tr").dataset.inventoryId === selectedInventoryPlacementId) selectedInventoryPlacementId = null;
       button.closest("tr").remove();
       syncDetailedInventoryPreview();
+      renderInventoryPlacementEditor();
+    });
+    $("inventoryPlacementList").addEventListener("change", event => {
+      const row = event.target.closest("[data-placement-id]");
+      if (!row) return;
+      const changes = {};
+      if (event.target.matches(".placement-edit-label")) changes.label = event.target.value.trim();
+      if (event.target.matches(".placement-edit-quantity")) {
+        changes.nominalQuantity = Number(event.target.value);
+        changes.currentQuantity = Number(event.target.value);
+      }
+      if (event.target.matches(".placement-edit-lat")) changes.lat = Number(event.target.value);
+      if (event.target.matches(".placement-edit-lng")) changes.lng = Number(event.target.value);
+      updatePlacementOnSelectedRow(row.dataset.placementId, changes);
+    });
+    $("inventoryPlacementList").addEventListener("click", event => {
+      const button = event.target.closest(".remove-placement-button");
+      if (!button) return;
+      const tr = selectedPlacementRowElement();
+      const placementId = button.closest("[data-placement-id]").dataset.placementId;
+      tr._placements = (tr._placements || []).filter(item => item.placementId !== placementId);
+      renderInventoryPlacementEditor();
+      syncDetailedInventoryPreview();
+    });
+    $("addPlacementByCoordinatesBtn").addEventListener("click", () => {
+      const lat = Number($("placementLatInput").value);
+      const lng = Number($("placementLngInput").value);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return toast("請輸入有效的緯度與經度。");
+      addPlacementToSelectedRow(lat, lng);
+    });
+    $("applyPlacementPresetBtn").addEventListener("click", () => applyPlacementPresetToSelectedRow(false));
+    $("resetPlacementPresetBtn").addEventListener("click", () => applyPlacementPresetToSelectedRow(true));
+    $("inventoryActorTabs").addEventListener("click", event => {
+      const button = event.target.closest("[data-inventory-actor]");
+      if (button) setInventoryActorView(button.dataset.inventoryActor);
+    });
+    $("inventoryActorTabs").addEventListener("keydown", event => {
+      if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+      const buttons = [...$("inventoryActorTabs").querySelectorAll("[data-inventory-actor]")];
+      const currentIndex = buttons.indexOf(document.activeElement);
+      const nextIndex = event.key === "Home" ? 0 :
+        event.key === "End" ? buttons.length - 1 :
+          (currentIndex + (event.key === "ArrowRight" ? 1 : -1) + buttons.length) % buttons.length;
+      event.preventDefault();
+      buttons[nextIndex].focus();
+      setInventoryActorView(buttons[nextIndex].dataset.inventoryActor);
+    });
+    $("inventoryPreviewActorTabs").addEventListener("click", event => {
+      const button = event.target.closest("[data-inventory-preview-actor]");
+      if (button) setInventoryPreviewActorView(button.dataset.inventoryPreviewActor);
+    });
+    $("inventoryPreviewActorTabs").addEventListener("keydown", event => {
+      if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+      const buttons = [...$("inventoryPreviewActorTabs").querySelectorAll("[data-inventory-preview-actor]")];
+      const currentIndex = buttons.indexOf(document.activeElement);
+      const nextIndex = event.key === "Home" ? 0 :
+        event.key === "End" ? buttons.length - 1 :
+          (currentIndex + (event.key === "ArrowRight" ? 1 : -1) + buttons.length) % buttons.length;
+      event.preventDefault();
+      buttons[nextIndex].focus();
+      setInventoryPreviewActorView(buttons[nextIndex].dataset.inventoryPreviewActor);
     });
     $("addInventoryRowBtn").addEventListener("click", () => {
       const rows = readDetailedInventoryRows();
-      rows.push(sanitizeInventoryRow({ actor: "BLUE", category: "logistics", nominal: 10, availability: 100, reserve: 20, consumption: 1, reliability: 85 }, rows.length));
+      rows.push(defaultInventoryRow(inventoryActorView, $("newInventoryCategory").value, rows.length));
       renderDetailedInventoryRows(rows);
     });
     $("loadInventoryTemplateBtn").addEventListener("click", () => {
       renderDetailedInventoryRows(inventoryTemplateRows());
       toast("已載入公開裝備名稱與合成遊戲參數。");
     });
+    $("generateInventoryWithLlmBtn").addEventListener("click", generateInventoryWithLlm);
     $("exportInventoryCsvBtn").addEventListener("click", exportInventoryCsv);
     $("inventoryCsvInput").addEventListener("change", event => importInventoryCsv(event.target.files[0]));
     ["enableDetailedInventory", "inventoryDataMode", "useLlmNextTurn", "allowSanitizedLlm"]
@@ -4490,42 +7169,91 @@
     $("llmApiKey").addEventListener("input", () => {
       saveLlmSettings();
       syncLlmActionButtons();
+      if (state.scenario) renderSimulation();
     });
     $("llmEndpoint").addEventListener("input", saveLlmSettings);
     $("llmInstruction").addEventListener("input", saveLlmSettings);
     $("llmPanel").addEventListener("toggle", saveLlmSettings);
-    $("generateWithLlmBtn").addEventListener("click", generateWithLlm);
     $("clearLlmKeyBtn").addEventListener("click", clearLlmKey);
-    $("orderActor").addEventListener("change", updateActionOptions);
-    $("addSupportActionBtn").addEventListener("click", () => {
-      const host = $("supportActionsList");
-      const draft = host._draft || { actor: $("orderActor").value, supports: readSupportActions() };
-      draft.supports = readSupportActions();
-      if (draft.supports.length < MAX_SUPPORT_ACTIONS) draft.supports.push(defaultOrderItem(draft.actor));
-      host._draft = draft;
-      renderSupportActions();
+    document.querySelector(".tri-natural-orders").addEventListener("click", event => {
+      const templateButton = event.target.closest("[data-order-template]");
+      const parseButton = event.target.closest("[data-parse-natural-order]");
+      const autoButton = event.target.closest("[data-auto-natural-order]");
+      const polishButton = event.target.closest("[data-polish-natural-order]");
+      if (templateButton) {
+        const actor = templateButton.dataset.orderTemplate;
+        const input = naturalOrderInput(actor);
+        const template = templateButton.dataset.templateText;
+        input.value = input.value.trim() ? `${input.value.trim()}\n${template}` : template;
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+        setNaturalOrderFeedback(actor, "已加入快速模板，可繼續修改後交給 LLM。", "success");
+        syncLlmActionButtons();
+      } else if (parseButton) applyNaturalOrderInputWithLlm(parseButton.dataset.parseNaturalOrder);
+      else if (autoButton) generateNaturalOrderDraft(autoButton.dataset.autoNaturalOrder);
+      else if (polishButton) polishNaturalOrderDraft(polishButton.dataset.polishNaturalOrder);
     });
-    $("supportActionsList").addEventListener("input", updateOrderBudget);
-    $("supportActionsList").addEventListener("change", updateOrderBudget);
-    $("supportActionsList").addEventListener("click", event => {
-      const button = event.target.closest(".remove-support-action");
-      if (!button || button.disabled) return;
-      const host = $("supportActionsList");
-      const draft = host._draft || { actor: $("orderActor").value, supports: readSupportActions() };
-      draft.supports = readSupportActions();
-      draft.supports.splice(Number(button.closest(".support-action").dataset.supportIndex), 1);
-      host._draft = draft;
-      renderSupportActions();
-    });
-    ["orderResource", "orderPriority", "orderRisk", "orderCondition"].forEach(id => $(id).addEventListener("input", updateOrderBudget));
-    $("orderForm").addEventListener("submit", submitOrder);
-    $("eventPanel").addEventListener("submit", event => {
-      if (event.target.id === "whiteEventForm") publishWhiteEvent(event);
-    });
-    $("autoOrdersBtn").addEventListener("click", autoFillOrders);
-    $("llmAutoOrdersBtn").addEventListener("click", autoFillOrdersWithLlm);
+    document.querySelectorAll("[id^='naturalOrderInput']").forEach(input => input.addEventListener("keydown", event => {
+      if (!(event.ctrlKey || event.metaKey) || event.key !== "Enter") return;
+      event.preventDefault();
+      applyNaturalOrderInputWithLlm(input.id.replace("naturalOrderInput", ""));
+    }));
+    document.querySelectorAll("[id^='naturalOrderInput']").forEach(input => input.addEventListener("input", syncLlmActionButtons));
+    $("generateMissingOrdersBtn").addEventListener("click", autoGenerateMissingNaturalOrders);
+    $("whiteEventForm").addEventListener("submit", publishWhiteEvent);
     $("resolveTurnBtn").addEventListener("click", resolveTurn);
     $("operationToggleVisibilityBtn").addEventListener("click", toggleOperationTheaterVisibility);
+    $("operationMapFilters").addEventListener("change", event => {
+      const checkbox = event.target.closest("[data-operation-layer]");
+      if (!checkbox || !operationLeafletMap) return;
+      if (["grid", "zones"].includes(checkbox.dataset.operationLayer)) {
+        setMapReferenceLayerVisibility(operationLeafletMap, checkbox.dataset.operationLayer, checkbox.checked);
+        return;
+      }
+      if (checkbox.dataset.operationLayer.startsWith("cat-") || ["BLUE", "RED", "AMBER"].includes(checkbox.dataset.operationLayer)) {
+        const actorLayer = operationPlacementLayers[checkbox.dataset.operationLayer];
+        if (actorLayer) {
+          if (checkbox.checked) actorLayer.addTo(operationLeafletMap);
+          else operationLeafletMap.removeLayer(actorLayer);
+        }
+        applyOperationResourceFilters();
+        return;
+      }
+      const layer = operationPlacementLayers[checkbox.dataset.operationLayer];
+      if (!layer) return;
+      if (checkbox.checked) layer.addTo(operationLeafletMap);
+      else operationLeafletMap.removeLayer(layer);
+    });
+    $("spatialOrderTargetItems").addEventListener("click", event => {
+      const row = event.target.closest("[data-spatial-item-index]");
+      if (!row) return;
+      pendingSpatialItemIndex = Number(row.dataset.spatialItemIndex) || 0;
+      if (event.target.closest(".auto-spatial-selection-button")) {
+        const result = autoSelectSpatialItem(pendingSpatialItemIndex, true);
+        renderSpatialOrderTargetPanel();
+        toast(result.ok
+          ? result.skipped ? "此行動不需要空間配置。" : `已選擇最近可用配置點：${result.placement.label}。`
+          : result.reason);
+        return;
+      }
+      renderSpatialOrderTargetPanel();
+    });
+    $("spatialOrderTargetItems").addEventListener("change", event => {
+      const select = event.target.closest(".spatial-placement-select");
+      if (!select || !pendingSpatialOrder) return;
+      const index = Number(select.closest("[data-spatial-item-index]").dataset.spatialItemIndex) || 0;
+      const item = [pendingSpatialOrder.parsed.primary, ...pendingSpatialOrder.parsed.supports][index];
+      if (item?.assetAllocations?.[0]) item.assetAllocations[0].placementId = select.value;
+    });
+    $("autoSelectSpatialOrderBtn").addEventListener("click", autoSelectAllSpatialItems);
+    $("confirmSpatialOrderBtn").addEventListener("click", confirmPendingSpatialOrder);
+    $("cancelSpatialOrderBtn").addEventListener("click", () => {
+      pendingSpatialOrder = null;
+      $("spatialOrderTargetPanel").hidden = true;
+      operationTargetLayer?.clearLayers();
+      syncLlmActionButtons();
+      toast("已取消本次空間命令配置，尚未提交。");
+    });
     $("operationFullscreenBtn").disabled = !document.fullscreenEnabled;
     $("operationFullscreenBtn").addEventListener("click", toggleOperationFullscreen);
     document.addEventListener("fullscreenchange", syncOperationFullscreen);
@@ -4534,10 +7262,11 @@
     $("operationPauseBtn").addEventListener("click", toggleOperationAnimation);
     $("operationSpeed").addEventListener("change", setOperationSpeed);
     window.addEventListener("resize", () => {
-      if (operationAnimation.scene || state.scenario) {
-        drawOperationFrame(operationAnimation.elapsed, operationAnimation.scene);
-      }
-      if ($("aarReplayCanvas")) drawAarReplayFrame();
+      inventoryPlacementMap?.invalidateSize();
+      operationLeafletMap?.invalidateSize();
+      aarReplayLeafletMap?.invalidateSize();
+      updateGeographicAnimation(operationAnimation.scene, operationAnimation.elapsed);
+      if ($("aarReplayMap")) drawAarReplayFrame();
     });
     $("clearRunBtn").addEventListener("click", resetRun);
     $("saveBtn").addEventListener("click", () => saveState(true));
@@ -4573,7 +7302,10 @@
     });
     $("timelineBody").addEventListener("click", event => {
       const button = event.target.closest("[data-review-turn]");
-      if (button) selectAarReviewTurn(button.dataset.reviewTurn, true);
+      if (button) {
+        setTab("aar");
+        selectAarReviewTurn(button.dataset.reviewTurn, true);
+      }
     });
     $("librarySearch").addEventListener("input", renderLibrary);
     ["labIncoming","labShots","labBaseP","labDetection","labReadiness","labSea","labJamming"]
@@ -4620,8 +7352,8 @@
     $("civilPressure").value = template.civilPressure || 3;
     $("amberSupport").value = template.amberSupport;
     $("weatherPreset").value = template.weatherPreset;
-    $("turnOrderMode").value = template.turnOrderMode || "simultaneous";
-    $("firstOrderVisibility").value = template.firstOrderVisibility || "sealed";
+    $("turnOrderMode").value = "red_first";
+    $("firstOrderVisibility").value = "public";
     updateTurnOrderSettings();
     const parameters = { ...STRATEGIC_DEFAULTS, ...(template.parameters || {}) };
     Object.entries(parameters).forEach(([key, value]) => { if ($(key)) $(key).value = value; });
@@ -4654,9 +7386,14 @@
     loadLlmSettings();
     updateRangeLabels();
     renderTemplateInfo();
+    $("newInventoryCategory").innerHTML = Object.entries(INVENTORY_CATEGORIES)
+      .map(([key, label]) => `<option value="${key}">${escapeHtml(label)}</option>`).join("");
     renderDetailedInventoryRows(inventoryTemplateRows());
+    setInventoryActorView("BLUE");
+    setInventoryPreviewActorView("BLUE");
+    setBuilderPanel("template");
+    setSimulationPanel(state.simulationPanel);
     renderSectionNavigator("builder");
-    updateActionOptions();
     renderLibrary();
     renderStorm();
     if (!loadState()) {

@@ -7,12 +7,13 @@
   <meta name="description" content="臺海衝突想定生成與回合推演系統。所有作戰參數均為合成資料。">
   <title>臺海想定生成</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="assets/vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="styles.css?v=20260801-1">
 </head>
 <body>
   <header class="topbar">
     <div>
-      <p class="eyebrow">離線執行 · 合成資料</p>
+      <p class="eyebrow">LLM 必要 · 合成資料</p>
       <h1>臺海想定生成</h1>
       <p class="subtitle">用於情勢判斷、資源配置、情報不確定性、危機管理與事後檢討。</p>
     </div>
@@ -26,42 +27,41 @@
     </div>
   </header>
 
-  <aside class="safety-banner" role="note">
-    <strong>安全界線：</strong>
-    本系統不含精確軍事座標、真實單位部署、現役庫存、弱點、射擊表或可靠的實戰命中／攔截率。
-    所有兵力、效能、損失及事件結果均為合成資料，不得用於真實作戰規劃。
-  </aside>
-
   <nav class="tabs" aria-label="主要功能">
-    <button class="tab active" data-tab="builder">一、想定生成</button>
-    <button class="tab" data-tab="simulation">二、回合推演</button>
-    <button class="tab" data-tab="storm">三、STORM研究實驗室</button>
-    <button class="tab" data-tab="aar">四、事後檢討</button>
-    <button class="tab" data-tab="library">五、資料庫</button>
-    <button class="tab" data-tab="guide">六、指引</button>
+    <button class="tab active" data-tab="builder">一、建立想定</button>
+    <button class="tab" data-tab="scenario">二、想定</button>
+    <button class="tab" data-tab="simulation">三、回合推演</button>
+    <button class="tab" data-tab="aar">四、事後檢討與分析</button>
+    <button class="tab" data-tab="timeline">五、決策時間線</button>
+    <button class="tab" data-tab="storm">六、STORM合成化戰區作戰實驗室</button>
+    <button class="tab" data-tab="library">七、資料庫</button>
+    <button class="tab" data-tab="guide">八、指引</button>
   </nav>
 
   <nav id="sectionNavigator" class="section-navigator" aria-label="目前頁面區塊導覽" hidden>
     <p id="sectionNavigatorTitle">區塊導覽</p>
     <div id="sectionNavigatorLinks"></div>
-    <div id="sectionNavigatorTurnControls" class="turn-controls" role="region" aria-label="回合結算快速操作" hidden>
-      <span id="turnBadge" class="badge">尚未開始</span>
-      <button id="resolveTurnBtn" class="primary">結算本回合</button>
-    </div>
   </nav>
 
   <main>
     <section id="builder" class="panel active">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">Scenario Builder</p>
-          <h2>建立想定</h2>
-        </div>
-        <span class="badge">完全離線</span>
+      <div class="builder-requirement-row">
+        <span class="badge">需連線 LLM API</span>
       </div>
 
-      <div class="two-column">
-        <form id="scenarioForm" class="card form-grid" data-section-nav-label="基本設定">
+      <form id="scenarioForm" class="card scenario-builder-form">
+        <div class="scenario-builder-layout">
+        <div id="builderPanelTabs" class="builder-panel-tabs" role="tablist" aria-label="建立想定設定分頁">
+          <button type="button" class="active" role="tab" aria-selected="true" data-builder-panel="template">情境範本</button>
+          <button type="button" role="tab" aria-selected="false" data-builder-panel="strategic">戰略壓力參數</button>
+          <button type="button" role="tab" aria-selected="false" data-builder-panel="resources">合成資源清單</button>
+          <button type="button" role="tab" aria-selected="false" data-builder-panel="inventory">公開裝備名稱與品項級武器裁決</button>
+          <button type="button" role="tab" aria-selected="false" data-builder-panel="weapon-preview">品項級武器數值預覽</button>
+          <button type="button" role="tab" aria-selected="false" data-builder-panel="constraints">補充限制</button>
+          <button type="button" role="tab" aria-selected="false" data-builder-panel="llm">LLM 必要設定</button>
+        </div>
+        <div class="builder-panel-content">
+        <section class="form-grid builder-panel-body active" role="tabpanel" data-builder-panel-body="template">
           <label class="full">
             情境範本
             <select id="scenarioTemplate">
@@ -143,22 +143,23 @@
               <option value="adverse">不利</option>
             </select>
           </label>
-          <label>
+          <label hidden>
             回合行動順序
             <select id="turnOrderMode">
-              <option value="simultaneous" selected>同時密封提交（預設）</option>
-              <option value="red_first">紅方先行</option>
+              <option value="simultaneous">同時密封提交</option>
+              <option value="red_first" selected>紅方先行（固定）</option>
               <option value="alternating">輪替先行</option>
             </select>
           </label>
-          <label>
+          <label hidden>
             先行命令是否公開
-            <select id="firstOrderVisibility" disabled>
-              <option value="sealed" selected>不公開：只決定裁決順序</option>
-              <option value="public">公開：後手可見先手行動</option>
+            <select id="firstOrderVisibility">
+              <option value="sealed">不公開：只決定裁決順序</option>
+              <option value="public" selected>公開：藍方可依情報回應</option>
             </select>
           </label>
-          <div id="builderStrategicSection" class="full resource-builder strategic-builder" data-section-nav-label="戰略參數">
+        </section>
+          <section id="builderStrategicSection" class="builder-panel-body resource-builder strategic-builder" role="tabpanel" data-builder-panel-body="strategic" hidden>
             <div class="subheading">
               <div>
                 <h3>戰略壓力參數</h3>
@@ -181,8 +182,8 @@
               <label>戰術核攻擊次數（抽象）<input id="nuclearStrikeCount" type="number" min="0" max="20" value="0"></label>
               <label>全球經濟衝擊（1–5）<input id="globalEconomicShock" type="number" min="1" max="5" value="1"></label>
             </div>
-          </div>
-          <div id="builderResourceSection" class="full resource-builder" data-section-nav-label="合成資源">
+          </section>
+          <section id="builderResourceSection" class="builder-panel-body resource-builder" role="tabpanel" data-builder-panel-body="resources" hidden>
             <div class="subheading">
               <div>
                 <h3>合成資源清單</h3>
@@ -203,17 +204,17 @@
               <label>紅方海上平台<input id="redVessels" type="number" min="0" max="100" value="24"></label>
               <label>紅方後勤補給批次<input id="redLogistics" type="number" min="0" max="240" value="84"></label>
             </div>
-          </div>
-          <details id="builderInventorySection" class="full resource-builder detailed-inventory" data-section-nav-label="詳細庫存" open>
-            <summary>
+          </section>
+          <section id="builderInventorySection" class="builder-panel-body resource-builder detailed-inventory" role="tabpanel" data-builder-panel-body="inventory" hidden>
+            <div class="inventory-panel-heading">
               <span>
-                <strong>公開裝備名稱與抽象資源換算</strong>
-                <small>使用公開名稱增加遊戲臨場感；參數皆為合成遊戲值，並換算成 0–100 能力指數</small>
+                <strong>公開裝備名稱與品項級武器裁決</strong>
+                <small>每項裝備以合成遊戲數值計算可投入量與品項戰力，直接參與回合結算</small>
               </span>
               <span class="badge">教學遊戲資料</span>
-            </summary>
+            </div>
             <div class="inventory-settings">
-              <label class="check-field"><input id="enableDetailedInventory" type="checkbox" checked> 啟用詳細資源帳本</label>
+              <label class="check-field"><input id="enableDetailedInventory" type="checkbox" checked disabled> 啟用品項級武器裁決（固定）</label>
               <label>
                 資料模式
                 <select id="inventoryDataMode">
@@ -221,8 +222,8 @@
                   <option value="sensitive_local">敏感資料／僅在本機處理</option>
                 </select>
               </label>
-              <label class="check-field"><input id="useLlmNextTurn" type="checkbox" checked> 每回合以 LLM 生成次回合想定包</label>
-              <label class="check-field"><input id="allowSanitizedLlm" type="checkbox" checked> 僅允許送出匿名化摘要</label>
+              <label class="check-field"><input id="useLlmNextTurn" type="checkbox" checked disabled> 每回合固定以 LLM 生成想定包</label>
+              <label class="check-field"><input id="allowSanitizedLlm" type="checkbox" checked disabled> 固定僅傳送匿名化摘要</label>
             </div>
             <p id="inventoryPrivacyStatus" class="inventory-privacy" aria-live="polite"></p>
             <div class="inventory-profile-guide" aria-label="遊戲參數設計原則">
@@ -230,70 +231,90 @@
               <span><strong>飛彈／火力</strong>消耗較高並保留較多預備</span>
               <span><strong>預警／ISR</strong>數量較少但可靠度較高</span>
               <span><strong>艦艇／後勤</strong>補充較慢、延遲回合較長</span>
+              <span><strong>機場／雷達／基地／電廠／陣地</strong>以可用率、恢復、可靠度與單位效能表示設施韌性</span>
             </div>
             <div class="actions inventory-actions">
+              <label class="inventory-new-category">新增類別
+                <select id="newInventoryCategory"></select>
+              </label>
               <button type="button" id="addInventoryRowBtn" class="secondary">新增品項</button>
               <button type="button" id="loadInventoryTemplateBtn" class="secondary">載入公開名稱範例</button>
+              <button type="button" id="generateInventoryWithLlmBtn" class="secondary">LLM 補充目前陣營</button>
               <label class="file-button secondary">匯入 CSV<input id="inventoryCsvInput" type="file" accept=".csv,text/csv" hidden></label>
               <button type="button" id="exportInventoryCsvBtn" class="secondary">匯出 CSV</button>
+              <span id="inventoryLlmStatus" class="muted inventory-llm-status" aria-live="polite"></span>
+            </div>
+            <div id="inventoryActorTabs" class="inventory-actor-tabs" role="tablist" aria-label="三方陣營品項">
+              <button type="button" class="active BLUE" role="tab" aria-selected="true" data-inventory-actor="BLUE">藍方</button>
+              <button type="button" class="RED" role="tab" aria-selected="false" data-inventory-actor="RED">紅方</button>
+              <button type="button" class="AMBER" role="tab" aria-selected="false" data-inventory-actor="AMBER">黃方</button>
             </div>
             <div class="table-wrap inventory-table-wrap">
               <table class="inventory-table">
                 <thead>
                   <tr>
                     <th>方別</th><th>裝備／資源名稱</th><th>類別</th><th>遊戲存量</th><th>可用率%</th>
-                    <th>保留%</th><th>每次消耗</th><th>每回合恢復</th><th>補充量</th><th>延遲回合</th><th>可靠度%</th><th>備註</th><th></th>
+                    <th>保留%</th><th>每次消耗</th><th>每回合恢復</th><th>補充量</th><th>延遲回合</th><th>可靠度%</th><th>單位效能</th><th>遊戲半徑 km</th><th>位置</th><th>備註</th><th></th>
                   </tr>
                 </thead>
                 <tbody id="detailedInventoryRows"></tbody>
               </table>
             </div>
+            <section class="inventory-placement-workspace" aria-labelledby="inventoryPlacementTitle">
+              <div class="subheading">
+                <div><h4 id="inventoryPlacementTitle">地圖配置</h4><small>先在資源表按「配置」，再點擊地圖新增位置；標記可拖曳，精確座標只保存在本機與匯出檔。</small></div>
+                <span id="inventoryPlacementStatus" class="badge">尚未選擇品項</span>
+              </div>
+              <div class="placement-toolbar">
+                <strong id="inventoryPlacementSelection">請從上方選擇品項</strong>
+                <button type="button" id="applyPlacementPresetBtn" class="secondary">套用公開預設</button>
+                <button type="button" id="resetPlacementPresetBtn" class="secondary">清除後重設</button>
+                <label>配置點名稱<input id="placementLabelInput" maxlength="100" value="配置點"></label>
+                <label>配置數量<input id="placementQuantityInput" type="number" min="0.1" step="0.1" value="1"></label>
+                <label>緯度<input id="placementLatInput" type="number" min="-90" max="90" step="0.000001"></label>
+                <label>經度<input id="placementLngInput" type="number" min="-180" max="180" step="0.000001"></label>
+                <button type="button" id="addPlacementByCoordinatesBtn" class="secondary">以座標新增</button>
+              </div>
+              <p id="inventoryPlacementSourceNotice" class="placement-source-notice">預設位置為公開設施中心點或遊戲推定點，不代表即時部署。</p>
+              <div class="placement-map-frame">
+                <div id="inventoryPlacementMap" class="leaflet-map" aria-label="資源與設施配置地圖"></div>
+                <p id="inventoryMapOffline" class="map-offline" hidden>OpenStreetMap 圖磚目前無法載入；仍可使用座標欄與標記編輯。</p>
+              </div>
+              <div id="inventoryPlacementList" class="placement-list"><p class="muted">尚未選擇品項。</p></div>
+            </section>
+          </section>
+          <section class="builder-panel-body resource-builder" role="tabpanel" data-builder-panel-body="weapon-preview" hidden>
             <div>
               <div class="subheading">
-                <h4>抽象資源預覽</h4>
-                <small>可投入量＝遊戲存量 × 可用率 × 可靠度－保留量；所有數值只供本想定比較</small>
+                <h4>品項級武器數值預覽</h4>
+                <small>品項戰力＝單位效能 × 可靠度 × 數量滿足率 × 投入量係數；存量、可用率與保留量決定實際可投入數量</small>
               </div>
-              <div id="inventoryAbstractPreview" class="inventory-abstract-preview"></div>
+              <div id="inventoryPreviewActorTabs" class="inventory-actor-tabs inventory-preview-tabs" role="tablist" aria-label="三方品項級武器數值預覽">
+                <button type="button" class="active BLUE" role="tab" aria-selected="true" data-inventory-preview-actor="BLUE">藍方</button>
+                <button type="button" class="RED" role="tab" aria-selected="false" data-inventory-preview-actor="RED">紅方</button>
+                <button type="button" class="AMBER" role="tab" aria-selected="false" data-inventory-preview-actor="AMBER">黃方</button>
+              </div>
+              <div id="inventoryAbstractPreview" class="inventory-weapon-preview"></div>
             </div>
-          </details>
-          <label class="full">
-            補充限制
-            <textarea id="teacherConstraints" rows="3" placeholder="例如：避免升高衝突；不得以單純戰果作為唯一評分。">避免升高衝突；需保留後續回合資源；納入商船、人道與資訊環境。</textarea>
-          </label>
-          <div class="full actions">
-            <button type="submit" class="primary">生成想定</button>
-            <button type="button" id="generateWithLlmBtn" class="primary" disabled>以 LLM 生成想定</button>
-            <button type="button" id="loadDemoBtn" class="secondary">載入預設示範</button>
-          </div>
-        </form>
-
-        <div class="stack">
-          <article class="card">
-            <h3>生成器設計</h3>
-            <ol class="compact-list">
-              <li>依目標選擇任務、限制與評量重點。</li>
-              <li>使用抽象區域、能力指數及合成兵力包。</li>
-              <li>配置情報落差、天候、民事與外交事件。</li>
-              <li>建立每回合事件排程與成功條件。</li>
-              <li>保留人工修改與白方裁決權。</li>
-            </ol>
-          </article>
-          <article class="callout">
-            <h3>不採用真實武器勝負查表</h3>
-            <p>公開裝備名稱只用來增加敘事臨場感；系統仍以「能力、準備、感測、後勤、指揮、環境」等合成指數裁決，不採用真實射程、命中率、庫存或武器勝負查表。</p>
-          </article>
-          <details id="llmPanel" class="card llm-card" data-section-nav-label="LLM 輔助" open>
-            <summary><span>LLM 輔助想定敘事</span><small>點選展開／收合</small></summary>
+          </section>
+          <section class="builder-panel-body form-grid" role="tabpanel" data-builder-panel-body="constraints" hidden>
+            <label class="full">
+              補充限制
+              <textarea id="teacherConstraints" rows="6" placeholder="例如：避免升高衝突；不得以單純戰果作為唯一評分。">避免升高衝突；需保留後續回合資源；納入商船、人道與資訊環境。</textarea>
+            </label>
+          </section>
+          <details id="llmPanel" class="builder-panel-body llm-card" role="tabpanel" data-builder-panel-body="llm" hidden open>
+            <summary><span>LLM 必要設定</span><small>未設定 API Key 時不能建立或使用想定</small></summary>
             <div class="llm-card-body">
               <div class="subheading">
-                <div><p class="muted">依合成資源與限制產生敘事、目標與事件。設定會保存在此瀏覽器，可隨時清除 API Key。</p></div>
-                <span class="badge">需瀏覽器可連線 API</span>
+                <div><p class="muted">所有想定、紅方先行事件、自然語言命令與次回合想定包都必須呼叫 LLM。設定會保存在此瀏覽器，可隨時清除 API Key。</p></div>
+                <span class="badge">API Key 必填</span>
               </div>
               <div class="form-grid">
                 <label>供應商<select id="llmProvider"><option value="gemini">Google Gemini</option><option value="openai">OpenAI</option><option value="claude">Anthropic Claude</option><option value="cgu">CGU／相容 API</option></select></label>
                 <label>模型名稱<input id="llmModel" list="llmModelOptions" value="gemini-3.5-flash" autocomplete="off"><datalist id="llmModelOptions"></datalist></label>
                 <label>思考力度<select id="llmReasoning"><option value="minimal">最小</option><option value="low" selected>低</option><option value="medium">中</option><option value="high">高</option></select></label>
-                <label>API Key<input id="llmApiKey" type="password" autocomplete="off" placeholder="會儲存在此瀏覽器，可手動清除"></label>
+                <label>API Key（必填）<input id="llmApiKey" type="password" autocomplete="off" placeholder="未輸入時不能使用想定；僅儲存在此瀏覽器"></label>
                 <label id="llmEndpointWrap">API Endpoint<input id="llmEndpoint" type="url" value="https://generativelanguage.googleapis.com/v1beta" placeholder="選擇供應商後自動帶入" autocomplete="off"></label>
                 <label class="full">額外敘事指示（選填）<textarea id="llmInstruction" rows="2" placeholder="例如：著重民事韌性與後勤取捨；不要描述真實地點或單位。"></textarea></label>
                 <div class="full actions">
@@ -303,42 +324,46 @@
               </div>
             </div>
           </details>
+          </div>
         </div>
-      </div>
+          <div class="scenario-builder-actions actions">
+            <button type="submit" id="generateWithLlmBtn" class="primary" disabled>以 LLM 生成想定</button>
+            <button type="button" id="loadDemoBtn" class="secondary">載入示範設定並以 LLM 生成</button>
+          </div>
+        </form>
+    </section>
 
-      <div id="scenarioPreview" class="preview" data-section-nav-label="想定預覽"></div>
+    <section id="scenario" class="panel">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Scenario</p>
+          <h2>想定</h2>
+        </div>
+        <span class="badge">LLM 生成結果</span>
+      </div>
+      <div id="scenarioPreview" class="preview"></div>
     </section>
 
     <section id="simulation" class="panel">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">Turn-based Simulation</p>
-          <h2>回合推演</h2>
-        </div>
-      </div>
-
       <div id="simulationEmpty" class="empty-state">
-        請先至「想定生成」建立或載入一個想定。
+        請先至「一、建立想定」建立或載入一個想定。
       </div>
 
       <div id="simulationContent" hidden>
-        <div id="statusCards" class="metric-grid" data-section-nav-label="狀態總覽"></div>
-
         <div class="simulation-layout">
           <section id="simulationMapSection" class="card" data-section-nav-label="情勢圖與動畫">
-            <div class="subheading">
+            <div class="subheading" hidden>
               <h3>概略情勢圖</h3>
-              <span class="muted">不含座標與真實部署</span>
+              <span class="muted">本機經緯度配置 · 非即時部署資料</span>
             </div>
-            <div id="zoneMap" class="zone-map" aria-label="抽象臺海區域圖"></div>
             <section id="operationTheater" class="operation-theater" aria-labelledby="operationTheaterTitle">
               <div class="operation-theater-heading">
                 <div>
-                  <h4 id="operationTheaterTitle">三方作戰示意動畫</h4>
+                  <h4 id="operationTheaterTitle">三方回合結算經緯度動畫</h4>
                   <p id="operationTheaterStatus" class="muted">等待回合結算後顯示三方行動。</p>
                 </div>
-                <div class="operation-playback" aria-label="作戰示意動畫播放控制">
-                  <button type="button" id="operationToggleVisibilityBtn" class="secondary" aria-expanded="true" aria-controls="operationCanvasFrame operationActorSummary operationIconLegend">隱藏</button>
+                <div class="operation-playback" aria-label="回合結算示意動畫播放控制">
+                  <button type="button" id="operationToggleVisibilityBtn" class="secondary" aria-expanded="true" aria-controls="operationCanvasFrame">隱藏</button>
                   <button type="button" id="operationFullscreenBtn" class="secondary" aria-pressed="false">全螢幕</button>
                   <button type="button" id="operationReplayBtn" class="secondary" disabled>重播</button>
                   <button type="button" id="operationPauseBtn" class="secondary" disabled>暫停</button>
@@ -353,28 +378,28 @@
                 </div>
               </div>
               <div id="operationCanvasFrame" class="operation-canvas-frame">
+                <div id="operationMap" class="leaflet-map operation-leaflet-map" aria-label="OpenStreetMap 回合情勢圖"></div>
                 <canvas id="operationCanvas" role="img" aria-describedby="operationCanvasDescription"></canvas>
                 <p id="operationCanvasEmpty" class="operation-canvas-empty">等待第一個回合結算</p>
+                <p id="operationMapOffline" class="map-offline" hidden>OpenStreetMap 圖磚目前無法載入；資源、目標與行動圖層仍可使用。</p>
               </div>
               <p id="operationCanvasDescription" class="sr-only">
-                抽象臺海三方行動示意圖；公開裝備名稱僅作敘事標籤，不代表真實座標、數量、性能、部隊部署或交戰程序。
+                OpenStreetMap 三方行動地圖；預設位置採公開設施中心點或遊戲推定點，不代表即時部署、真實數量、性能或交戰程序。
               </p>
               <p class="operation-map-credit">
-                底圖改作自
-                <a href="https://commons.wikimedia.org/wiki/File:Taiwan_location_map.svg" target="_blank" rel="noopener noreferrer">Taiwan location map.svg</a>
-                ／NordNordWest／CC BY-SA 3.0
+                底圖與地圖資料：<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a>。配置半徑與效果皆為合成遊戲參數。
               </p>
-              <div id="operationActorSummary" class="operation-actor-summary" aria-live="polite"></div>
-              <p class="operation-equipment-disclaimer">公開裝備名稱僅作遊戲敘事；圖示位置、數量與移動路徑皆為抽象動畫，不代表真實部署或性能。</p>
-              <section class="operation-icon-guide" aria-labelledby="operationIconGuideTitle">
-                <div class="operation-icon-guide-heading">
-                  <h5 id="operationIconGuideTitle">三方圖標說明</h5>
-                  <span>每項行動使用的實際動畫圖標</span>
-                </div>
-                <div id="operationIconLegend" class="operation-icon-legend"></div>
-              </section>
             </section>
-            <div class="legend">
+            <details class="operation-icon-guide operation-icon-guide-map">
+              <summary class="operation-icon-guide-heading">
+                <span id="operationIconGuideTitle">三方圖標說明</span>
+                <small>預設隱藏，點此展開</small>
+              </summary>
+              <div id="operationIconLegend" class="operation-icon-legend"></div>
+            </details>
+            <div id="operationMapFilters" class="operation-map-filters" aria-label="地圖圖層篩選"></div>
+            <div id="zoneMap" class="sr-only" aria-label="抽象臺海區域摘要"></div>
+            <div class="legend" hidden>
               <span><i class="dot blue"></i>藍方壓力／行動</span>
               <span><i class="dot red"></i>紅方壓力／行動</span>
               <span><i class="dot amber"></i>外部支援</span>
@@ -382,129 +407,223 @@
             </div>
           </section>
 
-          <form id="orderForm" class="card form-grid" data-section-nav-label="下達命令">
+          <aside id="simulationControlPanel" class="card simulation-control-panel" data-section-nav-label="功能分頁">
+            <div id="simulationTurnControls" class="simulation-turn-controls turn-controls" role="region" aria-label="目前回合與結算操作">
+              <span id="turnBadge" class="badge">尚未開始</span>
+              <button id="resolveTurnBtn" class="primary">結算本回合</button>
+            </div>
+            <div id="simulationPanelTabs" class="simulation-panel-tabs" role="tablist" aria-label="回合推演功能">
+              <button type="button" class="active" role="tab" aria-selected="true" aria-controls="simulationPanelCommand" data-simulation-panel="command">命令</button>
+              <button type="button" role="tab" aria-selected="false" aria-controls="simulationPanelBattle" data-simulation-panel="battle">戰局</button>
+              <button type="button" role="tab" aria-selected="false" aria-controls="simulationPanelIntel" data-simulation-panel="intel">情報</button>
+              <button type="button" role="tab" aria-selected="false" aria-controls="simulationPanelResources" data-simulation-panel="resources">資源</button>
+              <button type="button" role="tab" aria-selected="false" aria-controls="simulationPanelNext" data-simulation-panel="next">次回合</button>
+              <button type="button" role="tab" aria-selected="false" aria-controls="simulationPanelWhite" data-simulation-panel="white">白方導調</button>
+              <button type="button" role="tab" aria-selected="false" aria-controls="simulationPanelHistory" data-simulation-panel="history">紀錄</button>
+            </div>
+
+            <section id="simulationPanelCommand" class="simulation-panel-body active" role="tabpanel" data-simulation-panel-body="command">
+              <div id="orderForm" class="command-workspace">
             <div class="full subheading">
               <h3>下達回合命令</h3>
-              <span id="orderStatus" class="muted">每方每回合 1 項主行動＋2–4 項支援行動，共用 35 點預算</span>
+              <span id="orderStatus" class="muted">紅方先行；藍方依情報輸入自然語言命令</span>
             </div>
+            <div id="redInitiativeBanner" class="full red-initiative-banner" aria-live="polite"></div>
             <p class="full footnote action-safety-note"><strong>公開名稱、抽象裁決：</strong>【航空】、【防空】、【遠程火力】、【海上】與【水下】可顯示公開裝備名稱，但只代表遊戲中的任務效果與資源取捨，不使用真實射程、座標、目標、庫存或交戰程序。</p>
-            <label>
-              角色
-              <select id="orderActor">
-                <option value="BLUE">藍方（臺灣）</option>
-                <option value="RED">紅方（中國大陸）</option>
-                <option value="AMBER">琥珀方（美軍支援）</option>
-              </select>
-            </label>
-            <label>
-              主行動
-              <select id="orderAction"></select>
-            </label>
-            <label>
-              目標區域
-              <select id="orderZone"></select>
-            </label>
-            <label>
-              主行動資源點數
-              <input id="orderResource" type="number" min="10" max="35" value="20">
-            </label>
-            <label>
-              主行動優先級
-              <select id="orderPriority">
-                <option value="5">5／決定性</option><option value="4" selected>4／高</option><option value="3">3／中</option><option value="2">2／低</option><option value="1">1／保留</option>
-              </select>
-            </label>
-            <label>
-              主行動風險
-              <select id="orderRisk">
-                <option value="low">低</option><option value="medium" selected>中</option><option value="high">高</option>
-              </select>
-            </label>
-            <label class="full">
-              主行動執行條件
-              <input id="orderCondition" maxlength="100" value="情勢未出現重大惡化" placeholder="例如：情報信心達可接受水準">
-            </label>
-            <section class="full support-actions" aria-labelledby="supportActionsTitle">
-              <div class="subheading">
-                <div><h4 id="supportActionsTitle">支援行動</h4><small>需 2–4 項；每項均占用同一回合預算。</small></div>
-                <button type="button" id="addSupportActionBtn" class="secondary">新增支援行動</button>
+            <section class="full natural-order-entry tri-natural-orders" aria-labelledby="naturalOrderTitle">
+              <div class="natural-order-heading">
+                <div>
+                  <h4 id="naturalOrderTitle">三方自然語言命令</h4>
+                  <p>紅方先行，藍方依情報回應，黃方接續支援。畫面不再提供命令選項；LLM 會把文字轉成行動與詳細資源扣用。</p>
+                </div>
+                <span class="badge">LLM 資源轉換</span>
               </div>
-              <div id="supportActionsList"></div>
-              <p id="orderBudgetStatus" class="muted" aria-live="polite"></p>
+              <div class="tri-order-global-actions">
+                <button type="button" id="generateMissingOrdersBtn" class="secondary">LLM 產生三方草稿</button>
+                <small>草稿不會直接提交；請人工修改、交給 LLM 潤飾，確認完稿後再提交。</small>
+              </div>
+              <div class="tri-order-grid">
+                <article class="natural-order-card red" data-order-actor="RED">
+                  <header><strong>紅方命令</strong><span id="naturalOrderStatusRED" class="badge">先行</span></header>
+                  <label for="naturalOrderInputRED" class="sr-only">紅方自然語言命令</label>
+                  <div class="command-template-list" aria-label="紅方快速命令模板">
+                    <button type="button" data-order-template="RED" data-template-text="集中兵力在主要方向施加壓力，同時保留後續回合資源。">集中施壓</button>
+                    <button type="button" data-order-template="RED" data-template-text="展開海空警戒與情報蒐集，確認藍方部署後再調整行動。">海空偵察</button>
+                    <button type="button" data-order-template="RED" data-template-text="維持遠程火力威懾，優先壓制指揮與情報能力。">火力威懾</button>
+                    <button type="button" data-order-template="RED" data-template-text="實施電磁壓制與通訊干擾，降低對方情報與指揮效率。">電磁壓制</button>
+                    <button type="button" data-order-template="RED" data-template-text="加強海上封控與臨檢，控制主要航道並觀察國際反應。">海上封控</button>
+                    <button type="button" data-order-template="RED" data-template-text="增加空中施壓與巡弋，測試對方反應但避免過度消耗。">空中施壓</button>
+                    <button type="button" data-order-template="RED" data-template-text="安排後勤整補與裝備恢復，優先維持後續回合持續能力。">後勤整補</button>
+                    <button type="button" data-order-template="RED" data-template-text="分散重要兵力與設施，降低集中部署造成的風險。">分散部署</button>
+                    <button type="button" data-order-template="RED" data-template-text="整合多源情報並提高預警層級，確認主要威脅方向。">情報融合</button>
+                    <button type="button" data-order-template="RED" data-template-text="保留外交與危機溝通管道，控制行動強度並避免失控升級。">升級管控</button>
+                    <button type="button" data-order-template="RED" data-template-text="待命不做事，本回合不採取主動行動、不配置目標且不消耗品項資源。">待命不做事</button>
+                  </div>
+                  <textarea id="naturalOrderInputRED" rows="4" maxlength="500" placeholder="輸入紅方本回合行動與投入資源"></textarea>
+                  <div class="natural-order-actions">
+                    <button type="button" class="secondary" data-auto-natural-order="RED">LLM 產生草稿</button>
+                    <button type="button" class="secondary" data-polish-natural-order="RED">LLM 潤飾</button>
+                    <button type="button" class="primary" data-parse-natural-order="RED">完稿提交</button>
+                  </div>
+                  <p id="naturalOrderFeedbackRED" class="natural-order-feedback muted" aria-live="polite">等待紅方先行命令。</p>
+                </article>
+                <article class="natural-order-card blue" data-order-actor="BLUE">
+                  <header><strong>藍方命令</strong><span id="naturalOrderStatusBLUE" class="badge">等候情報</span></header>
+                  <label for="naturalOrderInputBLUE" class="sr-only">藍方自然語言命令</label>
+                  <div class="command-template-list" aria-label="藍方快速命令模板">
+                    <button type="button" data-order-template="BLUE" data-template-text="出動5架次F16V攔截，優先保護主要空域並保留後續架次。">F16V 攔截</button>
+                    <button type="button" data-order-template="BLUE" data-template-text="啟動分層防空與預警，優先保護關鍵設施及指揮節點。">分層防空</button>
+                    <button type="button" data-order-template="BLUE" data-template-text="分散部署可用兵力，強化通訊備援並維持快速反應能力。">分散部署</button>
+                    <button type="button" data-order-template="BLUE" data-template-text="執行海上拒止與商船護航，維持主要航道及港口運作。">海上拒止</button>
+                    <button type="button" data-order-template="BLUE" data-template-text="加強水下警戒與反潛監視，保護重要海上交通線。">水下警戒</button>
+                    <button type="button" data-order-template="BLUE" data-template-text="融合雷達、預警機與友方情報，提升空海態勢辨識。">情報融合</button>
+                    <button type="button" data-order-template="BLUE" data-template-text="派遣無人機執行偵察與通訊中繼，補足情報缺口。">無人機偵察</button>
+                    <button type="button" data-order-template="BLUE" data-template-text="優先修復機場、雷達與基地設施，維持後續任務能力。">後勤修復</button>
+                    <button type="button" data-order-template="BLUE" data-template-text="啟用衛星與高空平臺備援通訊，維持指揮鏈路。">通訊備援</button>
+                    <button type="button" data-order-template="BLUE" data-template-text="保護電廠與備援電力節點，維持關鍵設施供電。">能源防護</button>
+                    <button type="button" data-order-template="BLUE" data-template-text="待命不做事，本回合不採取主動行動、不配置目標且不消耗品項資源。">待命不做事</button>
+                  </div>
+                  <textarea id="naturalOrderInputBLUE" rows="4" maxlength="500" placeholder="例如：出動5架次F16V攔截，優先保護北部空域"></textarea>
+                  <div class="natural-order-actions">
+                    <button type="button" class="secondary" data-auto-natural-order="BLUE">LLM 產生草稿</button>
+                    <button type="button" class="secondary" data-polish-natural-order="BLUE">LLM 潤飾</button>
+                    <button type="button" class="primary" data-parse-natural-order="BLUE">完稿提交</button>
+                  </div>
+                  <p id="naturalOrderFeedbackBLUE" class="natural-order-feedback muted" aria-live="polite">紅方提交後，依情報輸入藍方回應。</p>
+                </article>
+                <article class="natural-order-card amber" data-order-actor="AMBER">
+                  <header><strong>黃方命令</strong><span id="naturalOrderStatusAMBER" class="badge">支援方</span></header>
+                  <label for="naturalOrderInputAMBER" class="sr-only">黃方自然語言命令</label>
+                  <div class="command-template-list" aria-label="黃方快速命令模板">
+                    <button type="button" data-order-template="AMBER" data-template-text="提供情報監視與偵察支援，優先改善藍方態勢感知。">情監偵支援</button>
+                    <button type="button" data-order-template="AMBER" data-template-text="提供後勤補充與通訊備援，協助維持藍方持續作戰能力。">後勤通訊</button>
+                    <button type="button" data-order-template="AMBER" data-template-text="推動外交協調與人道支援，降低民事壓力及升級風險。">外交人道</button>
+                    <button type="button" data-order-template="AMBER" data-template-text="協調海空護航與警戒支援，保護重要交通線與補給活動。">海空護航</button>
+                    <button type="button" data-order-template="AMBER" data-template-text="提供水下監視與反潛情報，改善聯合海域態勢感知。">水下監視</button>
+                    <button type="button" data-order-template="AMBER" data-template-text="提供衛星通訊與高空平臺支援，強化備援指揮網路。">衛星通訊</button>
+                    <button type="button" data-order-template="AMBER" data-template-text="安排空運與海運補給，優先支援短缺的後勤品項。">空運補給</button>
+                    <button type="button" data-order-template="AMBER" data-template-text="協助保護資訊系統與通訊節點，降低干擾造成的影響。">網路防護</button>
+                    <button type="button" data-order-template="AMBER" data-template-text="協調多方危機溝通與外交訊號，降低誤判及升級風險。">危機溝通</button>
+                    <button type="button" data-order-template="AMBER" data-template-text="提供醫療、疏運與人道物資支援，降低民事壓力。">醫療疏運</button>
+                    <button type="button" data-order-template="AMBER" data-template-text="待命不做事，本回合不採取主動行動、不配置目標且不消耗品項資源。">待命不做事</button>
+                  </div>
+                  <textarea id="naturalOrderInputAMBER" rows="4" maxlength="500" placeholder="輸入黃方支援、協調或人道行動"></textarea>
+                  <div class="natural-order-actions">
+                    <button type="button" class="secondary" data-auto-natural-order="AMBER">LLM 產生草稿</button>
+                    <button type="button" class="secondary" data-polish-natural-order="AMBER">LLM 潤飾</button>
+                    <button type="button" class="primary" data-parse-natural-order="AMBER">完稿提交</button>
+                  </div>
+                  <p id="naturalOrderFeedbackAMBER" class="natural-order-feedback muted" aria-live="polite">藍方提交後，輸入黃方支援命令。</p>
+                </article>
+              </div>
+              <small>使用「一、建立想定」頁已儲存的 LLM 供應商、模型與 API Key。主命令圖標會由 LLM 解析結果自動同步到三方動畫。</small>
             </section>
-            <label class="full">
-              決策理由
-              <textarea id="orderRationale" rows="3" placeholder="請說明目標、假設、風險與保留方案。"></textarea>
-            </label>
-            <div class="full actions">
-              <button type="submit" class="primary">提交／更新命令</button>
-              <button type="button" id="autoOrdersBtn" class="secondary">自動補齊</button>
-              <button type="button" id="llmAutoOrdersBtn" class="secondary" disabled>LLM自動補齊</button>
-            </div>
+            <section id="spatialOrderTargetPanel" class="full spatial-order-target-panel" hidden aria-labelledby="spatialOrderTargetTitle">
+              <div class="subheading">
+                <div><h4 id="spatialOrderTargetTitle">確認行動目標與出發配置點</h4><small>可逐項點擊地圖，也可自動採用命令的抽象區域中心並選擇最近、可達且數量足夠的配置點；提交前仍可人工改選。</small></div>
+                <span id="spatialOrderTargetStatus" class="badge">等待命令解析</span>
+              </div>
+              <div id="spatialOrderTargetItems" class="spatial-order-target-items"></div>
+              <div class="actions">
+                <button type="button" id="autoSelectSpatialOrderBtn" class="secondary">自動選擇全部目標與配置點</button>
+                <button type="button" id="confirmSpatialOrderBtn" class="primary">確認空間配置並提交</button>
+                <button type="button" id="cancelSpatialOrderBtn" class="secondary">取消</button>
+              </div>
+            </section>
             <p id="orderSequenceHint" class="full order-sequence-hint muted"></p>
             <div id="currentOrders" class="full order-list"></div>
-          </form>
+              </div>
+            </section>
+
+            <section id="simulationPanelBattle" class="simulation-panel-body" role="tabpanel" data-simulation-panel-body="battle" hidden>
+              <div id="statusCards" class="metric-grid"></div>
+              <div id="operationSituationLayers" class="operation-situation-layers" aria-live="polite"></div>
+              <div id="operationActorSummary" class="operation-actor-summary" aria-live="polite"></div>
+              <p class="operation-equipment-disclaimer">動畫只讀取已結算的命令、事件、區域、衝突與實際資源扣用快照；使用者所選圖標會同步至主命令、回合動畫與事後重播。</p>
+            </section>
+
+            <section id="simulationPanelIntel" class="simulation-panel-body" role="tabpanel" data-simulation-panel-body="intel" hidden>
+              <article>
+                <h3>本回合情報</h3>
+                <div id="intelPanel"></div>
+              </article>
+              <article>
+                <h3>天候與環境</h3>
+                <div id="weatherPanel"></div>
+              </article>
+              <article>
+                <h3>事件／導調訊息</h3>
+                <div id="eventPanel"></div>
+              </article>
+            </section>
+
+            <section id="simulationPanelResources" class="simulation-panel-body" role="tabpanel" data-simulation-panel-body="resources" hidden>
+              <article>
+                <div class="subheading">
+                  <h3>詳細資源帳本</h3>
+                  <span class="badge">品項裁決</span>
+                </div>
+                <div id="resourceLedgerPanel"></div>
+              </article>
+            </section>
+
+            <section id="simulationPanelNext" class="simulation-panel-body" role="tabpanel" data-simulation-panel-body="next" hidden>
+              <article>
+                <div class="subheading">
+                  <h3>次回合想定包</h3>
+                  <span id="nextTurnPackageSource" class="badge">等待 LLM</span>
+                </div>
+                <div id="nextTurnPackagePanel"></div>
+              </article>
+            </section>
+
+            <section id="simulationPanelWhite" class="simulation-panel-body" role="tabpanel" data-simulation-panel-body="white" hidden>
+              <form id="whiteEventForm" class="white-event-form">
+                <h3>白方臨時導調事件</h3>
+                <p class="muted">發布本回合的突發情勢，立即加入事件與裁決資料。</p>
+                <label>事件名稱<input id="whiteEventName" required maxlength="80" placeholder="例如：民間通訊壅塞"></label>
+                <label>類別
+                  <select id="whiteEventCategory">
+                    <option>民事</option><option>情報</option><option>氣象</option><option>後勤</option><option>外交</option><option>指管</option><option>資訊</option><option>其他</option>
+                  </select>
+                </label>
+                <label>影響區域<select id="whiteEventZone"></select></label>
+                <label>導調說明<textarea id="whiteEventDescription" required maxlength="300" rows="5" placeholder="說明白方發布的情境變化與應注意事項。"></textarea></label>
+                <button type="submit" class="secondary">立即發布本回合事件</button>
+              </form>
+            </section>
+
+            <section id="simulationPanelHistory" class="simulation-panel-body" role="tabpanel" data-simulation-panel-body="history" hidden>
+              <article id="simulationLogSection">
+                <div class="subheading">
+                  <h3>回合紀錄</h3>
+                  <button id="clearRunBtn" class="danger">重設推演</button>
+                </div>
+                <div id="turnNarrative" class="narrative"></div>
+              </article>
+
+              <article id="simulationLabSection" class="intercept-card" hidden>
+                <div class="subheading">
+                  <div>
+                    <h3>攔截資源配置計算機</h3>
+                    <p class="muted">獨立的教學計算器，不會影響正式推演。僅用合成機率比較資源配置，不代表真實系統。</p>
+                  </div>
+                </div>
+                <div class="lab-grid">
+                  <label>來襲目標數<input id="labIncoming" type="number" min="1" max="20" value="3"></label>
+                  <label>配置攔截次數<input id="labShots" type="number" min="1" max="20" value="4"></label>
+                  <label>單次基準機率<input id="labBaseP" type="range" min="20" max="70" value="43"><output id="labBasePValue">43%</output></label>
+                  <label>偵測品質<input id="labDetection" type="range" min="40" max="100" value="78"><output id="labDetectionValue">78%</output></label>
+                  <label>系統準備度<input id="labReadiness" type="range" min="40" max="100" value="80"><output id="labReadinessValue">80%</output></label>
+                  <label>海象<input id="labSea" type="range" min="1" max="5" value="3"><output id="labSeaValue">3</output></label>
+                  <label>干擾程度<input id="labJamming" type="range" min="0" max="50" value="22"><output id="labJammingValue">22%</output></label>
+                </div>
+                <div id="labResults" class="metric-grid"></div>
+                <p class="footnote">模型假設各次嘗試近似獨立，真實情境可能存在共同感測失敗、指管延遲、飽和攻擊及射擊窗口限制。</p>
+              </article>
+            </section>
+          </aside>
         </div>
-
-        <div id="simulationIntelSection" class="three-column" data-section-nav-label="情報與事件">
-          <article class="card">
-            <h3>本回合情報</h3>
-            <div id="intelPanel"></div>
-          </article>
-          <article class="card">
-            <h3>天候與環境</h3>
-            <div id="weatherPanel"></div>
-          </article>
-          <article class="card">
-            <h3>事件／導調訊息</h3>
-            <div id="eventPanel"></div>
-          </article>
-        </div>
-
-        <div id="simulationResourceSection" class="resource-turn-grid" data-section-nav-label="資源與次回合">
-          <article class="card">
-            <div class="subheading">
-              <h3>詳細資源帳本</h3>
-              <span class="badge">固定規則</span>
-            </div>
-            <div id="resourceLedgerPanel"></div>
-          </article>
-          <article class="card">
-            <div class="subheading">
-              <h3>次回合想定包</h3>
-              <span id="nextTurnPackageSource" class="badge">尚未生成</span>
-            </div>
-            <div id="nextTurnPackagePanel"></div>
-          </article>
-        </div>
-
-        <article id="simulationLogSection" class="card" data-section-nav-label="回合紀錄">
-          <div class="subheading">
-            <h3>回合紀錄</h3>
-            <button id="clearRunBtn" class="danger">重設推演</button>
-          </div>
-          <div id="turnNarrative" class="narrative"></div>
-        </article>
-
-        <article id="simulationLabSection" class="card intercept-card" data-section-nav-label="攔截實驗" hidden>
-          <div class="subheading">
-            <div>
-              <h3>攔截資源配置計算機</h3>
-              <p class="muted">獨立的教學計算器，不會影響正式推演。僅用合成機率比較資源配置，不代表真實系統。</p>
-            </div>
-          </div>
-          <div class="lab-grid">
-            <label>來襲目標數<input id="labIncoming" type="number" min="1" max="20" value="3"></label>
-            <label>配置攔截次數<input id="labShots" type="number" min="1" max="20" value="4"></label>
-            <label>單次基準機率<input id="labBaseP" type="range" min="20" max="70" value="43"><output id="labBasePValue">43%</output></label>
-            <label>偵測品質<input id="labDetection" type="range" min="40" max="100" value="78"><output id="labDetectionValue">78%</output></label>
-            <label>系統準備度<input id="labReadiness" type="range" min="40" max="100" value="80"><output id="labReadinessValue">80%</output></label>
-            <label>海象<input id="labSea" type="range" min="1" max="5" value="3"><output id="labSeaValue">3</output></label>
-            <label>干擾程度<input id="labJamming" type="range" min="0" max="50" value="22"><output id="labJammingValue">22%</output></label>
-          </div>
-          <div id="labResults" class="metric-grid"></div>
-          <p class="footnote">模型假設各次嘗試近似獨立，真實情境可能存在共同感測失敗、指管延遲、飽和攻擊及射擊窗口限制。</p>
-        </article>
       </div>
     </section>
 
@@ -785,13 +904,24 @@
             <button type="button" class="mini-tab" role="tab" data-aar-review-tab="events">事件／導調訊息</button>
             <button type="button" class="mini-tab" role="tab" data-aar-review-tab="ledger">詳細資源帳本</button>
             <button type="button" class="mini-tab" role="tab" data-aar-review-tab="next">次回合想定包</button>
-            <button type="button" class="mini-tab" role="tab" data-aar-review-tab="animation">三方作戰示意動畫</button>
+            <button type="button" class="mini-tab" role="tab" data-aar-review-tab="animation">三方回合結算示意動畫</button>
             <button type="button" class="mini-tab" role="tab" data-aar-review-tab="orders">下達回合命令</button>
           </div>
           <div id="aarReviewContent" class="aar-review-content" role="tabpanel"></div>
         </article>
+      </div>
+    </section>
+
+    <section id="timeline" class="panel">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Decision Timeline</p>
+          <h2>決策時間線</h2>
+        </div>
+      </div>
+      <div id="timelineEmpty" class="empty-state">尚無推演紀錄。</div>
+      <div id="timelineContent" hidden>
         <article class="card table-card aar-timeline-card">
-          <h3>決策時間線</h3>
           <p class="footnote">每回合依三方命令、共同事件與詳細資源帳本，自動產生藍、紅、琥珀三張合成計數表。</p>
           <div class="table-wrap">
             <table class="decision-timeline-table">
@@ -870,12 +1000,15 @@
   </main>
 
   <footer>
-    <span>版本 3.0 · 詳細資源帳本 · STORM實驗室 · 純 HTML/CSS/JavaScript · GitHub Pages</span>
+    <span>版本 4.0 · OpenStreetMap 空間配置 · 詳細資源帳本 · STORM實驗室 · GitHub Pages</span>
     <span>資料只儲存在使用者瀏覽器，除非主動匯出。</span>
   </footer>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="assets/vendor/leaflet/leaflet.js"></script>
   <script src="data/demo-data.js"></script>
-  <script src="app.js"></script>
+  <script src="spatial-core.js?v=20260801-1"></script>
+  <script src="deployment-presets.js?v=20260801-1"></script>
+  <script src="app.js?v=20260801-2"></script>
 </body>
 </html>
