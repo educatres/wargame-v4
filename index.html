@@ -450,7 +450,7 @@
                   <div class="command-template-list" aria-label="紅方快速命令模板">
                     <button type="button" data-order-template="RED" data-template-text="集中兵力在主要方向施加壓力，同時保留後續回合資源。">集中施壓</button>
                     <button type="button" data-order-template="RED" data-template-text="展開海空警戒與情報蒐集，確認藍方部署後再調整行動。">海空偵察</button>
-                    <button type="button" data-order-template="RED" data-template-text="維持遠程火力威懾，優先壓制指揮與情報能力。">火力威懾</button>
+                    <button type="button" data-order-template="RED" data-template-text="由可用且在合成遊戲射程內的發射配置點，發射10枚東風-17常規導彈攻擊台中港；以台中港港區為任務目標，保留其餘彈藥供後續回合使用。">DF-17 攻擊台中港</button>
                     <button type="button" data-order-template="RED" data-template-text="實施電磁壓制與通訊干擾，降低對方情報與指揮效率。">電磁壓制</button>
                     <button type="button" data-order-template="RED" data-template-text="加強海上封控與臨檢，控制主要航道並觀察國際反應。">海上封控</button>
                     <button type="button" data-order-template="RED" data-template-text="增加空中施壓與巡弋，測試對方反應但避免過度消耗。">空中施壓</button>
@@ -519,16 +519,39 @@
               </div>
               <small>使用「一、建立想定」頁已儲存的 LLM 供應商、模型與 API Key。主命令圖標會由 LLM 解析結果自動同步到三方動畫。</small>
             </section>
-            <section id="spatialOrderTargetPanel" class="full spatial-order-target-panel" hidden aria-labelledby="spatialOrderTargetTitle">
-              <div class="subheading">
-                <div><h4 id="spatialOrderTargetTitle">確認行動目標與出發配置點</h4><small>可逐項點擊地圖，也可自動採用命令的抽象區域中心並選擇最近、可達且數量足夠的配置點；資源不足時可選擇「不選擇」，該行動不會消耗品項資源。</small></div>
-                <span id="spatialOrderTargetStatus" class="badge">等待命令解析</span>
-              </div>
-              <div id="spatialOrderTargetItems" class="spatial-order-target-items"></div>
-              <div class="actions">
-                <button type="button" id="autoSelectSpatialOrderBtn" class="secondary">自動選擇全部目標與配置點</button>
-                <button type="button" id="confirmSpatialOrderBtn" class="primary">確認空間配置並提交</button>
-                <button type="button" id="cancelSpatialOrderBtn" class="secondary">取消</button>
+            <section id="spatialOrderTargetPanel" class="spatial-order-target-panel" hidden aria-labelledby="spatialOrderTargetTitle" role="dialog" aria-modal="true">
+              <div class="spatial-order-dialog">
+                <div class="spatial-order-dialog-header">
+                  <div>
+                    <h4 id="spatialOrderTargetTitle">確認發射／出發來源與攻擊／任務目標區域</h4>
+                    <small>LLM 先提出數量、公開目標與來源建議；本機再依配置點、合成遊戲半徑與存量複核。點選左側行動後，可直接在右側地圖點選新目標。</small>
+                  </div>
+                  <div class="spatial-order-dialog-status">
+                    <span id="spatialOrderTargetStatus" class="badge">等待命令解析</span>
+                    <button type="button" id="closeSpatialOrderBtn" class="icon-button" aria-label="關閉空間配置確認">×</button>
+                  </div>
+                </div>
+                <div class="spatial-order-dialog-body">
+                  <div class="spatial-order-review-pane">
+                    <p class="spatial-order-review-hint">單一點不足時可自動合併多個可達來源；您仍可微調數量、目標或來源。資源不足時可選擇「不選擇」。</p>
+                    <div id="spatialOrderTargetItems" class="spatial-order-target-items"></div>
+                  </div>
+                  <div class="spatial-order-map-pane">
+                    <div id="spatialOrderReviewMap" class="leaflet-map spatial-order-review-map" aria-label="發射與任務空間配置確認地圖"></div>
+                    <p id="spatialOrderReviewMapOffline" class="map-offline" hidden>OpenStreetMap 圖磚目前無法載入；部署、來源、目標與座標功能仍可使用。</p>
+                    <div class="spatial-order-map-legend" aria-label="地圖圖例">
+                      <span><i class="dot blue"></i>藍方部署</span>
+                      <span><i class="dot red"></i>紅方部署</span>
+                      <span><i class="dot amber"></i>黃方部署</span>
+                      <span><i class="dot target"></i>任務目標</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="spatial-order-dialog-footer">
+                  <button type="button" id="autoSelectSpatialOrderBtn" class="secondary">自動選擇全部目標與配置點</button>
+                  <button type="button" id="confirmSpatialOrderBtn" class="primary">確認空間配置並提交</button>
+                  <button type="button" id="cancelSpatialOrderBtn" class="secondary">取消</button>
+                </div>
               </div>
             </section>
             <p id="orderSequenceHint" class="full order-sequence-hint muted"></p>

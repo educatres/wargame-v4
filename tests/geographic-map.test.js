@@ -29,17 +29,44 @@ test("new turn snapshots preserve immutable source placements for replay", () =>
 
 test("spatial confirmation supports automatic target and nearest placement selection", () => {
   assert.match(app, /function autoSelectSpatialItem/);
-  assert.match(app, /SPATIAL\.ZONE_CENTERS\[item\.zone\]/);
-  assert.match(app, /allocation\.placementId = eligible\[0\]\.placement\.placementId/);
+  assert.match(app, /chooseConcreteMapTarget\(pendingSpatialOrder\.parsed\.actor, item, row, allocation\)/);
+  assert.match(app, /function configuredTargetCandidates/);
+  assert.match(app, /function publicFacilityTargetCandidates/);
+  assert.match(app, /applyAutomaticSpatialSourcePlan\(item, row, allocation\)/);
+  assert.match(app, /SPATIAL\.placementAllocationPlan/);
   assert.match(app, /function autoSelectAllSpatialItems/);
   assert.match(html, /id="autoSelectSpatialOrderBtn"/);
+});
+
+test("spatial confirmation opens as a full-screen map review dialog", () => {
+  assert.match(html, /id="spatialOrderTargetPanel"[^>]+role="dialog"[^>]+aria-modal="true"/);
+  assert.match(html, /id="spatialOrderReviewMap"[^>]+aria-label="發射與任務空間配置確認地圖"/);
+  assert.match(app, /function ensureSpatialOrderReviewMap\(\)/);
+  assert.match(app, /renderSpatialOrderReviewMap\(true\)/);
+  assert.match(app, /spatialOrderReviewMap\.on\("click"/);
+  assert.match(css, /\.spatial-order-target-panel\s*\{[\s\S]*position:\s*fixed;\s*inset:\s*0;[\s\S]*z-index:\s*2200;/);
+  assert.match(css, /\.spatial-order-dialog-body\s*\{[\s\S]*grid-template-columns:/);
+});
+
+test("red quick orders include a concrete inventory quantity and public map target", () => {
+  assert.match(html, /發射10枚東風-17常規導彈攻擊台中港/);
+  assert.match(html, />DF-17 攻擊台中港<\/button>/);
+});
+
+test("new geographic targets prefer configured or public map locations over abstract zone centers", () => {
+  assert.match(app, /function chooseConcreteMapTarget/);
+  assert.match(app, /configuredTargetCandidates\(actor, item\)/);
+  assert.match(app, /publicFacilityTargetCandidates\(actor, item\)/);
+  const start = app.indexOf("function autoSelectSpatialItem");
+  const end = app.indexOf("function autoSelectAllSpatialItems", start);
+  assert.doesNotMatch(app.slice(start, end), /自動區域中心/);
 });
 
 test("spatial confirmation allows an explicit no-placement choice when resources are insufficient", () => {
   assert.match(app, /SKIP_SPATIAL_PLACEMENT = "__NO_PLACEMENT__"/);
   assert.match(app, /不選擇（不投入品項資源）/);
   assert.match(app, /item\.assetAllocationSkipped = select\.value === SKIP_SPATIAL_PLACEMENT/);
-  assert.match(app, /item\.target && \(\s*allocationSkipped \|\|/);
+  assert.match(app, /allocationSkipped \|\| selectedSpatialSourcesValid/);
   assert.match(app, /if \(event\.target\.closest\("select, input, option, label"\)\) return;/);
   assert.match(html, /資源不足時可選擇「不選擇」/);
 });

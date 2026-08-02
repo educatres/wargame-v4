@@ -51,6 +51,26 @@ test("eligible placements are ordered nearest-first for automatic selection", ()
   assert.equal(eligible[0].placement.placementId, "NEAR");
 });
 
+test("a request can be combined across multiple in-range placements", () => {
+  const row = {
+    id: "MULTI", category: "longRange", availability: 86, reserve: 32, gameRangeKm: 700,
+    placements: [
+      { placementId: "FUZHOU", zoneId: "Z-NW", lat: 26.0745, lng: 119.2965, nominalQuantity: 14, currentQuantity: 14 },
+      { placementId: "XIAMEN", zoneId: "Z-CW", lat: 24.4798, lng: 118.0894, nominalQuantity: 14, currentQuantity: 14 },
+      { placementId: "WENZHOU", zoneId: "Z-NW", lat: 27.9938, lng: 120.6994, nominalQuantity: 14, currentQuantity: 14 }
+    ]
+  };
+  const target = { lat: 24.255833, lng: 120.523611 };
+  assert.equal(spatial.eligiblePlacements(row, target, 10).length, 0);
+  const plan = spatial.placementAllocationPlan(row, target, 10, "Z-CW");
+  assert.equal(plan.complete, true);
+  assert.equal(plan.allocated, 10);
+  assert.deepEqual(plan.sources.map(item => [item.placement.placementId, item.quantity]), [
+    ["XIAMEN", 7],
+    ["FUZHOU", 3]
+  ]);
+});
+
 test("multi-location totals and validation enforce nominal equality", () => {
   const row = {
     id: "R2", category: "airport", nominal: 6, locationRequired: true,

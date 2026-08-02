@@ -283,16 +283,25 @@
     return errors;
   }
 
+  function placementCommittable(row, placement, protectReserve = true) {
+    const category = String(row?.category || "");
+    const current = Math.max(0, finite(placement?.currentQuantity));
+    const availabilityRate = protectReserve
+      ? Math.max(0, Math.min(100, finite(row?.availability, 100))) / 100
+      : 1;
+    const reserveRate = protectReserve
+      ? Math.max(0, Math.min(100, finite(row?.reserve, 0))) / 100
+      : 0;
+    const available = normalizeQuantity(current * availabilityRate, category, "floor");
+    const reserve = normalizeQuantity(current * reserveRate, category, "ceil");
+    return normalizeQuantity(Math.max(0, available - reserve), category, "floor");
+  }
+
   function eligiblePlacements(row, target, requestedQuantity = 0) {
     const spatial = normalizeSpatialRow(row);
-    const reserveRate = Math.max(0, Math.min(100, finite(row?.reserve, 0))) / 100;
     return spatial.placements.map(placement => {
       const distanceKm = haversineKm(placement, target);
-      const committable = normalizeQuantity(
-        Math.max(0, finite(placement.currentQuantity) - finite(placement.nominalQuantity) * reserveRate),
-        spatial.category,
-        "floor"
-      );
+      const committable = placementCommittable(row, placement, true);
       return { placement, distanceKm, committable };
     }).filter(item =>
       item.distanceKm <= spatial.gameRangeKm + 0.000001
@@ -300,16 +309,45 @@
     ).sort((a, b) => a.distanceKm - b.distanceKm);
   }
 
+  function placementAllocationPlan(row, target, requestedQuantity = 0, preferredZoneId = "") {
+    const spatial = normalizeSpatialRow(row);
+    const requested = normalizeQuantity(requestedQuantity, spatial.category);
+    const candidates = spatial.placements.map(placement => {
+      const distanceKm = haversineKm(placement, target);
+      const committable = placementCommittable(row, placement, true);
+      return { placement, distanceKm, committable };
+    }).filter(item =>
+      item.distanceKm <= spatial.gameRangeKm + 0.000001 && item.committable > 0
+    ).sort((a, b) => {
+      const aPreferred = preferredZoneId && a.placement.zoneId === preferredZoneId ? 0 : 1;
+      const bPreferred = preferredZoneId && b.placement.zoneId === preferredZoneId ? 0 : 1;
+      return aPreferred - bPreferred || a.distanceKm - b.distanceKm;
+    });
+    let remaining = requested;
+    const sources = [];
+    candidates.forEach(candidate => {
+      if (remaining <= 0) return;
+      const quantity = Math.min(remaining, candidate.committable);
+      if (quantity > 0) {
+        sources.push({ ...candidate, quantity });
+        remaining -= quantity;
+      }
+    });
+    const allocated = requested - remaining;
+    return {
+      requested,
+      allocated: normalizeQuantity(allocated, spatial.category),
+      totalCommittableInRange: candidates.reduce((sum, item) => sum + item.committable, 0),
+      complete: requested > 0 && remaining <= 0.000001,
+      sources
+    };
+  }
+
   function consumePlacement(row, placementId, requestedQuantity, protectReserve = true) {
     const spatial = normalizeSpatialRow(row);
     const placement = spatial.placements.find(item => item.placementId === placementId);
     if (!placement) return { used: 0, spatial };
-    const reserve = protectReserve ? finite(placement.nominalQuantity) * finite(row?.reserve) / 100 : 0;
-    const capacity = normalizeQuantity(
-      Math.max(0, finite(placement.currentQuantity) - reserve),
-      spatial.category,
-      "floor"
-    );
+    const capacity = placementCommittable(row, placement, protectReserve);
     const used = Math.min(capacity, normalizeQuantity(requestedQuantity, spatial.category));
     placement.currentQuantity = normalizeQuantity(placement.currentQuantity - used, spatial.category);
     return { used: normalizeQuantity(used, spatial.category), spatial };
@@ -399,7 +437,9 @@
     normalizeSpatialRow,
     placementTotals,
     validateSpatialRow,
+    placementCommittable,
     eligiblePlacements,
+    placementAllocationPlan,
     consumePlacement,
     distributeRecovery,
     clusterOpposedActions
