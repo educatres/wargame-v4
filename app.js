@@ -462,6 +462,10 @@
   let spatialOrderReviewLayers = null;
   let aarReplayLeafletMap = null;
   let aarReplayLayers = {};
+  let equipmentIconCatalog = Array.isArray(window.TAIWAN_STRAIT_WARGAME_ICONS)
+    ? [...window.TAIWAN_STRAIT_WARGAME_ICONS]
+    : [];
+  let equipmentIconCatalogPromise = null;
   const mapReferenceStates = new WeakMap();
   let pendingSpatialOrder = null;
   let pendingSpatialItemIndex = 0;
@@ -1069,8 +1073,8 @@
     });
     const reference = {
       grid: L.layerGroup().addTo(map),
-      zones: L.layerGroup().addTo(map),
-      enabled: { grid: true, zones: true },
+      zones: L.layerGroup(),
+      enabled: { grid: true, zones: false },
       control: null
     };
     mapReferenceStates.set(map, reference);
@@ -1089,7 +1093,7 @@
       container.setAttribute("aria-label", "地圖定位圖層");
       container.innerHTML = `
         <label><input type="checkbox" data-map-reference-layer="grid" checked> 經緯格線</label>
-        <label><input type="checkbox" data-map-reference-layer="zones" checked> 區域編號</label>`;
+        <label><input type="checkbox" data-map-reference-layer="zones"> 區域編號</label>`;
       L.DomEvent.disableClickPropagation(container);
       L.DomEvent.disableScrollPropagation(container);
       container.addEventListener("change", event => {
@@ -1209,6 +1213,109 @@
     });
   }
 
+  function validEquipmentIconPath(path, extension) {
+    const value = String(path || "").replace(/\\/g, "/");
+    return new RegExp(`^(?:svg|gif)\\/[a-z0-9_-]+\\.${extension}$`).test(value) ? value : "";
+  }
+
+  function equipmentIconId(entry) {
+    return String(entry?.svg_file || entry?.gif_file || "")
+      .replace(/^.*\//, "")
+      .replace(/\.(?:svg|gif)$/i, "");
+  }
+
+  function equipmentIconEntry(row, requestedIconId = "") {
+    if (!row || !equipmentIconCatalog.length) return null;
+    const requested = String(requestedIconId || "");
+    const byInventory = equipmentIconCatalog.find(entry =>
+      entry.inventory_id === row.id && (!requested || equipmentIconId(entry) === requested)
+    );
+    if (byInventory) return byInventory;
+    const normalizedAlias = normalizeNaturalOrderText(row.alias);
+    return equipmentIconCatalog.find(entry =>
+      entry.actor === row.actor
+      && entry.category === row.category
+      && normalizeNaturalOrderText(entry.alias) === normalizedAlias
+      && (!requested || equipmentIconId(entry) === requested)
+    ) || null;
+  }
+
+  function equipmentSpatialDivIcon(row, text = "●", extraClass = "", animated = false, requestedIconId = "") {
+    const entry = equipmentIconEntry(row, requestedIconId) || equipmentIconEntry(row);
+    if (!entry) return spatialDivIcon(row?.actor || "target", text, extraClass);
+    const preferred = animated
+      ? validEquipmentIconPath(entry.gif_file, "gif") || validEquipmentIconPath(entry.svg_file, "svg")
+      : validEquipmentIconPath(entry.svg_file, "svg") || validEquipmentIconPath(entry.gif_file, "gif");
+    if (!preferred) return spatialDivIcon(row.actor, text, extraClass);
+    const src = `taiwan_strait_wargame_icons/${preferred}`;
+    const markerSize = animated ? 23 : 20;
+    return L.divIcon({
+      className: "",
+      html: `<div class="spatial-marker equipment-marker ${escapeAttr(row.actor)} ${escapeAttr(extraClass)}" title="${escapeAttr(row.alias)}"><img src="${escapeAttr(src)}" alt="" draggable="false" onerror="this.hidden=true;this.nextElementSibling.style.display='grid';this.nextElementSibling.nextElementSibling.hidden=true"><span class="equipment-marker-fallback">${escapeHtml(text)}</span><b class="equipment-marker-count">${escapeHtml(text)}</b></div>`,
+      iconSize: [markerSize, markerSize],
+      iconAnchor: [markerSize / 2, markerSize - 3],
+      popupAnchor: [0, -(markerSize - 4)]
+    });
+  }
+
+  function equipmentRowForAction(action, rows) {
+    const allocation = action?.assetAllocations?.[0];
+    return (rows || []).find(row => row.id === allocation?.inventoryId) || null;
+  }
+
+  function actionSpatialDivIcon(action, rows, text, extraClass = "", animated = false) {
+    const allocation = action?.assetAllocations?.[0];
+    const row = equipmentRowForAction(action, rows);
+    return row
+      ? equipmentSpatialDivIcon(row, text, extraClass, animated, allocation?.iconId)
+      : spatialDivIcon(action.actor, text, extraClass);
+  }
+
+  function operationActionQuantityLabel(action) {
+    const committed = Number(action?.committedQuantity);
+    if (Number.isFinite(committed) && committed > 0) return String(Math.max(1, Math.round(committed)));
+    const planned = (action?.assetAllocations || []).reduce(
+      (sum, allocation) => sum + Math.max(0, Number(allocation.committed ?? allocation.quantity) || 0),
+      0
+    );
+    return planned > 0 ? String(Math.max(1, Math.round(planned))) : operationAnimationGlyph(action);
+  }
+
+  async function ensureEquipmentIconCatalog() {
+    if (equipmentIconCatalogPromise) return equipmentIconCatalogPromise;
+    if (equipmentIconCatalog.length) {
+      equipmentIconCatalogPromise = Promise.resolve(equipmentIconCatalog);
+      return equipmentIconCatalogPromise;
+    }
+    equipmentIconCatalogPromise = fetch("taiwan_strait_wargame_icons/manifest.json", { cache: "force-cache" })
+      .then(response => {
+        if (!response.ok) throw new Error(`圖標清單載入失敗 (${response.status})`);
+        return response.json();
+      })
+      .then(entries => {
+        equipmentIconCatalog = (Array.isArray(entries) ? entries : []).filter(entry =>
+          ["BLUE", "RED", "AMBER"].includes(entry.actor)
+          && validEquipmentIconPath(entry.svg_file, "svg")
+          && validEquipmentIconPath(entry.gif_file, "gif")
+        );
+        const selectedRow = selectedInventoryPlacementId
+          ? readDetailedInventoryRows().find(row => row.id === selectedInventoryPlacementId)
+          : null;
+        if (selectedRow) renderInventoryPlacementMap(selectedRow);
+        if (state.scenario) {
+          renderOperationLeafletLayers();
+          renderOperationIconLegend(true);
+        }
+        if (pendingSpatialOrder) renderSpatialOrderReviewMap();
+        return equipmentIconCatalog;
+      })
+      .catch(error => {
+        console.warn(error.message);
+        return equipmentIconCatalog;
+      });
+    return equipmentIconCatalogPromise;
+  }
+
   function selectedPlacementRowElement() {
     if (!selectedInventoryPlacementId) return null;
     return [...$("detailedInventoryRows").querySelectorAll("tr")]
@@ -1271,7 +1378,7 @@
     row.placements.forEach(placement => {
       const marker = L.marker([placement.lat, placement.lng], {
         draggable: true,
-        icon: spatialDivIcon(row.actor, String(Math.round(placement.nominalQuantity)))
+        icon: equipmentSpatialDivIcon(row, String(Math.round(placement.nominalQuantity)))
       }).addTo(inventoryPlacementLayer);
       marker.bindPopup(`<strong>${escapeHtml(row.alias)}</strong><br>${escapeHtml(placement.label)}<br>配置 ${round1(placement.nominalQuantity)} · 半徑 ${round1(row.gameRangeKm)} km<br>${placement.lat.toFixed(6)}, ${placement.lng.toFixed(6)}`);
       marker.on("dragend", () => {
@@ -2022,7 +2129,8 @@
     });
     if (!operationLeafletMap) return null;
     ["BLUE", "RED", "AMBER", "ranges", "actions", "events", "conflicts"].forEach(key => {
-      operationPlacementLayers[key] = L.layerGroup().addTo(operationLeafletMap);
+      operationPlacementLayers[key] = L.layerGroup();
+      if (key !== "ranges") operationPlacementLayers[key].addTo(operationLeafletMap);
     });
     operationTargetLayer = L.layerGroup().addTo(operationLeafletMap);
     operationLeafletMap.on("click", event => {
@@ -2069,10 +2177,10 @@
     const map = ensureSpatialOrderReviewMap();
     if (!map || !spatialOrderReviewLayers || !pendingSpatialOrder) return;
     Object.values(spatialOrderReviewLayers).forEach(layer => layer.clearLayers());
-    const rows = (state.scenario?.detailedInventory || []).map(sanitizeInventoryRow);
+    const rows = (scene?.snapshot?.spatialInventoryBefore || state.scenario?.detailedInventory || []).map(sanitizeInventoryRow);
     rows.forEach(row => row.placements.forEach(placement => {
       L.marker([placement.lat, placement.lng], {
-        icon: spatialDivIcon(row.actor, String(Math.round(placement.currentQuantity)))
+        icon: equipmentSpatialDivIcon(row, String(Math.round(placement.currentQuantity)))
       }).bindPopup(
         `<strong>${escapeHtml(row.alias)}</strong><br>${escapeHtml(placement.label)}<br>` +
         `${actorLabel(row.actor)} · 可用 ${Math.floor(placement.currentQuantity)} ${escapeHtml(allocationUnitForCategory(row.category))}<br>` +
@@ -2164,7 +2272,7 @@
     labels.grid = "經緯格線";
     labels.zones = "區域編號";
     host.innerHTML = Object.entries(labels).map(([key, label]) =>
-      `<label><input type="checkbox" data-operation-layer="${key}" checked> ${label}</label>`
+      `<label><input type="checkbox" data-operation-layer="${key}"${["ranges", "zones"].includes(key) ? "" : " checked"}> ${label}</label>`
     ).join("");
   }
 
@@ -2173,11 +2281,11 @@
     if (!map) return;
     Object.values(operationPlacementLayers).forEach(layer => layer.clearLayers());
     operationResourceMarkers = [];
-    const rows = state.scenario?.detailedInventory || [];
-    rows.map(sanitizeInventoryRow).forEach(row => {
+    const rows = (state.scenario?.detailedInventory || []).map(sanitizeInventoryRow);
+    rows.forEach(row => {
       row.placements.forEach(placement => {
         const marker = L.marker([placement.lat, placement.lng], {
-          icon: spatialDivIcon(row.actor, String(Math.round(placement.currentQuantity)))
+          icon: equipmentSpatialDivIcon(row, String(Math.round(placement.currentQuantity)))
         }).addTo(operationPlacementLayers[row.actor]);
         marker.bindPopup(`<strong>${escapeHtml(row.alias)}</strong><br>${escapeHtml(placement.label)}<br>${actorLabel(row.actor)} · ${escapeHtml(INVENTORY_CATEGORIES[row.category])}<br>目前 ${round1(placement.currentQuantity)}/${round1(placement.nominalQuantity)} · 合成半徑 ${round1(row.gameRangeKm)} km<br>${placement.lat.toFixed(6)}, ${placement.lng.toFixed(6)}<br>${placement.precision === "facility-centroid" ? "公開設施中心點" : placement.precision === "regional-game-inference" ? "遊戲推定位置" : "使用者自訂位置"}${placement.sourceUrl ? ` · <a href="${escapeAttr(placement.sourceUrl)}" target="_blank" rel="noopener noreferrer">來源</a>` : ""}<br><small>固定版本、非即時部署資料</small>`);
         operationResourceMarkers.push({ marker, actor: row.actor, group: operationCategoryGroup(row.category) });
@@ -2194,8 +2302,9 @@
     (scene?.actions || []).forEach(action => {
       if (!action.target) return;
       const placement = operationActionOrigin(action, scene);
+      const quantityLabel = operationActionQuantityLabel(action);
       L.marker([action.target.lat, action.target.lng], {
-        icon: spatialDivIcon(action.actor, action.primary ? "主" : "支")
+        icon: actionSpatialDivIcon(action, rows, quantityLabel)
       }).bindPopup(`<strong>${escapeHtml(action.action)}</strong><br>${escapeHtml(action.target.label || zoneName(action.zone))}`).addTo(operationPlacementLayers.actions);
       if (placement) {
         L.polyline([[placement.lat, placement.lng], [action.target.lat, action.target.lng]], {
@@ -2205,7 +2314,7 @@
           opacity: .75
         }).addTo(operationPlacementLayers.actions);
         const moving = L.marker([placement.lat, placement.lng], {
-          icon: spatialDivIcon(action.actor, operationAnimationGlyph(action), "operation-moving-marker"),
+          icon: actionSpatialDivIcon(action, rows, quantityLabel, "operation-moving-marker", true),
           keyboard: false,
           zIndexOffset: action.primary ? 1000 : 600
         }).bindTooltip(`${actorLabel(action.actor)} · ${action.action}`, { direction: "top", offset: [0, -24] })
@@ -2367,22 +2476,46 @@
     return labels.length <= 2 ? labels.join("／") : `${labels.slice(0, 2).join("／")} 等 ${labels.length} 項`;
   }
 
-  function renderOperationIconLegend() {
+  function operationLegendEquipmentIcon(row) {
+    const entry = equipmentIconEntry(row);
+    const fallback = escapeHtml((INVENTORY_CATEGORIES[row.category] || "項目").slice(0, 1));
+    if (!entry) {
+      return `<span class="operation-equipment-icon ${escapeAttr(row.actor)} fallback" aria-hidden="true"><i>${fallback}</i></span>`;
+    }
+    const path = validEquipmentIconPath(entry.svg_file, "svg") || validEquipmentIconPath(entry.gif_file, "gif");
+    if (!path) {
+      return `<span class="operation-equipment-icon ${escapeAttr(row.actor)} fallback" aria-hidden="true"><i>${fallback}</i></span>`;
+    }
+    return `<span class="operation-equipment-icon ${escapeAttr(row.actor)}" aria-hidden="true"><img src="taiwan_strait_wargame_icons/${escapeAttr(path)}" alt="" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><i hidden>${fallback}</i></span>`;
+  }
+
+  function renderOperationIconLegend(force = false) {
     const legend = $("operationIconLegend");
     if (!legend) return;
     const supportMode = state.scenario?.amberSupport || "none";
-    if (legend.dataset.supportMode === supportMode) return;
+    const inventoryRows = (state.scenario?.detailedInventory || []).map(sanitizeInventoryRow);
+    const legendKey = `${supportMode}-${equipmentIconCatalog.length}-${hashText(JSON.stringify(
+      inventoryRows.map(row => [row.id, row.actor, row.alias, row.category, row.current])
+    ))}`;
+    if (!force && legend.dataset.legendKey === legendKey) return;
     const factionLabels = {
       BLUE: "藍方（臺灣）",
       RED: "紅方（中國大陸）",
       AMBER: "美軍支援（外部支援）"
     };
-    const actors = supportMode === "none" ? ["BLUE", "RED"] : ["BLUE", "RED", "AMBER"];
+    const actors = inventoryRows.length
+      ? ["BLUE", "RED", "AMBER"].filter(actor => inventoryRows.some(row => row.actor === actor))
+      : supportMode === "none" ? ["BLUE", "RED"] : ["BLUE", "RED", "AMBER"];
     legend.innerHTML = actors.map(actor => `
       <section class="operation-icon-faction ${actor}" aria-label="${factionLabels[actor]}圖標">
         <h6>${factionLabels[actor]}</h6>
-        <div class="operation-icon-list">
-          ${ACTIONS[actor].map(([action]) => {
+        <div class="operation-icon-list${inventoryRows.length ? " scenario-inventory" : ""}">
+          ${inventoryRows.length ? inventoryRows.filter(row => row.actor === actor).map(row =>
+            `<div class="operation-icon-item equipment" title="${escapeAttr(row.alias)}">
+              ${operationLegendEquipmentIcon(row)}
+              <div><strong>${escapeHtml(row.alias)}</strong><span>${escapeHtml(INVENTORY_CATEGORIES[row.category] || row.category)} · 目前 ${Math.round(row.current)} ${escapeHtml(allocationUnitForCategory(row.category))}</span></div>
+            </div>`
+          ).join("") : ACTIONS[actor].map(([action]) => {
             const type = operationType(action).type;
             return `<div class="operation-icon-item" title="${escapeAttr(action)}">
               <canvas data-operation-icon="${type}" data-operation-actor="${actor}" aria-hidden="true"></canvas>
@@ -2402,7 +2535,7 @@
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       drawOperationPictogram(ctx, canvas.dataset.operationIcon, size / 2, size / 2, 11, actor.color, 0);
     });
-    legend.dataset.supportMode = supportMode;
+    legend.dataset.legendKey = legendKey;
   }
 
   function operationActionsFromOrders(orders, turn, resourceLedger) {
@@ -2412,6 +2545,24 @@
       if (!order) return;
       orderItems(order).forEach((item, itemIndex) => {
         const kind = operationType(item.action);
+        const ledgerAllocations = (resourceLedger?.actionAllocations || [])
+          .filter(entry =>
+            entry.actor === actor
+            && Number(entry.itemIndex) === Number(itemIndex)
+            && Number(entry.committed || 0) > 0
+          );
+        const savedAllocations = Array.isArray(item.assetAllocations) ? item.assetAllocations : [];
+        const effectiveAllocations = savedAllocations.length
+          ? savedAllocations
+          : ledgerAllocations.map(entry => ({
+            inventoryId: entry.inventoryId,
+            placementId: entry.placementId || entry.placementAllocations?.[0]?.placementId || "",
+            placementAllocations: entry.placementAllocations || [],
+            alias: entry.alias,
+            quantity: entry.committed,
+            committed: entry.committed,
+            unit: entry.unit || "單位"
+          }));
         actions.push({
           actor,
           actorIndex,
@@ -2424,7 +2575,9 @@
           risk: item.risk || "medium",
           condition: item.condition || "",
           target: item.target || null,
-          assetAllocations: Array.isArray(item.assetAllocations) ? item.assetAllocations : [],
+          assetAllocations: effectiveAllocations,
+          committedQuantity: ledgerAllocations.reduce((sum, entry) => sum + Number(entry.committed || 0), 0)
+            || effectiveAllocations.reduce((sum, entry) => sum + Number(entry.committed ?? entry.quantity ?? 0), 0),
           type: selectedOperationIconType(item),
           equipment: operationEquipmentLabelForItem(actor, item, itemIndex, resourceLedger),
           combat: kind.combat,
@@ -3641,6 +3794,7 @@
           id: row.id,
           alias: row.alias,
           category: row.category,
+          allowedIconId: equipmentIconEntry(row) ? equipmentIconId(equipmentIconEntry(row)) : "",
           availableSyntheticUnits: round1(row.current),
           committableSyntheticUnits: weaponRowMetrics(row).committable,
           syntheticRangeBand: inventoryRangeBandForLlm(row),
@@ -3675,7 +3829,7 @@
 ${autoGenerate ? "請依目前戰局與已提交命令，自動撰寫一則自然語言命令並完成結構化轉換。" : `使用者命令：${JSON.stringify(text)}`}
 
 回傳格式：
-{"actor":"${actor}","naturalLanguage":"120字內、可直接顯示給使用者的${actorName}命令","primary":{"action":"允許主行動之一","zone":"允許區域ID之一","targetLandmarkId":"允許的公開遊戲地標ID；沒有明確地標時為空字串","resource":10到29的整數；待命不做事時必須為0,"priority":1到5,"condition":"100字內","risk":"low|medium|high","assetAllocations":[{"inventoryId":"允許資源ID","alias":"對應公開名稱","quantity":建議投入的正整數且不得超過committableSyntheticUnits,"unit":"架次|枚|艘|批|節點|處|單位","preferredOriginZone":"只能從該品項availableOriginZones選擇","quantityReason":"40字內，說明庫存與典型消耗檢查","rangeReason":"40字內，依syntheticRangeBand與出發／目標抽象區域說明範圍判斷"}]},"supports":[{"action":"允許行動之一","zone":"允許區域ID之一","targetLandmarkId":"允許地標ID或空字串","resource":3到10的整數,"priority":1到5,"condition":"100字內","risk":"low|medium|high"}],"rationale":"80字內的命令解讀","interpretation":"80字內，說明如何把原句轉成資源"}
+{"actor":"${actor}","naturalLanguage":"120字內、可直接顯示給使用者的${actorName}命令","primary":{"action":"允許主行動之一","zone":"允許區域ID之一","targetLandmarkId":"允許的公開遊戲地標ID；沒有明確地標時為空字串","resource":10到29的整數；待命不做事時必須為0,"priority":1到5,"condition":"100字內","risk":"low|medium|high","assetAllocations":[{"inventoryId":"允許資源ID","alias":"對應公開名稱","iconId":"只能填該品項的allowedIconId；沒有時為空字串","quantity":建議投入的正整數且不得超過committableSyntheticUnits,"unit":"架次|枚|艘|批|節點|處|單位","preferredOriginZone":"只能從該品項availableOriginZones選擇","quantityReason":"40字內，說明庫存與典型消耗檢查","rangeReason":"40字內，依syntheticRangeBand與出發／目標抽象區域說明範圍判斷"}]},"supports":[{"action":"允許行動之一","zone":"允許區域ID之一","targetLandmarkId":"允許地標ID或空字串","resource":3到10的整數,"priority":1到5,"condition":"100字內","risk":"low|medium|high"}],"rationale":"80字內的命令解讀","interpretation":"80字內，說明如何把原句轉成資源"}
 
 規則：
 1. actor 固定為 ${actor}。
@@ -3686,6 +3840,7 @@ ${autoGenerate ? "請依目前戰局與已提交命令，自動撰寫一則自�
 6. 使用者若明確說出允許清單中的地標，targetLandmarkId 必須選該地標；不得自行創造地標。未指名時可留空，由本機使用公開設施或既有配置點補位。
 7. 使用者指名裝備但未指定數量時，仍須依典型消耗與可投入量提出一個建議 quantity。
 8. 依 syntheticRangeBand、availableOriginZones 與目標抽象區域提出 preferredOriginZone 及 rangeReason；這只是遊戲範圍初判，禁止推測真實射程或座標。
+9. iconId 只能照所選 inventoryId 的 allowedIconId 原樣回傳；不得創造檔名、路徑或其他圖標。allowedIconId 為空時，iconId 必須為空字串。
 
 允許主／支援行動：${JSON.stringify(actions)}
 允許區域：${JSON.stringify(zones)}
@@ -3747,9 +3902,11 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
       const preferredOriginZone = availableOriginZones.includes(String(raw?.preferredOriginZone || ""))
         ? String(raw.preferredOriginZone)
         : "";
+      const matchedIcon = equipmentIconEntry(row, raw?.iconId) || equipmentIconEntry(row);
       allocations.push({
         inventoryId: row.id,
         alias: row.alias,
+        iconId: matchedIcon ? equipmentIconId(matchedIcon) : "",
         quantity,
         requestedQuantity,
         unit: allocationUnitForCategory(row.category),
@@ -3850,9 +4007,11 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
     if (committable <= 0) return [];
     const minimum = SPATIAL.INTEGER_QUANTITY_CATEGORIES.has(row.category) ? 1 : .1;
     const quantity = Math.max(minimum, Math.min(committable, row.consumption * Math.max(.35, Number(item.resource || 0) / 20)));
+    const matchedIcon = equipmentIconEntry(row);
     return [{
       inventoryId: row.id,
       alias: row.alias,
+      iconId: matchedIcon ? equipmentIconId(matchedIcon) : "",
       quantity: inventoryQuantity(row.category, quantity),
       unit: allocationUnitForCategory(row.category),
       preferredOriginZone: "",
@@ -6091,15 +6250,16 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
     const rows = scene.snapshot.spatialInventoryBefore || [];
     rows.map(sanitizeInventoryRow).forEach(row => row.placements.forEach(placement => {
       L.marker([placement.lat, placement.lng], {
-        icon: spatialDivIcon(row.actor, String(Math.round(placement.currentQuantity)))
+        icon: equipmentSpatialDivIcon(row, String(Math.round(placement.currentQuantity)))
       }).bindPopup(`<strong>${escapeHtml(row.alias)}</strong><br>${escapeHtml(placement.label)}<br>本回合期初 ${round1(placement.currentQuantity)}`)
         .addTo(aarReplayLayers.placements);
     }));
     scene.actions.forEach(action => {
       if (!action.target) return;
       const origin = operationActionOrigin(action, scene, rows);
+      const quantityLabel = operationActionQuantityLabel(action);
       L.marker([action.target.lat, action.target.lng], {
-        icon: spatialDivIcon(action.actor, action.primary ? "主" : "支")
+        icon: actionSpatialDivIcon(action, rows, quantityLabel)
       }).bindPopup(`<strong>${escapeHtml(action.action)}</strong><br>${escapeHtml(action.target.label || zoneName(action.zone))}`)
         .addTo(aarReplayLayers.actions);
       if (!origin) return;
@@ -6111,7 +6271,7 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
       }).addTo(aarReplayLayers.actions);
       action._aarOrigin = { lat: origin.lat, lng: origin.lng };
       action._aarLeafletMarker = L.marker([origin.lat, origin.lng], {
-        icon: spatialDivIcon(action.actor, operationAnimationGlyph(action), "operation-moving-marker"),
+        icon: actionSpatialDivIcon(action, rows, quantityLabel, "operation-moving-marker", true),
         keyboard: false,
         zIndexOffset: action.primary ? 1000 : 600
       }).bindTooltip(`${actorLabel(action.actor)} · ${action.action}`, { direction: "top", offset: [0, -24] })
@@ -7993,6 +8153,11 @@ ${actorName}詳細合成資源：${JSON.stringify(actorInventoryForLlm(actor))}
   function init() {
     applyFeatureVisibility();
     bindEvents();
+    ensureEquipmentIconCatalog();
+    if ($("operationMap")) {
+      $("operationMap").dataset.equipmentIconCount = String(equipmentIconCatalog.length);
+      $("operationMap").dataset.equipmentIconMode = equipmentIconCatalog.length ? "image-first" : "text-fallback";
+    }
     updateLlmProvider();
     loadLlmSettings();
     updateRangeLabels();

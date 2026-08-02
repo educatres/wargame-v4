@@ -94,6 +94,18 @@ test("map reference overlays can be toggled without entering scenario data", () 
   assert.doesNotMatch(app, /scenario\.(?:grid|zones)|spatialInventoryBefore\.(?:grid|zones)/);
 });
 
+test("zone labels are available but hidden by default on every map", () => {
+  assert.match(app, /zones:\s*L\.layerGroup\(\),\s*enabled:\s*\{\s*grid:\s*true,\s*zones:\s*false\s*\}/);
+  assert.match(app, /data-map-reference-layer="zones"> 區域編號/);
+  assert.match(app, /\["ranges", "zones"\]\.includes\(key\) \? "" : " checked"/);
+});
+
+test("operation range layer is available but disabled by default", () => {
+  assert.match(app, /if \(key !== "ranges"\) operationPlacementLayers\[key\]\.addTo\(operationLeafletMap\)/);
+  assert.match(app, /\["ranges", "zones"\]\.includes\(key\) \? "" : " checked"/);
+  assert.match(app, /if \(checkbox\.checked\) layer\.addTo\(operationLeafletMap\)/);
+});
+
 test("round-resolution geographic animation stays inside its responsive layout", () => {
   assert.match(css, /\.operation-theater\s*\{[^}]*min-width:\s*0;[^}]*max-width:\s*100%/s);
   assert.match(css, /\.operation-theater-heading\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+auto/s);

@@ -378,6 +378,32 @@ output { color: var(--primary); font-weight: 800; }
 .spatial-marker.RED { background: #d8443b; }
 .spatial-marker.AMBER { color: #332b00; background: #f1c933; }
 .spatial-marker.target { background: #8e44ad; }
+.spatial-marker.equipment-marker {
+  width: 20px; height: 20px; padding: 1px; border-width: 3px;
+  border-radius: 5px 5px 5px 1px; transform: none;
+  image-rendering: pixelated;
+}
+.spatial-marker.equipment-marker img {
+  width: 14px; height: 14px; object-fit: contain;
+  image-rendering: pixelated; filter: drop-shadow(0 1px 0 rgba(255,255,255,.5));
+}
+.spatial-marker.equipment-marker .equipment-marker-fallback {
+  display: none; width: 100%; height: 100%; place-items: center; transform: none;
+}
+.spatial-marker.equipment-marker .equipment-marker-count {
+  position: absolute; right: -4px; bottom: -3px; min-width: 11px; height: 11px;
+  padding: 0 1px; border: 1px solid currentColor; border-radius: 2px;
+  color: #173746; background: rgba(255,255,255,.96); box-shadow: 0 1px 2px rgba(0,0,0,.3);
+  font: 900 8px/9px ui-monospace, SFMono-Regular, Consolas, monospace;
+  letter-spacing: -1px; text-align: center;
+}
+.spatial-marker.equipment-marker.BLUE { border-color: #1976d2; background: rgba(207, 232, 255, .97); }
+.spatial-marker.equipment-marker.RED { border-color: #d8443b; background: rgba(255, 215, 212, .97); }
+.spatial-marker.equipment-marker.AMBER { border-color: #c9a100; background: rgba(255,249,214,.96); }
+.spatial-marker.equipment-marker.operation-moving-marker {
+  width: 23px; height: 23px; border-width: 4px; box-shadow: 0 3px 10px rgba(0,0,0,.45);
+}
+.spatial-marker.equipment-marker.operation-moving-marker img { width: 15px; height: 15px; }
 .operation-map-filters { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: .65rem; }
 .operation-map-filters label { display: inline-flex; align-items: center; gap: .3rem; padding: .35rem .55rem; border: 1px solid var(--border); border-radius: 999px; font-size: .78rem; font-weight: 700; }
 .map-reference-control {
@@ -616,6 +642,17 @@ body.spatial-order-modal-open { overflow: hidden; }
   min-width: 0; padding: .3rem .45rem; background: #fff;
 }
 .operation-icon-item canvas { display: block; width: 32px; height: 32px; }
+.operation-icon-list.scenario-inventory { max-height: 360px; overflow-y: auto; }
+.operation-icon-item.equipment { grid-template-columns: 28px minmax(0, 1fr); min-height: 34px; }
+.operation-equipment-icon {
+  display: grid !important; place-items: center; width: 26px; height: 26px;
+  border: 2px solid currentColor; border-radius: 6px; background: #fff;
+}
+.operation-equipment-icon img { width: 20px; height: 20px; object-fit: contain; image-rendering: pixelated; }
+.operation-equipment-icon i { font: 900 10px/1 ui-monospace, SFMono-Regular, Consolas, monospace; font-style: normal; }
+.operation-equipment-icon.BLUE { color: #1976d2; background: #cfe8ff; }
+.operation-equipment-icon.RED { color: #d8443b; background: #ffd7d4; }
+.operation-equipment-icon.AMBER { color: #9a7900; background: #fff9d6; }
 .operation-icon-item strong {
   display: block; overflow: hidden; color: #263947; font-size: .69rem; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap;
 }

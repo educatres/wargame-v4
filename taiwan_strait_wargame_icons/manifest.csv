@@ -1,0 +1,49 @@
+﻿inventory_id,actor,alias,category,svg_file,gif_file,preview_file,pixel_count
+INV-1785654343599-31,AMBER,SM-6標準六型飛彈,airDefense,svg/amber_sm6.svg,gif/amber_sm6.gif,preview_8x/amber_sm6.png,64
+INV-1785654343599-44,AMBER,前進支援機場,airport,svg/amber_forward_support_airfield.svg,gif/amber_forward_support_airfield.gif,preview_8x/amber_forward_support_airfield.png,60
+INV-1785654343599-23,AMBER,F-35A Lightning II「閃電II」,aviation,svg/amber_f35a.svg,gif/amber_f35a.gif,preview_8x/amber_f35a.png,92
+INV-1785654343599-24,AMBER,F/A-18E/F Super Hornet「超級大黃蜂」,aviation,svg/amber_fa18ef_super_hornet.svg,gif/amber_fa18ef_super_hornet.gif,preview_8x/amber_fa18ef_super_hornet.png,104
+INV-1785654343599-46,AMBER,聯合支援基地,base,svg/amber_joint_support_base.svg,gif/amber_joint_support_base.gif,preview_8x/amber_joint_support_base.png,112
+INV-1785654343599-33,AMBER,Starlink商用衛星通訊支援,communications,svg/amber_starlink_support.svg,gif/amber_starlink_support.gif,preview_8x/amber_starlink_support.png,67
+INV-1785654343599-25,AMBER,E-2D Advanced Hawkeye,isr,svg/amber_e2d_hawkeye.svg,gif/amber_e2d_hawkeye.gif,preview_8x/amber_e2d_hawkeye.png,94
+INV-1785654343599-28,AMBER,C-17 Globemaster III,logistics,svg/amber_c17_globemaster_iii.svg,gif/amber_c17_globemaster_iii.gif,preview_8x/amber_c17_globemaster_iii.png,100
+INV-1785654343599-27,AMBER,KC-46A Pegasus「飛馬」,logistics,svg/amber_kc46a_pegasus.svg,gif/amber_kc46a_pegasus.gif,preview_8x/amber_kc46a_pegasus.png,91
+INV-1785654343599-32,AMBER,Tomahawk「戰斧」巡弋飛彈,longRange,svg/amber_tomahawk.svg,gif/amber_tomahawk.gif,preview_8x/amber_tomahawk.png,73
+INV-1785654343599-29,AMBER,Arleigh Burke級導彈驅逐艦,maritime,svg/amber_arleigh_burke_destroyer.svg,gif/amber_arleigh_burke_destroyer.gif,preview_8x/amber_arleigh_burke_destroyer.png,92
+INV-1785654343599-48,AMBER,聯合防護陣地,position,svg/amber_joint_protection_position.svg,gif/amber_joint_protection_position.gif,preview_8x/amber_joint_protection_position.png,91
+INV-1785654343599-47,AMBER,備援電力支援節點,powerPlant,svg/amber_backup_power_support.svg,gif/amber_backup_power_support.gif,preview_8x/amber_backup_power_support.png,76
+INV-1785654343599-45,AMBER,遠程預警雷達站,radarStation,svg/amber_long_range_warning_radar.svg,gif/amber_long_range_warning_radar.gif,preview_8x/amber_long_range_warning_radar.png,78
+INV-1785654343599-26,AMBER,P-8A Poseidon「海神」,subsurface,svg/amber_p8a_poseidon.svg,gif/amber_p8a_poseidon.gif,preview_8x/amber_p8a_poseidon.png,88
+INV-1785654343599-30,AMBER,Virginia級攻擊核潛艦,subsurface,svg/amber_virginia_ssn.svg,gif/amber_virginia_ssn.gif,preview_8x/amber_virginia_ssn.png,67
+INV-1785654343599-8,BLUE,天劍二型空對空飛彈／TC-2,airDefense,svg/blue_tc2.svg,gif/blue_tc2.gif,preview_8x/blue_tc2.png,64
+INV-1785654343599-9,BLUE,天弓三型防空飛彈,airDefense,svg/blue_sky_bow_iii.svg,gif/blue_sky_bow_iii.gif,preview_8x/blue_sky_bow_iii.png,66
+INV-1785654343599-34,BLUE,北部航空基地群,airport,svg/blue_northern_airbase_group.svg,gif/blue_northern_airbase_group.gif,preview_8x/blue_northern_airbase_group.png,54
+INV-1785654343599-1,BLUE,F-16V「Viper／毒蛇」,aviation,svg/blue_f16v.svg,gif/blue_f16v.gif,preview_8x/blue_f16v.png,78
+INV-1785654343599-2,BLUE,IDF／F-CK-1「經國號」,aviation,svg/blue_idf_fck1.svg,gif/blue_idf_fck1.gif,preview_8x/blue_idf_fck1.png,86
+INV-1785654343599-3,BLUE,Mirage 2000-5「幻象2000-5」,aviation,svg/blue_mirage_2000_5.svg,gif/blue_mirage_2000_5.gif,preview_8x/blue_mirage_2000_5.png,90
+INV-1785654343599-36,BLUE,聯合作戰基地,base,svg/blue_joint_operations_base.svg,gif/blue_joint_operations_base.gif,preview_8x/blue_joint_operations_base.png,114
+INV-1785654343599-5,BLUE,E-2K「鷹眼預警機」,isr,svg/blue_e2k_hawkeye.svg,gif/blue_e2k_hawkeye.gif,preview_8x/blue_e2k_hawkeye.png,88
+INV-1785654343599-4,BLUE,C-130H「力士型運輸機」,logistics,svg/blue_c130h.svg,gif/blue_c130h.gif,preview_8x/blue_c130h.png,96
+INV-1785654343599-10,BLUE,萬劍飛彈,longRange,svg/blue_wan_chien.svg,gif/blue_wan_chien.gif,preview_8x/blue_wan_chien.png,64
+INV-1785654343599-11,BLUE,雷霆2000多管火箭系統,longRange,svg/blue_thunderbolt_2000.svg,gif/blue_thunderbolt_2000.gif,preview_8x/blue_thunderbolt_2000.png,103
+INV-1785654343599-7,BLUE,雄風三型超音速反艦飛彈,maritime,svg/blue_hsiung_feng_iii.svg,gif/blue_hsiung_feng_iii.gif,preview_8x/blue_hsiung_feng_iii.png,80
+INV-1785654343599-38,BLUE,機動防禦陣地,position,svg/blue_mobile_defense_position.svg,gif/blue_mobile_defense_position.gif,preview_8x/blue_mobile_defense_position.png,87
+INV-1785654343599-37,BLUE,備援電力節點,powerPlant,svg/blue_backup_power_node.svg,gif/blue_backup_power_node.gif,preview_8x/blue_backup_power_node.png,71
+INV-1785654343599-35,BLUE,區域預警雷達站,radarStation,svg/blue_regional_early_warning_radar.svg,gif/blue_regional_early_warning_radar.gif,preview_8x/blue_regional_early_warning_radar.png,72
+INV-1785654343599-6,BLUE,P-3C「獵戶座反潛巡邏機」,subsurface,svg/blue_p3c_orion.svg,gif/blue_p3c_orion.gif,preview_8x/blue_p3c_orion.png,100
+INV-1785654343599-39,RED,沿岸航空基地群,airport,svg/red_coastal_airbase_group.svg,gif/red_coastal_airbase_group.gif,preview_8x/red_coastal_airbase_group.png,60
+INV-1785654343599-14,RED,殲-10C戰鬥機／J-10C,aviation,svg/red_j10c.svg,gif/red_j10c.gif,preview_8x/red_j10c.png,86
+INV-1785654343599-13,RED,殲-16戰鬥機／J-16,aviation,svg/red_j16.svg,gif/red_j16.gif,preview_8x/red_j16.png,106
+INV-1785654343599-12,RED,殲-20戰鬥機／J-20,aviation,svg/red_j20.svg,gif/red_j20.gif,preview_8x/red_j20.png,104
+INV-1785654343599-41,RED,聯合指揮基地,base,svg/red_joint_command_base.svg,gif/red_joint_command_base.gif,preview_8x/red_joint_command_base.png,128
+INV-1785654343599-16,RED,空警-500預警機／KJ-500,isr,svg/red_kj500.svg,gif/red_kj500.gif,preview_8x/red_kj500.png,100
+INV-1785654343599-17,RED,運-20運輸機／Y-20,logistics,svg/red_y20.svg,gif/red_y20.gif,preview_8x/red_y20.png,114
+INV-1785654343599-21,RED,東風-17常規導彈／DF-17,longRange,svg/red_df17.svg,gif/red_df17.gif,preview_8x/red_df17.png,66
+INV-1785654343599-22,RED,東風-26型導彈／DF-26,longRange,svg/red_df26.svg,gif/red_df26.gif,preview_8x/red_df26.png,80
+INV-1785654343599-15,RED,轟-6K轟炸機／H-6K,longRange,svg/red_h6k.svg,gif/red_h6k.gif,preview_8x/red_h6k.png,100
+INV-1785654343599-19,RED,052D型導彈驅逐艦,maritime,svg/red_type_052d_destroyer.svg,gif/red_type_052d_destroyer.gif,preview_8x/red_type_052d_destroyer.png,93
+INV-1785654343599-18,RED,055型導彈驅逐艦,maritime,svg/red_type_055_destroyer.svg,gif/red_type_055_destroyer.gif,preview_8x/red_type_055_destroyer.png,103
+INV-1785654343599-20,RED,075型兩棲攻擊艦,maritime,svg/red_type_075_lhd.svg,gif/red_type_075_lhd.gif,preview_8x/red_type_075_lhd.png,117
+INV-1785654343599-43,RED,沿岸防護陣地,position,svg/red_coastal_defense_position.svg,gif/red_coastal_defense_position.gif,preview_8x/red_coastal_defense_position.png,105
+INV-1785654343599-42,RED,區域電力保障節點,powerPlant,svg/red_regional_power_node.svg,gif/red_regional_power_node.gif,preview_8x/red_regional_power_node.png,86
+INV-1785654343599-40,RED,沿岸遠程雷達站,radarStation,svg/red_coastal_long_range_radar.svg,gif/red_coastal_long_range_radar.gif,preview_8x/red_coastal_long_range_radar.png,72

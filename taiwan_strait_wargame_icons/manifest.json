@@ -1,0 +1,482 @@
+[
+  {
+    "inventory_id": "INV-1785654343599-31",
+    "actor": "AMBER",
+    "alias": "SM-6標準六型飛彈",
+    "category": "airDefense",
+    "svg_file": "svg/amber_sm6.svg",
+    "gif_file": "gif/amber_sm6.gif",
+    "preview_file": "preview_8x/amber_sm6.png",
+    "pixel_count": 64
+  },
+  {
+    "inventory_id": "INV-1785654343599-44",
+    "actor": "AMBER",
+    "alias": "前進支援機場",
+    "category": "airport",
+    "svg_file": "svg/amber_forward_support_airfield.svg",
+    "gif_file": "gif/amber_forward_support_airfield.gif",
+    "preview_file": "preview_8x/amber_forward_support_airfield.png",
+    "pixel_count": 60
+  },
+  {
+    "inventory_id": "INV-1785654343599-23",
+    "actor": "AMBER",
+    "alias": "F-35A Lightning II「閃電II」",
+    "category": "aviation",
+    "svg_file": "svg/amber_f35a.svg",
+    "gif_file": "gif/amber_f35a.gif",
+    "preview_file": "preview_8x/amber_f35a.png",
+    "pixel_count": 92
+  },
+  {
+    "inventory_id": "INV-1785654343599-24",
+    "actor": "AMBER",
+    "alias": "F/A-18E/F Super Hornet「超級大黃蜂」",
+    "category": "aviation",
+    "svg_file": "svg/amber_fa18ef_super_hornet.svg",
+    "gif_file": "gif/amber_fa18ef_super_hornet.gif",
+    "preview_file": "preview_8x/amber_fa18ef_super_hornet.png",
+    "pixel_count": 104
+  },
+  {
+    "inventory_id": "INV-1785654343599-46",
+    "actor": "AMBER",
+    "alias": "聯合支援基地",
+    "category": "base",
+    "svg_file": "svg/amber_joint_support_base.svg",
+    "gif_file": "gif/amber_joint_support_base.gif",
+    "preview_file": "preview_8x/amber_joint_support_base.png",
+    "pixel_count": 112
+  },
+  {
+    "inventory_id": "INV-1785654343599-33",
+    "actor": "AMBER",
+    "alias": "Starlink商用衛星通訊支援",
+    "category": "communications",
+    "svg_file": "svg/amber_starlink_support.svg",
+    "gif_file": "gif/amber_starlink_support.gif",
+    "preview_file": "preview_8x/amber_starlink_support.png",
+    "pixel_count": 67
+  },
+  {
+    "inventory_id": "INV-1785654343599-25",
+    "actor": "AMBER",
+    "alias": "E-2D Advanced Hawkeye",
+    "category": "isr",
+    "svg_file": "svg/amber_e2d_hawkeye.svg",
+    "gif_file": "gif/amber_e2d_hawkeye.gif",
+    "preview_file": "preview_8x/amber_e2d_hawkeye.png",
+    "pixel_count": 94
+  },
+  {
+    "inventory_id": "INV-1785654343599-28",
+    "actor": "AMBER",
+    "alias": "C-17 Globemaster III",
+    "category": "logistics",
+    "svg_file": "svg/amber_c17_globemaster_iii.svg",
+    "gif_file": "gif/amber_c17_globemaster_iii.gif",
+    "preview_file": "preview_8x/amber_c17_globemaster_iii.png",
+    "pixel_count": 100
+  },
+  {
+    "inventory_id": "INV-1785654343599-27",
+    "actor": "AMBER",
+    "alias": "KC-46A Pegasus「飛馬」",
+    "category": "logistics",
+    "svg_file": "svg/amber_kc46a_pegasus.svg",
+    "gif_file": "gif/amber_kc46a_pegasus.gif",
+    "preview_file": "preview_8x/amber_kc46a_pegasus.png",
+    "pixel_count": 91
+  },
+  {
+    "inventory_id": "INV-1785654343599-32",
+    "actor": "AMBER",
+    "alias": "Tomahawk「戰斧」巡弋飛彈",
+    "category": "longRange",
+    "svg_file": "svg/amber_tomahawk.svg",
+    "gif_file": "gif/amber_tomahawk.gif",
+    "preview_file": "preview_8x/amber_tomahawk.png",
+    "pixel_count": 73
+  },
+  {
+    "inventory_id": "INV-1785654343599-29",
+    "actor": "AMBER",
+    "alias": "Arleigh Burke級導彈驅逐艦",
+    "category": "maritime",
+    "svg_file": "svg/amber_arleigh_burke_destroyer.svg",
+    "gif_file": "gif/amber_arleigh_burke_destroyer.gif",
+    "preview_file": "preview_8x/amber_arleigh_burke_destroyer.png",
+    "pixel_count": 92
+  },
+  {
+    "inventory_id": "INV-1785654343599-48",
+    "actor": "AMBER",
+    "alias": "聯合防護陣地",
+    "category": "position",
+    "svg_file": "svg/amber_joint_protection_position.svg",
+    "gif_file": "gif/amber_joint_protection_position.gif",
+    "preview_file": "preview_8x/amber_joint_protection_position.png",
+    "pixel_count": 91
+  },
+  {
+    "inventory_id": "INV-1785654343599-47",
+    "actor": "AMBER",
+    "alias": "備援電力支援節點",
+    "category": "powerPlant",
+    "svg_file": "svg/amber_backup_power_support.svg",
+    "gif_file": "gif/amber_backup_power_support.gif",
+    "preview_file": "preview_8x/amber_backup_power_support.png",
+    "pixel_count": 76
+  },
+  {
+    "inventory_id": "INV-1785654343599-45",
+    "actor": "AMBER",
+    "alias": "遠程預警雷達站",
+    "category": "radarStation",
+    "svg_file": "svg/amber_long_range_warning_radar.svg",
+    "gif_file": "gif/amber_long_range_warning_radar.gif",
+    "preview_file": "preview_8x/amber_long_range_warning_radar.png",
+    "pixel_count": 78
+  },
+  {
+    "inventory_id": "INV-1785654343599-26",
+    "actor": "AMBER",
+    "alias": "P-8A Poseidon「海神」",
+    "category": "subsurface",
+    "svg_file": "svg/amber_p8a_poseidon.svg",
+    "gif_file": "gif/amber_p8a_poseidon.gif",
+    "preview_file": "preview_8x/amber_p8a_poseidon.png",
+    "pixel_count": 88
+  },
+  {
+    "inventory_id": "INV-1785654343599-30",
+    "actor": "AMBER",
+    "alias": "Virginia級攻擊核潛艦",
+    "category": "subsurface",
+    "svg_file": "svg/amber_virginia_ssn.svg",
+    "gif_file": "gif/amber_virginia_ssn.gif",
+    "preview_file": "preview_8x/amber_virginia_ssn.png",
+    "pixel_count": 67
+  },
+  {
+    "inventory_id": "INV-1785654343599-8",
+    "actor": "BLUE",
+    "alias": "天劍二型空對空飛彈／TC-2",
+    "category": "airDefense",
+    "svg_file": "svg/blue_tc2.svg",
+    "gif_file": "gif/blue_tc2.gif",
+    "preview_file": "preview_8x/blue_tc2.png",
+    "pixel_count": 64
+  },
+  {
+    "inventory_id": "INV-1785654343599-9",
+    "actor": "BLUE",
+    "alias": "天弓三型防空飛彈",
+    "category": "airDefense",
+    "svg_file": "svg/blue_sky_bow_iii.svg",
+    "gif_file": "gif/blue_sky_bow_iii.gif",
+    "preview_file": "preview_8x/blue_sky_bow_iii.png",
+    "pixel_count": 66
+  },
+  {
+    "inventory_id": "INV-1785654343599-34",
+    "actor": "BLUE",
+    "alias": "北部航空基地群",
+    "category": "airport",
+    "svg_file": "svg/blue_northern_airbase_group.svg",
+    "gif_file": "gif/blue_northern_airbase_group.gif",
+    "preview_file": "preview_8x/blue_northern_airbase_group.png",
+    "pixel_count": 54
+  },
+  {
+    "inventory_id": "INV-1785654343599-1",
+    "actor": "BLUE",
+    "alias": "F-16V「Viper／毒蛇」",
+    "category": "aviation",
+    "svg_file": "svg/blue_f16v.svg",
+    "gif_file": "gif/blue_f16v.gif",
+    "preview_file": "preview_8x/blue_f16v.png",
+    "pixel_count": 78
+  },
+  {
+    "inventory_id": "INV-1785654343599-2",
+    "actor": "BLUE",
+    "alias": "IDF／F-CK-1「經國號」",
+    "category": "aviation",
+    "svg_file": "svg/blue_idf_fck1.svg",
+    "gif_file": "gif/blue_idf_fck1.gif",
+    "preview_file": "preview_8x/blue_idf_fck1.png",
+    "pixel_count": 86
+  },
+  {
+    "inventory_id": "INV-1785654343599-3",
+    "actor": "BLUE",
+    "alias": "Mirage 2000-5「幻象2000-5」",
+    "category": "aviation",
+    "svg_file": "svg/blue_mirage_2000_5.svg",
+    "gif_file": "gif/blue_mirage_2000_5.gif",
+    "preview_file": "preview_8x/blue_mirage_2000_5.png",
+    "pixel_count": 90
+  },
+  {
+    "inventory_id": "INV-1785654343599-36",
+    "actor": "BLUE",
+    "alias": "聯合作戰基地",
+    "category": "base",
+    "svg_file": "svg/blue_joint_operations_base.svg",
+    "gif_file": "gif/blue_joint_operations_base.gif",
+    "preview_file": "preview_8x/blue_joint_operations_base.png",
+    "pixel_count": 114
+  },
+  {
+    "inventory_id": "INV-1785654343599-5",
+    "actor": "BLUE",
+    "alias": "E-2K「鷹眼預警機」",
+    "category": "isr",
+    "svg_file": "svg/blue_e2k_hawkeye.svg",
+    "gif_file": "gif/blue_e2k_hawkeye.gif",
+    "preview_file": "preview_8x/blue_e2k_hawkeye.png",
+    "pixel_count": 88
+  },
+  {
+    "inventory_id": "INV-1785654343599-4",
+    "actor": "BLUE",
+    "alias": "C-130H「力士型運輸機」",
+    "category": "logistics",
+    "svg_file": "svg/blue_c130h.svg",
+    "gif_file": "gif/blue_c130h.gif",
+    "preview_file": "preview_8x/blue_c130h.png",
+    "pixel_count": 96
+  },
+  {
+    "inventory_id": "INV-1785654343599-10",
+    "actor": "BLUE",
+    "alias": "萬劍飛彈",
+    "category": "longRange",
+    "svg_file": "svg/blue_wan_chien.svg",
+    "gif_file": "gif/blue_wan_chien.gif",
+    "preview_file": "preview_8x/blue_wan_chien.png",
+    "pixel_count": 64
+  },
+  {
+    "inventory_id": "INV-1785654343599-11",
+    "actor": "BLUE",
+    "alias": "雷霆2000多管火箭系統",
+    "category": "longRange",
+    "svg_file": "svg/blue_thunderbolt_2000.svg",
+    "gif_file": "gif/blue_thunderbolt_2000.gif",
+    "preview_file": "preview_8x/blue_thunderbolt_2000.png",
+    "pixel_count": 103
+  },
+  {
+    "inventory_id": "INV-1785654343599-7",
+    "actor": "BLUE",
+    "alias": "雄風三型超音速反艦飛彈",
+    "category": "maritime",
+    "svg_file": "svg/blue_hsiung_feng_iii.svg",
+    "gif_file": "gif/blue_hsiung_feng_iii.gif",
+    "preview_file": "preview_8x/blue_hsiung_feng_iii.png",
+    "pixel_count": 80
+  },
+  {
+    "inventory_id": "INV-1785654343599-38",
+    "actor": "BLUE",
+    "alias": "機動防禦陣地",
+    "category": "position",
+    "svg_file": "svg/blue_mobile_defense_position.svg",
+    "gif_file": "gif/blue_mobile_defense_position.gif",
+    "preview_file": "preview_8x/blue_mobile_defense_position.png",
+    "pixel_count": 87
+  },
+  {
+    "inventory_id": "INV-1785654343599-37",
+    "actor": "BLUE",
+    "alias": "備援電力節點",
+    "category": "powerPlant",
+    "svg_file": "svg/blue_backup_power_node.svg",
+    "gif_file": "gif/blue_backup_power_node.gif",
+    "preview_file": "preview_8x/blue_backup_power_node.png",
+    "pixel_count": 71
+  },
+  {
+    "inventory_id": "INV-1785654343599-35",
+    "actor": "BLUE",
+    "alias": "區域預警雷達站",
+    "category": "radarStation",
+    "svg_file": "svg/blue_regional_early_warning_radar.svg",
+    "gif_file": "gif/blue_regional_early_warning_radar.gif",
+    "preview_file": "preview_8x/blue_regional_early_warning_radar.png",
+    "pixel_count": 72
+  },
+  {
+    "inventory_id": "INV-1785654343599-6",
+    "actor": "BLUE",
+    "alias": "P-3C「獵戶座反潛巡邏機」",
+    "category": "subsurface",
+    "svg_file": "svg/blue_p3c_orion.svg",
+    "gif_file": "gif/blue_p3c_orion.gif",
+    "preview_file": "preview_8x/blue_p3c_orion.png",
+    "pixel_count": 100
+  },
+  {
+    "inventory_id": "INV-1785654343599-39",
+    "actor": "RED",
+    "alias": "沿岸航空基地群",
+    "category": "airport",
+    "svg_file": "svg/red_coastal_airbase_group.svg",
+    "gif_file": "gif/red_coastal_airbase_group.gif",
+    "preview_file": "preview_8x/red_coastal_airbase_group.png",
+    "pixel_count": 60
+  },
+  {
+    "inventory_id": "INV-1785654343599-14",
+    "actor": "RED",
+    "alias": "殲-10C戰鬥機／J-10C",
+    "category": "aviation",
+    "svg_file": "svg/red_j10c.svg",
+    "gif_file": "gif/red_j10c.gif",
+    "preview_file": "preview_8x/red_j10c.png",
+    "pixel_count": 86
+  },
+  {
+    "inventory_id": "INV-1785654343599-13",
+    "actor": "RED",
+    "alias": "殲-16戰鬥機／J-16",
+    "category": "aviation",
+    "svg_file": "svg/red_j16.svg",
+    "gif_file": "gif/red_j16.gif",
+    "preview_file": "preview_8x/red_j16.png",
+    "pixel_count": 106
+  },
+  {
+    "inventory_id": "INV-1785654343599-12",
+    "actor": "RED",
+    "alias": "殲-20戰鬥機／J-20",
+    "category": "aviation",
+    "svg_file": "svg/red_j20.svg",
+    "gif_file": "gif/red_j20.gif",
+    "preview_file": "preview_8x/red_j20.png",
+    "pixel_count": 104
+  },
+  {
+    "inventory_id": "INV-1785654343599-41",
+    "actor": "RED",
+    "alias": "聯合指揮基地",
+    "category": "base",
+    "svg_file": "svg/red_joint_command_base.svg",
+    "gif_file": "gif/red_joint_command_base.gif",
+    "preview_file": "preview_8x/red_joint_command_base.png",
+    "pixel_count": 128
+  },
+  {
+    "inventory_id": "INV-1785654343599-16",
+    "actor": "RED",
+    "alias": "空警-500預警機／KJ-500",
+    "category": "isr",
+    "svg_file": "svg/red_kj500.svg",
+    "gif_file": "gif/red_kj500.gif",
+    "preview_file": "preview_8x/red_kj500.png",
+    "pixel_count": 100
+  },
+  {
+    "inventory_id": "INV-1785654343599-17",
+    "actor": "RED",
+    "alias": "運-20運輸機／Y-20",
+    "category": "logistics",
+    "svg_file": "svg/red_y20.svg",
+    "gif_file": "gif/red_y20.gif",
+    "preview_file": "preview_8x/red_y20.png",
+    "pixel_count": 114
+  },
+  {
+    "inventory_id": "INV-1785654343599-21",
+    "actor": "RED",
+    "alias": "東風-17常規導彈／DF-17",
+    "category": "longRange",
+    "svg_file": "svg/red_df17.svg",
+    "gif_file": "gif/red_df17.gif",
+    "preview_file": "preview_8x/red_df17.png",
+    "pixel_count": 66
+  },
+  {
+    "inventory_id": "INV-1785654343599-22",
+    "actor": "RED",
+    "alias": "東風-26型導彈／DF-26",
+    "category": "longRange",
+    "svg_file": "svg/red_df26.svg",
+    "gif_file": "gif/red_df26.gif",
+    "preview_file": "preview_8x/red_df26.png",
+    "pixel_count": 80
+  },
+  {
+    "inventory_id": "INV-1785654343599-15",
+    "actor": "RED",
+    "alias": "轟-6K轟炸機／H-6K",
+    "category": "longRange",
+    "svg_file": "svg/red_h6k.svg",
+    "gif_file": "gif/red_h6k.gif",
+    "preview_file": "preview_8x/red_h6k.png",
+    "pixel_count": 100
+  },
+  {
+    "inventory_id": "INV-1785654343599-19",
+    "actor": "RED",
+    "alias": "052D型導彈驅逐艦",
+    "category": "maritime",
+    "svg_file": "svg/red_type_052d_destroyer.svg",
+    "gif_file": "gif/red_type_052d_destroyer.gif",
+    "preview_file": "preview_8x/red_type_052d_destroyer.png",
+    "pixel_count": 93
+  },
+  {
+    "inventory_id": "INV-1785654343599-18",
+    "actor": "RED",
+    "alias": "055型導彈驅逐艦",
+    "category": "maritime",
+    "svg_file": "svg/red_type_055_destroyer.svg",
+    "gif_file": "gif/red_type_055_destroyer.gif",
+    "preview_file": "preview_8x/red_type_055_destroyer.png",
+    "pixel_count": 103
+  },
+  {
+    "inventory_id": "INV-1785654343599-20",
+    "actor": "RED",
+    "alias": "075型兩棲攻擊艦",
+    "category": "maritime",
+    "svg_file": "svg/red_type_075_lhd.svg",
+    "gif_file": "gif/red_type_075_lhd.gif",
+    "preview_file": "preview_8x/red_type_075_lhd.png",
+    "pixel_count": 117
+  },
+  {
+    "inventory_id": "INV-1785654343599-43",
+    "actor": "RED",
+    "alias": "沿岸防護陣地",
+    "category": "position",
+    "svg_file": "svg/red_coastal_defense_position.svg",
+    "gif_file": "gif/red_coastal_defense_position.gif",
+    "preview_file": "preview_8x/red_coastal_defense_position.png",
+    "pixel_count": 105
+  },
+  {
+    "inventory_id": "INV-1785654343599-42",
+    "actor": "RED",
+    "alias": "區域電力保障節點",
+    "category": "powerPlant",
+    "svg_file": "svg/red_regional_power_node.svg",
+    "gif_file": "gif/red_regional_power_node.gif",
+    "preview_file": "preview_8x/red_regional_power_node.png",
+    "pixel_count": 86
+  },
+  {
+    "inventory_id": "INV-1785654343599-40",
+    "actor": "RED",
+    "alias": "沿岸遠程雷達站",
+    "category": "radarStation",
+    "svg_file": "svg/red_coastal_long_range_radar.svg",
+    "gif_file": "gif/red_coastal_long_range_radar.gif",
+    "preview_file": "preview_8x/red_coastal_long_range_radar.png",
+    "pixel_count": 72
+  }
+]
